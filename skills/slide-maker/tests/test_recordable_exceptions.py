@@ -21,6 +21,7 @@ every tool in the repo.
 """
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -37,6 +38,11 @@ import deckkit as dk                      # noqa: E402
 import deck_gates as dg                   # noqa: E402
 import render_deck as rd                  # noqa: E402
 import codex_delivery_gate as cg          # noqa: E402
+
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
 
 ok, bad = [], []
 
@@ -65,6 +71,9 @@ def _filled(n=2):
     g["critic"] = {"waived": "the user declined with the deck visible",
                    "waived_category": "user-waived"}
     g["render_selfcheck"] = {"slides": [{"n": i + 1, "verdict": "ok"} for i in range(n)]}
+    g["blind_read"] = {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
+                 for i in range(n)],
+     "findings": []}
     return g
 
 

@@ -12,10 +12,16 @@ with no independent critic ever involved.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
 
 HERE = Path(__file__).resolve().parent
 SKILL = HERE.parent
@@ -155,6 +161,19 @@ def selfcheck_ok(n_slides: int = 3) -> dict:
                        for i in range(1, n_slides + 1)]}
 
 
+def blindread_ok(n_slides: int = 3) -> dict:
+    """A clean `blind_read` artifact: one answer per slide, every finding answered in writing."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import blind_read as _br
+    q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+         for k, _ in _br.QUESTIONS}
+    return {"answers": [dict(q, n=i + 1, elements={k: 0 for k in _br.ELEMENT_KEYS})
+                        for i in range(n_slides)],
+            "findings": [{"n": 1, "code": "READ_LEGIBILITY", "severity": "ask",
+                          "finding": "the caption reads dim against the ground",
+                          "resolution": "raised the caption to the 4.5:1 token and re-rendered"}]}
+
+
 def fit_content(gates: dict, pptx) -> dict:
     """Resize a fixture's `content.slides` AND `render_selfcheck.slides` to the deck under test.
 
@@ -182,6 +201,15 @@ def fit_content(gates: dict, pptx) -> dict:
     elif isinstance(rs, dict) and "slides" in rs and not rs.get("waived") \
             and len(rs.get("slides") or []) != n:
         out["render_selfcheck"] = selfcheck_ok(n)
+    # Same move for the blind read, and for the same reason: these fixtures predate that gate, and
+    # a test aiming at some OTHER gate must not fail on an artifact it never meant to exercise.
+    # A test that sets `blind_read` on purpose (waived, corrupted, short a slide) is left alone.
+    brd = out.get("blind_read")
+    if brd is None:
+        out["blind_read"] = blindread_ok(n)
+    elif isinstance(brd, dict) and "answers" in brd and not brd.get("waived") \
+            and len(brd.get("answers") or []) != n:
+        out["blind_read"] = blindread_ok(n)
     # A bare `{"verdict": "consent"}` fixture no longer clears the gate on its own — a consent now
     # REQUIRES the recorded review artifact (path + sha256), the last self-cert hole closed. Most
     # fixtures use a bare consent only as a stand-in for "the critic was clean" while they test some

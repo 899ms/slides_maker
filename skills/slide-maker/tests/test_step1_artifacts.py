@@ -32,6 +32,7 @@ Run:  python3 tests/test_step1_artifacts.py
 """
 import copy
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -52,6 +53,12 @@ from test_critic_waiver_gate import (  # noqa: E402
     ARC_CANDIDATES, DESIGN_OK, GOOD_REASON, PROV_OK, build_deck, content_ok, selfcheck_ok,
     write_proof,
 )
+
+
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
 
 PASS = FAIL = 0
 
@@ -88,6 +95,9 @@ def record(n=3, **content):
                        "inline_ran": True},
             "design_plan": copy.deepcopy(DESIGN_OK), "content": c,
             "render_selfcheck": selfcheck_ok(n),
+            "blind_read": {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
+                                      for i in range(n)],
+                          "findings": []},
             "provenance": copy.deepcopy(PROV_OK)}
 
 

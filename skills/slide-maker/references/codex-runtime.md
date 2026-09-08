@@ -421,6 +421,27 @@ contract this gate enforces (a brief whose rows are "understand X" comprehension
 — that is the subject brief in disguise, and the measured failure it exists for is a traveller
 deck that verified survey-chain lengths and never asked what a day costs). Each `content.arc`
 candidate must carry `serves_goal` — scored on the recorded goal before elegance.
+🔴 **EVERY deck carries `blind_read`** — the check that reads the PICTURE rather than the file, and
+the one gate here that needs an actor outside the author. `scripts/blind_read.py packet <deck>`
+emits PNG paths plus a fixed question list and **nothing else**; an independent reader answers it
+without seeing this evidence file (`agents/blind-reader.md`), and `blind_read.py compare … --write`
+records the answers together with the disagreements it COMPUTED. There is no verdict field to write
+`ok` into — that is the whole difference from `render_selfcheck`, whose limit is that a lazy `ok`
+passes. Findings triage to **hard** (clipped/overlapping text, an on-screen contradiction, a
+placeholder, an empty page, planned icons the reader cannot see → `fixed`), **ask** (a written
+`resolution`), and **note** (judgement, for the critic, no answer owed). The reader can be wrong:
+`refuted` is a legal exit and a fake fix is not. Measured on a shipped 15-page deck: ten hard
+findings, one of them a body-vs-source-line number contradiction that had already cleared the
+provenance gate, the critic, and fifteen `ok` self-check verdicts. No independent reader in this
+runtime? Claim `waived_category: "no-reader"` — it records that the deck shipped **unread**, which
+is a different statement from claiming it was read.
+🔴 **The taste ledger is consulted at design time** — `scripts/taste_ledger.py list --binds-at
+design --format prompt` prints what THIS user has already corrected by hand on earlier decks, and
+`design_plan.taste_applied` records one row per active entry (`applied: true`, or `applied: false`
+with `why_not`). An empty ledger asks nothing, which is the normal fresh-install case. The gate
+checks that each rule was CONSIDERED, never that it was obeyed — a taught rule can be right to
+break, and a written deviation is design. Entries leave the ledger by being **promoted** to a
+deterministic gate (`retire <id> --gate <CODE>`), never by being forgotten.
 🔴 **EVERY deck carries `content.open_ledger`** — one row per claim the SOURCE ITSELF marks as not
 yet established (future work · an open gate · "cannot establish" · a roadmap item · a TODO), each with
 the locator that says so, and none of them may appear on a slide in the ESTABLISHED voice. This is a

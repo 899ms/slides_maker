@@ -26,6 +26,7 @@ sourced + generated imagery. Everything here is a measurement from that run.
     their decision.
 """
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -54,6 +55,11 @@ check(p.returncode == 0 and tail[0].endswith("0 failed"),
 
 import deck_gates                                                            # noqa: E402
 
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
+
 filled = deck_gates.template(2)
 d = filled["design_plan"]
 d.update({"boldness": "bold",
@@ -79,6 +85,9 @@ filled["content"]["audience_brief"] = {
                   {"decision": "what the headline claims", "needs": "the one fact that survives"}]}
 filled["critic"] = {"waived": "user declined", "waived_category": "user-waived"}
 filled["render_selfcheck"] = {"slides": [{"n": 1, "verdict": "ok"}, {"n": 2, "verdict": "ok"}]}
+filled["blind_read"] = {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
+             for i in range(2)],
+ "findings": []}
 check(deck_gates.check(filled) == [], "a filled record is shape-clean", deck_gates.check(filled))
 
 broken = json.loads(json.dumps(filled))

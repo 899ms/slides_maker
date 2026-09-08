@@ -45,6 +45,8 @@ GATES = ".deck-gates.json"
 # the drift `anchor_proof.py` was created to stop.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audience_brief as ab  # noqa: E402
+import blind_read as brd  # noqa: E402
+import taste_ledger as tl  # noqa: E402
 from material_probe import (CARVES as MATERIAL_PROBE_CARVES,  # noqa: E402
                             file_value as _mp_file, waiver_faults as _mp_faults)
 
@@ -155,6 +157,10 @@ def template(slides=None, delivery="presented"):
         "render_selfcheck": {"slides": [{"n": i + 1, "verdict": "<ok — … | … fixed>"}
                                         for i in range(n)] or
                                        [{"n": 1, "verdict": "<ok — …>"}]},
+        # Filled by `blind_read.py compare --write`, never by hand: the answers come from a reader
+        # that was not shown this record, and the findings are computed from the two.
+        "blind_read": {"answers": "<blind_read.py packet … → an independent reader → its JSON>",
+                       "findings": "<blind_read.py compare … --write fills this>"},
     }
 
 
@@ -318,6 +324,22 @@ def check(gates):
     if not sc and not gates.get("render_selfcheck", {}).get("waived"):
         problems.append("`render_selfcheck.slides` is missing — one verdict per slide; a slide "
                         "with no line was not looked at.")
+
+    # The blind read. `render_selfcheck` above proves a look happened; this proves what was SEEN,
+    # by someone who was not shown the record. Same shape pre-flight as everything else here.
+    br = gates.get("blind_read")
+    if brd.is_waived(br):
+        for f in brd.waiver_faults(br):
+            problems.append("`blind_read.waived` " + f)
+    elif br is None:
+        problems.append("`blind_read` " + brd.MISSING.split("\n")[0])
+    else:
+        for f in brd.faults(br, len(gates.get("content", {}).get("slides") or []) or None):
+            problems.append("`blind_read`: " + f)
+
+    # What this user has already corrected by hand, on earlier decks. An empty ledger asks nothing.
+    for f in tl.faults(gates.get("design_plan"), tl.load()):
+        problems.append(f)
     return problems
 
 
@@ -396,6 +418,10 @@ def _cmd_check(a):
 
 
 def _selftest():
+    # 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+    # so a test that reads the real one passes or fails by whatever the developer happens to
+    # have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+    os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
     ok, bad = [], []
     t = template(3)
     probs = check(t)
@@ -435,6 +461,13 @@ def _selftest():
     g["content"]["open_ledger"] = []          # swept; the source marks nothing as unresolved
     g["critic"] = {"waived": "user declined with the deck visible", "waived_category": "user-waived"}
     g["render_selfcheck"] = {"slides": [{"n": i + 1, "verdict": "ok"} for i in range(3)]}
+    # A blind read whose findings are all answered — the shape a clean deck records.
+    _bq = ("claim", "about", "largest", "elements", "legible_text", "unreadable", "problems")
+    g["blind_read"] = {
+        "answers": [dict({k: "" for k in _bq}, n=i + 1, elements={}) for i in range(3)],
+        "findings": [{"n": 2, "code": "READ_LEGIBILITY", "severity": "ask",
+                      "finding": "the caption is dim",
+                      "resolution": "raised the caption to the 4.5:1 token"}]}
     probs = check(g)
     if not probs:
         ok.append("a fully-filled record passes")

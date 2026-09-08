@@ -715,6 +715,24 @@ user's edits to the story, then move to design (Step 2).
 
 ## Step 2 — Design the deck (use the slide-design agent)
 
+> ### 🔴 OPEN STEP 2 BY READING WHAT THIS USER HAS ALREADY TAUGHT
+> `python3 scripts/taste_ledger.py list --binds-at design --format prompt`
+>
+> Corrections the user made by hand on *earlier* decks live here — icons missing on categorical
+> content, a deck that came back as grey blocks, a motif louder than the content it carried, a type
+> default they set themselves. Without this the same note arrives deck after deck, each one costing
+> a delivery to rediscover; the user becomes the skill's memory, and pays for it every time.
+> **An empty ledger asks nothing** (a fresh install has one, and that is the normal case). When it
+> is not empty, record one row per active entry in `design_plan.taste_applied` —
+> `{"id": …, "applied": true}` or `{"id": …, "applied": false, "why_not": "<why it does not bind
+> here>"}`. The gate checks that each was **considered**, never that it was obeyed: a taught rule
+> can be right to break on this deck, and a skip written down is design (this is the taste
+> protocol's rule 3 applied to the user's own corrections). Learned something new at hand-off?
+> `taste_ledger.py add --id … --quote "<their words>" --rule … --binds-at … --deck …` — the quote
+> must be **theirs**, or the rule is something you decided and attributed to them. And when a rule
+> earns a deterministic check, `retire <id> --gate <CODE>`: entries leave by being **promoted**, not
+> forgotten, which is what keeps the ledger from turning into noise.
+
 > ### 🔴 STEP 2 IS BRANCH-INVARIANT — it runs IN FULL on EVERY Q1 template choice
 > The Q1 choice — (a) design-a-clean-one, (b) a provided template, (c) the direction gate, (d) a
 > generated visual identity — decides only the **LOOK SOURCE**. It NEVER removes the design plan or
@@ -2051,6 +2069,32 @@ critic round — full rationale in `references/design-principles.md`):
 > judged well (`ok` on a bad page still passes) — the strong per-slide guarantee is the independent
 > critic's coverage bind. Genuinely no render to look at (a rare `--static` edge)? Waive it in
 > writing (`render_selfcheck.waived`).
+>
+> 🔴 **THE BLIND READ-BACK — the check that reads the PICTURE, not the file. Run it after the
+> self-check above, before the critic.** Every other gate in this skill answers *what does the file
+> contain*; none of them reads the page as a page, and that is the gap every "green but broken"
+> deck in this skill's history walked through — a wireframe, `<placeholder>` text that cleared every
+> width floor, a deck of six grey blocks, negative bars drawn as absolute, Chinese measured 46%
+> short. The self-check above cannot close it *because it is self-attested*: measured, a 15-slide
+> deck recorded `ok` on all fifteen, and the first outside sentence about it named a defect.
+> Three steps, one round-trip each:
+>
+>     python3 scripts/blind_read.py packet  <deck-dir>          # PNG paths + a fixed question list
+>     # → hand ONLY that to an independent reader (agents/blind-reader.md). It must NOT see
+>     #   .deck-gates.json, the plan, or the topic — a reader who knows the takeaway finds it in
+>     #   the picture whether or not the picture carries it.
+>     python3 scripts/blind_read.py compare <deck-dir> --answers <its json> --write
+>
+> The comparison is **computed, not asserted** — there is no verdict field to write `ok` into. It
+> triages into three: **HARD** (clipped/overlapping text, an on-screen contradiction, a placeholder,
+> a page carrying nothing, planned icons the reader cannot see) — fix it and record `fixed`;
+> **ASK** — answer in writing; **note** (a judgement call: "no food imagery on a food page") —
+> recorded for the critic, no answer owed. The reader is **not infallible**: when it is wrong, say
+> what you re-checked on the rendered page in `refuted` — never a fake fix. Measured on its first
+> real run over a shipped 15-page deck: 10 hard findings, including a body/source-line number
+> contradiction that had passed the provenance gate, the critic, and fifteen `ok` verdicts.
+> No independent reader in this runtime? Claim the carve `no-reader` — which *records that the deck
+> shipped unread* rather than implying it was read.
 - **Overflow / contrast / footer / glyphs** — no clipped or spilling text, ≥4.5:1 contrast,
   nothing jammed on the footer, no tofu/missing glyphs, and **no orphaned punctuation** (a lone 。/，
   or single glyph stranded on its own row — set `deckkit.EAFONT` so PowerPoint's kinsoku keeps it

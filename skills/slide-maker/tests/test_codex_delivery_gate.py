@@ -11,12 +11,18 @@ import pathlib
 import hashlib
 import importlib.util
 import json
+import os
 import struct
 import subprocess
 import sys
 import tempfile
 import zlib
 from pathlib import Path
+
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
 
 
 HERE = Path(__file__).resolve().parent
@@ -433,6 +439,9 @@ def fixture(root: Path) -> tuple[dict, dict, dict, Path]:
         ],
         # The actor's render look — one verdict per slide (this fixture deck is a single page).
         "render_selfcheck": {"slides": [{"n": 1, "verdict": "ok — cover reads clean"}]},
+        "blind_read": {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
+                                   for i in range(1)],
+                       "findings": []},
         "waivers": [],
     }
     lint = {

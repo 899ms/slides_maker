@@ -24,6 +24,7 @@ Run:  python3 tests/test_review_integrity.py
 import copy
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -64,12 +65,33 @@ def gate(deck, gates):
     return p.returncode, p.stdout + p.stderr
 
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'scripts'))
+import blind_read  # noqa: E402
+
+# 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
+# so a test that reads the real one passes or fails by whatever the developer happens to
+# have taught the skill — the same "passes by luck" class as a hash-salted fixture.
+os.environ["SLIDE_MAKER_TASTE_LEDGER"] = "/nonexistent/taste-ledger-for-tests.json"
+
+
+def blindread_ok(n):
+    """A clean blind read: one answer per slide, and every finding answered in writing."""
+    q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+         for k, _ in blind_read.QUESTIONS}
+    return {"answers": [dict(q, n=i + 1, elements={k: 0 for k in blind_read.ELEMENT_KEYS})
+                        for i in range(n)],
+            "findings": [{"n": 1, "code": "READ_LEGIBILITY", "severity": "ask",
+                          "finding": "the caption is dim",
+                          "resolution": "raised it to the 4.5:1 token and re-rendered"}]}
+
+
 def base(n, deck, **over):
     """A clean gates dict for an n-slide deck, with BOTH new artifacts present."""
     g = {"critic": {"waived": GOOD_REASON, "waived_category": "no-dispatch-on-host",
                     "inline_ran": True},
          "design_plan": copy.deepcopy(DESIGN_OK), "content": content_ok(n),
-         "render_selfcheck": selfcheck_ok(n), "provenance": copy.deepcopy(PROV_OK)}
+         "render_selfcheck": selfcheck_ok(n), "provenance": copy.deepcopy(PROV_OK),
+         "blind_read": blindread_ok(n)}
     g.update(over)
     return g
 

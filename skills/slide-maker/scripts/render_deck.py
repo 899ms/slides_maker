@@ -2515,6 +2515,22 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                 '     the design holds the densest page, and that the charts speak the same language)\n'
                 '    or {"design_plan": {"waived": "<reason>"}}')
 
+    with _gate_section('taste'):
+        # WHAT THIS USER HAS ALREADY CORRECTED, ON EARLIER DECKS. Without this the same note
+        # arrives deck after deck — icons missing, a deck of grey blocks, a motif louder than its
+        # content — each one costing a delivery to rediscover. An EMPTY ledger asks nothing, which
+        # is the whole fresh-install case; entries leave by being PROMOTED to a real gate, not by
+        # being forgotten. See taste_ledger.py.
+        import taste_ledger as _tl
+        _entries = _tl.load()
+        _live = _tl.active(_entries)
+        if not _live:
+            print("[gates] taste ledger: empty — nothing this user has taught is still ungated")
+        else:
+            for _f in _tl.faults(gates.get("design_plan"), _entries):
+                die(_f)
+            print("[gates] taste ledger: {} active entry(ies), all accounted for".format(len(_live)))
+
     with _gate_section('content.arc'):
         # THE ARC COMPETITION, ported from the Codex record so both paths hold the same bar. The design
         # side has had a rendered competition for years (the direction gate) and the content side got
@@ -3042,6 +3058,32 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                         "page, but an empty/placeholder line is a slide that was not read."
                         .format(_i, _rn))
             print("[gates] render self-check: {} verdict(s), one per slide".format(len(_sl)))
+
+    with _gate_section('blind_read'):
+        # THE GATE THAT READS THE PICTURE. `render_selfcheck` above proves the trace exists and says
+        # so itself — "a lazy `ok` on a bad slide still passes". This is the measurement it cannot
+        # be: an independent reader that was NOT shown the content record answers a fixed question
+        # list about every slide PNG, and the disagreements against the record are COMPUTED. There
+        # is nothing here to write `ok` into, and each finding is answered in writing or the gate
+        # holds. See blind_read.py for the six green-but-broken decks that motivated it.
+        import blind_read as _br
+        _brd = _section(gates, "blind_read")
+        if _br.is_waived(_brd):
+            for _f in _br.waiver_faults(_brd):
+                die("`blind_read.waived` " + _f)
+            print("[gates] blind read WAIVED ({}) — {}"
+                  .format(_brd.get("waived_category"), _brd.get("waived")))
+        else:
+            _bf = _br.faults(_brd, _deck_slide_count(pptx))
+            if _bf and _bf[0] is _br.MISSING:
+                die("`blind_read` " + _br.MISSING)
+            for _f in _bf:
+                die("`blind_read`: " + _f)
+            _fs = _brd.get("findings") or []
+            _hard = [f for f in _fs if isinstance(f, dict)
+                     and str(f.get("severity") or "").lower() == "hard"]
+            print("[gates] blind read: {} answer(s), {} finding(s) answered ({} hard)"
+                  .format(len(_brd.get("answers") or []), len(_fs), len(_hard)))
 
     with _gate_section('provenance'):
         # Provenance: a self-filled tally proves nothing — the refutation pass is what the gate is FOR.

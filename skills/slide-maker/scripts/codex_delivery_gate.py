@@ -952,6 +952,24 @@ def check_content(
         for _f in _ab.faults(_brief):
             errors.append("content.audience_brief: " + _f)
 
+    # THE BLIND READ — the gate that reads the picture. Wired into all three paths in the same
+    # change, for the reason stated three comments above: a floor kept in one runtime only is how
+    # the other quietly stops enforcing it.
+    import blind_read as _brd
+    _bread = evidence.get("blind_read")
+    if _brd.is_waived(_bread):
+        for _f in _brd.waiver_faults(_bread):
+            errors.append("blind_read.waived " + _f)
+    elif _bread is None:
+        errors.append("blind_read " + _brd.MISSING.split("\n")[0])
+    else:
+        for _f in _brd.faults(_bread, len(content.get("slides") or []) or None):
+            errors.append("blind_read: " + _f)
+
+    import taste_ledger as _tl
+    for _f in _tl.faults(evidence.get("design_plan"), _tl.load()):
+        errors.append(_f)
+
     if "open_ledger" not in content:
         errors.append("content.open_ledger missing — record every claim the SOURCE marks as NOT "
                       "yet established (claim + where it says so + absent|stated as open on slide "

@@ -859,3 +859,124 @@ jobs:
           find_figures('/tmp/canary.pdf', 1)
           print('extract_pdf ok')
           EOF
+
+      # 🔴 Sixteen of these had NEVER run in CI — one of them was already red and nothing
+      # reported it. `check_tests_wired.py` below makes the seventeenth impossible to forget.
+      - name: Audience brief (who the deck is FOR, and what they must decide)
+        run: |
+          set -o pipefail
+          python tests/test_audience_brief.py | tee /tmp/audiencebrie.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/audiencebrie.log || {
+            echo "::error::test_audience_brief did not run to completion"; exit 1; }
+
+      - name: Blind read-back (the gate that reads the picture, not the file)
+        run: |
+          set -o pipefail
+          python tests/test_blind_read.py | tee /tmp/blindread.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/blindread.log || {
+            echo "::error::test_blind_read did not run to completion"; exit 1; }
+
+      - name: Taste ledger (what the user already taught; self-limiting)
+        run: |
+          set -o pipefail
+          python tests/test_taste_ledger.py | tee /tmp/tasteledger.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/tasteledger.log || {
+            echo "::error::test_taste_ledger did not run to completion"; exit 1; }
+
+      - name: Shape declarations (four tags that must not erase each other)
+        run: |
+          set -o pipefail
+          python tests/test_shape_declarations.py | tee /tmp/shapedeclara.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/shapedeclara.log || {
+            echo "::error::test_shape_declarations did not run to completion"; exit 1; }
+
+      - name: Review integrity (a consent must name a reviewed artifact)
+        run: |
+          set -o pipefail
+          python tests/test_review_integrity.py | tee /tmp/reviewintegr.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/reviewintegr.log || {
+            echo "::error::test_review_integrity did not run to completion"; exit 1; }
+
+      - name: Icons are a default on categorical content
+        run: |
+          set -o pipefail
+          python tests/test_icon_must.py | tee /tmp/iconmust.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/iconmust.log || {
+            echo "::error::test_icon_must did not run to completion"; exit 1; }
+
+      - name: Design checkpoint gate
+        run: |
+          set -o pipefail
+          python tests/test_design_checkpoint_gate.py | tee /tmp/designcheckp.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/designcheckp.log || {
+            echo "::error::test_design_checkpoint_gate did not run to completion"; exit 1; }
+
+      - name: Composition boldness (a signature move that survives)
+        run: |
+          set -o pipefail
+          python tests/test_composition_boldness.py | tee /tmp/compositionb.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/compositionb.log || {
+            echo "::error::test_composition_boldness did not run to completion"; exit 1; }
+
+      - name: Connector-in-box geometry
+        run: |
+          set -o pipefail
+          python tests/test_connector_in_box.py | tee /tmp/connectorinb.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/connectorinb.log || {
+            echo "::error::test_connector_in_box did not run to completion"; exit 1; }
+
+      - name: Font verifiability (lining figures, real faces)
+        run: |
+          set -o pipefail
+          python tests/test_font_verifiability.py | tee /tmp/fontverifiab.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/fontverifiab.log || {
+            echo "::error::test_font_verifiability did not run to completion"; exit 1; }
+
+      - name: Recordable exceptions (a carve is claimed, not assumed)
+        run: |
+          set -o pipefail
+          python tests/test_recordable_exceptions.py | tee /tmp/recordableex.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/recordableex.log || {
+            echo "::error::test_recordable_exceptions did not run to completion"; exit 1; }
+
+      - name: Research pivot
+        run: |
+          set -o pipefail
+          python tests/test_research_pivot.py | tee /tmp/researchpivo.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/researchpivo.log || {
+            echo "::error::test_research_pivot did not run to completion"; exit 1; }
+
+      - name: Web research floors
+        run: |
+          set -o pipefail
+          python tests/test_web_research_floors.py | tee /tmp/webresearchf.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/webresearchf.log || {
+            echo "::error::test_web_research_floors did not run to completion"; exit 1; }
+
+      - name: Skill fingerprint (installed copy matches main)
+        run: |
+          set -o pipefail
+          python tests/test_skill_fingerprint.py | tee /tmp/skillfingerp.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/skillfingerp.log || {
+            echo "::error::test_skill_fingerprint did not run to completion"; exit 1; }
+
+      - name: Env bootstrap
+        run: |
+          set -o pipefail
+          python tests/test_env_bootstrap.py | tee /tmp/envbootstrap.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/envbootstrap.log || {
+            echo "::error::test_env_bootstrap did not run to completion"; exit 1; }
+
+      - name: Env ensure
+        run: |
+          set -o pipefail
+          python tests/test_env_ensure.py | tee /tmp/envensure.log
+          grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/envensure.log || {
+            echo "::error::test_env_ensure did not run to completion"; exit 1; }
+
+      - name: Every test file is wired into CI
+        run: |
+          set -o pipefail
+          python scripts/check_tests_wired.py | tee /tmp/wired.log
+          grep -q "0 problem(s)" /tmp/wired.log || {
+            echo "::error::a test file exists that CI never runs"; exit 1; }
