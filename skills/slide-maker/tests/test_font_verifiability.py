@@ -88,6 +88,29 @@ check(status == "ADVISORY" and "presented" in msg,
       "a face installed NOWHERE keeps the original wording — the risk really is the presenter's "
       "machine, and this check has no business failing a deck for CI not having Helvetica Neue")
 
+def _installed_face():
+    """A face this machine genuinely has, preferring the one this skill recommends — or None.
+
+    `item10_fonts` decides "installed" from matplotlib's font table, so this asks the same table
+    rather than assuming a name. 🔴 Returns None when NOTHING usable is installed, and the arms
+    below then SKIP with a stated reason. Never name a face the machine does not have: the
+    assertion would fail for a reason that has nothing to do with what it tests, which is exactly
+    the failure being fixed here — one degree removed.
+    """
+    try:
+        from matplotlib import font_manager
+        have = {f.name for f in font_manager.fontManager.ttflist}
+    except Exception:                                                  # noqa: BLE001
+        return None                        # item10 returns NOT CHECKABLE here; the arm is moot
+    for preferred in ("Times New Roman", "Liberation Serif", "DejaVu Serif", "DejaVu Sans"):
+        if preferred in have and not pf._bundled_only(preferred):
+            return preferred
+    for name in sorted(have):
+        if not name.startswith(".") and not pf._bundled_only(name):
+            return name
+    return None
+
+
 _bundled = pf._bundled_only("Calibri")
 if _bundled:
     status, msg = pf.item10_fonts(_FakePrs(["Calibri"]))
@@ -105,10 +128,22 @@ else:
     check(True, "no Office bundle on this machine — the bundle-detection arm is skipped, not faked "
                 "(it is exercised wherever Office is installed)")
 
-status, msg = pf.item10_fonts(_FakePrs(["Times New Roman"]))
-check(status == "PASS",
-      "a system-wide face passes clean — the check must stay quiet on the answer it recommends, "
-      "or authors learn to ignore it")
+# 🔴 The property under test is "a face this machine really has passes clean" — NOT "Times New
+# Roman passes clean". Hardcoding the recommended face made this arm depend on which fonts the
+# runner happens to carry: it went green on macOS and red on the Linux CI box, which has no Times
+# New Roman. Prefer the recommended face where it exists (so the usual machine still exercises the
+# exact answer this skill gives authors), and otherwise take any installed face — the assertion is
+# the same either way.
+_SYSTEM_FACE = _installed_face()
+if _SYSTEM_FACE:
+    status, msg = pf.item10_fonts(_FakePrs([_SYSTEM_FACE]))
+    check(status == "PASS",
+          "a system-wide face ({}) passes clean — the check must stay quiet on the answer it "
+          "recommends, or authors learn to ignore it (got {}: {})"
+          .format(_SYSTEM_FACE, status, msg))
+else:
+    check(True, "no enumerable system face on this machine — the passes-clean arm is skipped, not "
+                "faked (it runs wherever any font is installed, which is every real runner)")
 
 
 # ---------------------------------------------------- and the rule is written where it is read
@@ -134,7 +169,8 @@ check("APP BUNDLE" in _setup and "preflight_check.py` item 10" in _setup,
 
 # ------------------------------------------------- the check runs in a FRESH PROCESS, as it does
 tmp = Path(tempfile.mkdtemp(prefix="fontverif-"))
-dk.set_palette(font="Times New Roman", mono="Courier New")
+dk.set_palette(font=_SYSTEM_FACE or "Times New Roman",
+                mono=_SYSTEM_FACE or "Courier New")
 prs = dk.blank_deck()
 s = dk.add_slide(prs)
 dk.text(s, 1, 1, 8, 1, [[("a headline", 24, dk.DEEP, True, False, dk.FONT)]])
@@ -143,9 +179,13 @@ deck = tmp / "d.pptx"
 prs.save(str(deck))
 out = subprocess.run([sys.executable, str(SCRIPTS / "preflight_check.py"), str(deck)],
                      capture_output=True, text=True)
-check("10. Hand-off: fonts" in out.stdout and "resolve locally" in out.stdout,
-      "🔴 and it works from a FRESH PROCESS — the way preflight actually runs — on a deck set in "
-      "the recommended academic face")
+if _SYSTEM_FACE:
+    check("10. Hand-off: fonts" in out.stdout and "resolve locally" in out.stdout,
+          "🔴 and it works from a FRESH PROCESS — the way preflight actually runs — on a deck set "
+          "in a face this machine has ({})".format(_SYSTEM_FACE))
+else:
+    check("10. Hand-off: fonts" in out.stdout,
+          "🔴 preflight still reaches item 10 from a FRESH PROCESS even with no enumerable face")
 
 for line in ok:
     print("  ok   " + line)
