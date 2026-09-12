@@ -2389,9 +2389,14 @@ def main() -> int:
         return 2
     errors = evaluate(lint, components, args.build_script, evidence, args.evidence.parent)
     if errors:
-        print("CODEX DELIVERY GATE: BLOCKED")
-        for error in errors:
-            print(f"- {error}")
+        # Numbered `[i/n]` and totalled again at the end: a bare `- ` list read through `tail`
+        # shows some errors with no hint that more exist, which turns one batched report into a
+        # run of one-at-a-time round-trips. See the note in deck_gates.py's reporter.
+        n = len(errors)
+        print(f"CODEX DELIVERY GATE: BLOCKED — {n} error(s), ALL listed below:")
+        for i, error in enumerate(errors, 1):
+            print(f"- [{i}/{n}] {error}")
+        print(f"{n} error(s) above — fix them in ONE pass, then re-run.")
         return 1
     print("CODEX DELIVERY GATE: PASS")
     if args.receipt:

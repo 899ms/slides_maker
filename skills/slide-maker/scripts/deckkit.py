@@ -6275,9 +6275,14 @@ def declare_delivery(where, mode, builds=None, notes=None):
     against the read-from-the-back floor, and "14 of 14 slides have empty speaker notes" on a deck
     nobody speaks. Advisory noise is not harmless: it is what teaches people to skim the gates.
 
-    Call it beside the save, where the deck's identity is already known::
+    🔴 Call it AFTER ``prs.save(OUT)``, never before — it hashes the file on disk::
 
+        dk.lint_layout(prs, strict=True)
+        prs.save(str(OUT))
         dk.declare_delivery(OUT, "selfread")     # OUT is the .pptx path, or its directory
+
+    Called before the save it records no hash at all (or, on a rebuild, the PREVIOUS build's), and
+    every later ``--gate-check`` reports ``EDITED SINCE BUILD`` on a file nobody touched.
 
     `where` may be the .pptx path or the deck directory. Merges into any existing gates file —
     the critic block `validate_review.py --record` writes is preserved. Returns the file path.
@@ -6286,6 +6291,19 @@ def declare_delivery(where, mode, builds=None, notes=None):
     import os as _os                     # deckkit has no module-level `os` — see _ea_face et al.
     if mode not in DELIVERY_MODES:
         raise ValueError("delivery must be one of %s, got %r" % (", ".join(DELIVERY_MODES), mode))
+    # 🔴 AFTER the save, never before: this hashes the file ON DISK. Called first, it records a
+    # record with no hash (or, on a rebuild, the PREVIOUS build's hash) and every later
+    # `--gate-check` reports `EDITED SINCE BUILD` — a false alarm that sends the reader to
+    # extract_deck.py to reconcile edits nobody made. Measured: it cost a real build a round-trip
+    # and the wrong diagnosis. The missing file is the half that can be caught here; the stale
+    # hash is diagnosed by render_deck, which can read the build script's call order.
+    if not _os.path.isdir(where) and not _os.path.exists(where):
+        raise FileNotFoundError(
+            "declare_delivery({!r}): the deck does not exist yet. It hashes the file on disk, so "
+            "it must be called AFTER prs.save(OUT) — not before it:\n"
+            "    dk.lint_layout(prs, strict=True)\n"
+            "    prs.save(str(OUT))\n"
+            "    dk.declare_delivery(str(OUT), \"presented\")   # <- here".format(str(where)))
     d = where if _os.path.isdir(where) else _os.path.dirname(_os.path.abspath(where))
     path = _os.path.join(d, ".deck-gates.json")
     try:

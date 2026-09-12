@@ -445,12 +445,26 @@ def check(deck_dir, renders=None, taste=None, recent=3, design=None):
                         "than held. Carry the freshness in the ACCENT and the type register."
                         .format(_hx(ground), deck, _hx(cols[0])))
                     break
+                # 🔴 Name EVERY near neighbour, not just the first. Reporting one at a time makes
+                # this a search: MEASURED on a real build, the author moved off #F4F1EA (near one
+                # deck), landed on #F0EADA (near the NEXT one), and only the third value cleared —
+                # three fail -> fix -> re-run rounds to learn a constraint the checker knew in full
+                # on the first. The distances and the threshold go in the message so one move can
+                # clear all of them.
+                _near_all = [(d2, c2[0], _dist(c2[0], ground))
+                             for d2, c2 in recent_rows if _near(c2[0], ground, SAME_LOOK)]
+                _near_all.sort(key=lambda r: r[2])
+                _list = "; ".join("{!r} {} (distance {:.0f})".format(d2, _hx(c2), dd)
+                                  for d2, c2, dd in _near_all)
                 problems.append(("GROUND REPEAT",
-                                 "this deck's canvas ({}) is the same value as {!r}'s ({}) — one of "
-                                 "the last {} decks. The ground is the first thing seen and the "
-                                 "least varied thing in the history; repeating it is how a run of "
-                                 "decks acquires a house style the user never chose. {}"
-                                 .format(_hx(ground), deck, _hx(cols[0]), len(recent_rows),
+                                 "this deck's canvas ({}) reads as the same look as {} of the last "
+                                 "{} decks: {}. Anything under {:.0f} counts as the same look, so "
+                                 "clear them ALL in one move rather than one at a time. The ground "
+                                 "is the first thing seen and the least varied thing in the "
+                                 "history; repeating it is how a run of decks acquires a house "
+                                 "style the user never chose. {}"
+                                 .format(_hx(ground), len(_near_all), len(recent_rows), _list,
+                                         SAME_LOOK,
                                          "Vary the PAPER (a warmer or cooler stock) and the accent "
                                          "hue — not the value: a printed board wants a light "
                                          "ground, so freshness here has to come from hue and type "

@@ -1017,6 +1017,27 @@ jobs:
           grep -qE "\\] ok$" /tmp/coverink.log || {
             echo "::error::test_cover_ink_not_box did not run to completion"; exit 1; }
 
+      - name: A freshness finding names every near neighbour, not one per round-trip
+        run: |
+          set -o pipefail
+          python tests/test_ground_repeat_names_all.py | tee /tmp/gnear.log
+          grep -qE "\\] (ok|SKIP)" /tmp/gnear.log || {
+            echo "::error::test_ground_repeat_names_all did not run to completion"; exit 1; }
+
+      - name: A gate report stays readable when read through `tail`
+        run: |
+          set -o pipefail
+          python tests/test_gate_report_survives_tail.py | tee /tmp/gtail.log
+          grep -qE "\\] ok$" /tmp/gtail.log || {
+            echo "::error::test_gate_report_survives_tail did not run to completion"; exit 1; }
+
+      - name: declare_delivery is called AFTER the save, and a mismatch diagnoses itself
+        run: |
+          set -o pipefail
+          python tests/test_declare_delivery_order.py | tee /tmp/ddorder.log
+          grep -qE "\\] ok$" /tmp/ddorder.log || {
+            echo "::error::test_declare_delivery_order did not run to completion"; exit 1; }
+
       - name: stat_row sizes its figure block by measurement, at every fig_size
         run: |
           set -o pipefail

@@ -449,9 +449,17 @@ def _cmd_check(a):
               "need the built deck (anchors render, register applied, credits on a slide, "
               "sameness, density).")
         return 0
-    print("{} shape problem(s) — ALL of them, so one pass fixes the lot:\n".format(len(probs)))
+    # 🔴 The count goes on EVERY line and again at the END, not only in a header.
+    # MEASURED: this gate reported all 9 problems in one pass and said so on its first line — and
+    # the run that motivated this read the output through `tail -8`, cut the header off, fixed the
+    # three rows it could see, and paid three more round-trips discovering the rest. `tail` is the
+    # habit of every agent that wants a verdict without a wall of text, so a report whose total
+    # lives only at the top is a report that will be read truncated. `[4/9]` survives any window.
+    n = len(probs)
+    print("{} shape problem(s) — ALL of them, so one pass fixes the lot:\n".format(n))
     for i, m in enumerate(probs, 1):
-        print("  [{}] {}\n".format(i, m))
+        print("  [{}/{}] {}\n".format(i, n, m))
+    print("{} shape problem(s) above — fix them in ONE pass, then re-run.".format(n))
     return 1
 
 

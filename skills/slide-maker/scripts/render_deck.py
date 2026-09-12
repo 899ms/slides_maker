@@ -1480,6 +1480,16 @@ def check_handoff_gates(pptx, mode="presented", gate_check=False):
     if not problems:
         return
     n = len(problems)
+    # 🔴 FLUSH FIRST. Under a pipe, stdout is block-buffered and stderr is not, so the failure
+    # block (stderr) lands BEFORE every `[gates]` line (stdout) in a `2>&1` merge — even though it
+    # is written last. MEASURED on a deck with 9 failures: 30 stderr lines came out ahead of 36
+    # stdout lines, so `2>&1 | tail -20` showed nothing but informational chatter and NOT ONE
+    # failure. That is worse than a truncated report: the run looks clean while the gate blocked.
+    # One flush puts the two streams back in the order they were written.
+    try:
+        sys.stdout.flush()
+    except Exception:                                   # a closed stdout must not mask the report
+        pass
     head = ("render_deck: {} hand-off gate(s) failed. ALL of them are listed below — fix them in "
             "ONE pass, then re-run.".format(n) if n > 1 else
             "render_deck: 1 hand-off gate failed.")
@@ -1487,7 +1497,39 @@ def check_handoff_gates(pptx, mode="presented", gate_check=False):
     for i, (section, msg, _code) in enumerate(problems, start=1):
         label = " {}".format(section) if section else ""
         print("\n[{}/{}]{}\n{}".format(i, n, label, msg), file=sys.stderr)
+    # Repeated at the END because the header is the first casualty of `tail`, which is how agents
+    # read a long gate report. See the note in deck_gates.py's reporter.
+    print("\n{} hand-off gate(s) failed (all {} listed above) — fix them in ONE pass, then re-run."
+          .format(n, n), file=sys.stderr)
     sys.exit(max(code for _s, _m, code in problems))
+
+
+def _sha_mismatch_hint(pptx, design):
+    """Why does the recorded hash not match? Read the build script instead of guessing.
+
+    `declare_delivery` hashes the file ON DISK. A build script that calls it before `prs.save(...)`
+    therefore records the PREVIOUS build's hash on every run, and the mismatch is not an edit at
+    all. That ordering is mechanically readable, so it is checked before the message blames anyone.
+    """
+    try:
+        script = _find_build_script(pptx, design)
+        src = Path(script).read_text(encoding="utf-8") if script else ""
+    except Exception:                                   # unreadable is not evidence of either cause
+        src = ""
+    if src:
+        _dd = src.find("declare_delivery(")
+        _sv = src.find(".save(")
+        if _dd >= 0 and _sv >= 0 and _dd < _sv:
+            return (" The build script calls `declare_delivery(...)` BEFORE `prs.save(...)`, and "
+                    "it hashes the file on disk — so it recorded the PREVIOUS build's hash and "
+                    "this is NOT an edit. Move the call after the save:\n"
+                    "            dk.lint_layout(prs, strict=True)\n"
+                    "            prs.save(str(OUT))\n"
+                    "            dk.declare_delivery(str(OUT), \"presented\")")
+    return (" Somebody saved over it — re-running the build will DISCARD those edits. Reconcile "
+            "first: scripts/extract_deck.py, and `references/handoff-and-iteration.md`. (If you "
+            "have not edited it, check that the build script calls `declare_delivery` AFTER "
+            "`prs.save`; called before, it records the previous build's hash every run.)")
 
 
 def _find_build_script(pptx, design):
@@ -2955,10 +2997,16 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                         for _c in iter(lambda: _fh.read(1 << 20), b""):
                             _hh.update(_c)
                     if _hh.hexdigest() != _rec_sha:
+                        # 🔴 Do not assert a cause this cannot know. A mismatch has TWO causes and
+                        # the message used to name only one ("somebody saved over it"), sending the
+                        # reader to reconcile edits nobody made. The other cause is mechanical and
+                        # READABLE: `declare_delivery` hashes the file on disk, so a build script
+                        # that calls it BEFORE `prs.save(...)` records the previous build's hash
+                        # every single time. Measured on a real build: one wasted round-trip and
+                        # the wrong diagnosis. So the build script is read and the order reported.
                         print("[gates] 🔴 EDITED SINCE BUILD: {} no longer matches what the build "
-                              "script produced. Somebody saved over it — re-running the build will "
-                              "DISCARD those edits. Reconcile first: scripts/extract_deck.py, and "
-                              "`references/handoff-and-iteration.md`.".format(Path(pptx).name))
+                              "script produced.{}".format(Path(pptx).name,
+                                                          _sha_mismatch_hint(pptx, design)))
                 except OSError:
                     pass
 

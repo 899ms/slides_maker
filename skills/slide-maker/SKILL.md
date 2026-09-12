@@ -109,6 +109,13 @@ Two time sinks compress well: ingesting material/assets, and the critic loop.
   - **Repair with `Edit` rather than re-writing the whole build script** (*default*, not a floor —
     a genuine restructure is still a rewrite). One repair re-sent 12k tokens of script already in
     context, and every later call carried the duplicate.
+  - 🔴 **NEVER pipe a gate through `tail`/`head`. Read the whole report.** Every gate batches on
+    purpose — `deck_gates.py check`, `render_deck.py --gate-check` and `codex_delivery_gate.py`
+    each list ALL their faults in one run and number them `[4/9]`. MEASURED, on a real 12-page
+    build: the run read `deck_gates.py check . | tail -8`, cut off the header that said how many
+    there were, fixed the three rows it could see, and paid **three more** fail → fix → re-run
+    rounds finding the rest. The gate was right; the window was not. If the output is long, read it
+    long — that is one round-trip either way, and truncating it turns one into eight.
   - **Iterate with `deck_cycle.py`, so one fix costs one round-trip.**
     `python3 scripts/deck_cycle.py build_<deck>.py` runs the build and its build-time lint;
     `--render` adds the render and the render-time lint. Measured on a real 12-page build, the
