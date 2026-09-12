@@ -20,6 +20,32 @@ import zlib
 from pathlib import Path
 
 
+def _composition_ok():
+    """A real competition: two MEASURED skeletons and a reason naming both. Never hand-written."""
+    import sys as _s, tempfile as _t
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import composition_probe as _cp, deckkit as _dk
+    W = "a real line of words that carries this page"
+    chrome = [(0.6, 0.5, 10.0, 0.3), (0.6, 0.9, 11.0, 1.1)]
+    A = [(0.6 + i * 3.9, 2.6, 3.5, 2.4) for i in range(3)]
+    B = [(0.6, 2.4, 7.0, 3.6), (8.2, 2.6, 3.6, 1.4)]
+    with _t.TemporaryDirectory() as td:
+        prs = _dk.blank_deck()
+        for boxes in (chrome + A, chrome + B):
+            sl = _dk.add_slide(prs)
+            for (x, y, w, h) in boxes:
+                _dk.text(sl, x, y, w, h, [[(W, 14, _dk.DEEP, False, False, _dk.FONT)]])
+            _dk.speaker_notes(sl, "n")
+        out = _P(td) / "comp.pptx"
+        prs.save(str(out))
+        sigs = _cp.variant_signatures(out, [0, 1])
+    return {"variants": [{"label": "A", "signature": sigs[0]},
+                         {"label": "B", "signature": sigs[1]}],
+            "picked": "B",
+            "why": "B carries its claim in one beat; A buried it under three equal columns"}
+
+
 def _blindread_ok(n, record=None):
     """A self-consistent blind_read block for the CODEX evidence schema."""
     import sys as _s
@@ -476,6 +502,9 @@ def fixture(root: Path) -> tuple[dict, dict, dict, Path]:
     # computed them against `None` would miss READ_PLAN_UNSEEN and fail for a reason no test here
     # is about. (That miss is also the proof the Codex icon lookup now works at all.)
     evidence["blind_read"] = _blindread_ok(1, evidence)
+    # The Codex schema calls the design block `design`, not `design_plan` — the contract digs for
+    # both, and this fixture is the one that would catch it if that ever stopped being true.
+    evidence.setdefault("design", {})["composition"] = _composition_ok()
     return evidence, lint, components, build
 
 

@@ -436,6 +436,19 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   reported as a hand-roll (or the audit trains agents to stop using components); the direction gate
   must move the ink, not just the colourway; and a `--slides` preview must be byte-identical to the
   same page from a full render, leaving no cache behind.
+- `composition_probe.py` — measure a slide's COMPOSITION so two versions of one page can be told
+  apart mechanically: `probe <deck>.pptx --slide N` · `compare <deck>.pptx --slides 1,2,3`. Reads
+  the BUILT pptx, never a render, and never measured text ink — so it reads a Chinese deck exactly
+  as it reads an English one. Reports where the ink is (occupancy grid shaped to the canvas, so a
+  9:16 story deck is not measured as a 16:9 slide), how many blocks carry the page, what dominates,
+  which way it flows. `variant_signatures()` subtracts the furniture ALL variants share before
+  comparing — variants of one page keep the deck's chrome by design, and counting it makes every
+  variant look alike. Backs Step 4's **composition competition**: the signature page is competed
+  between 2–3 skeletons rather than composed once, and this refuses three restylings of one layout
+  the way `directions_diversity.py` refuses three colourways of one direction. The divergence
+  weights and floor were found by search over a 10-layout corpus and validated on 9 layouts they
+  were never fitted on (0 errors over 36 pairs); `tests/test_composition_probe.py` re-runs that
+  held-out set, so a weight change that breaks generality fails there rather than in a real deck.
 - `blind_read.py` — the BLIND READ-BACK: the one check that reads the rendered PICTURE rather than
   the file. `packet <deck-dir>` emits PNG paths + a fixed 7-question list and **nothing else** (no
   takeaways, no design plan, no deck title — each would prime the answer); an independent reader

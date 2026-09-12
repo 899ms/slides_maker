@@ -1090,6 +1090,34 @@ than the current working directory, so `python /path/to/build_<deck>.py` works f
 ## Step 4 — Build with deckkit
 
 > ### 🔴 Step 4 opens with the ANCHOR PROOF — THREE slides, rendered, BEFORE the other slides exist
+>
+> 🔴 **AND THE SIGNATURE ANCHOR IS COMPETED, NOT COMPOSED ONCE.** Build **2–3 genuinely different
+> compositions of that one page**, render them in ONE pass, read them blind, and pick by what you
+> SAW. Why here and nowhere else: this skill compares LOOKS at deck level (the direction gate, 4
+> rendered directions) and has never compared COMPOSITIONS at page level —
+> `check_direction_applied.py` says so itself, naming skeleton and motif as NOT CHECKED because
+> they are a judgement. This is the judgement, made the way a designer makes it.
+>
+>     python3 scripts/render_deck.py <probe>.pptx render          # all variants, ONE pass
+>     python3 scripts/composition_probe.py compare <probe>.pptx --slides 1,2,3
+>     python3 scripts/blind_read.py packet <probe-dir>            # then an independent reader
+>
+> 🔴 **The pick is made by LOOKING, not by reasoning about the plan.** The blind reader answers the
+> same fixed questions on each variant; the one to keep is the one whose `claim` comes closest to
+> the takeaway this page owes — that is `blind_read.overlap(claim, takeaway)`, an actual number,
+> calibrated — with fewest `unreadable` entries and fewest hard problems. Ties go to your judgement,
+> written down. Deciding from the build script instead is the habit this step replaces.
+>
+> **It costs almost nothing:** LibreOffice startup dominates a render, so three variants in one
+> pass cost what one costs (measured: 1 page 5.0s, 3 pages 4.5s). **Vary the SKELETON, not the
+> colours** — how many blocks, which one dominates, does the page run across or down. A recoloured
+> or retyped copy is a look change, the direction gate already owns look, and
+> `composition_probe.py` refuses it: its divergence measure was fitted on a 10-layout corpus and
+> validated on 9 layouts it never saw (0 errors in 36 pairs), so "three variants" cannot be three
+> restylings. Record it as `design_plan.composition` — the measured signatures, the pick, and
+> **`why`: what you SAW, naming the versions you compared**. `looks better` is the sentence this
+> whole step exists to replace. A `boldness: conservative` deck is not asked (it declared no
+> aesthetic risk); a provided template claims `template-locked`.
 > The `boldness:` / `signature move:` contract is approved as **prose**. The pixels that either honour
 > it or sand it back to safe do not appear until Step 5, after the whole deck is built — at which point
 > the critic's "the signature move got sanded" finding costs a rebuild, and that cost is exactly why it

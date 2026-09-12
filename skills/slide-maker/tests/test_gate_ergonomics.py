@@ -56,6 +56,32 @@ check(p.returncode == 0 and tail[0].endswith("0 failed"),
 import deck_gates                                                            # noqa: E402
 
 
+def _composition_ok():
+    """A real competition: two MEASURED skeletons and a reason naming both."""
+    import sys as _s, tempfile as _t
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import composition_probe as _cp, deckkit as _dk
+    W = "a real line of words that carries this page"
+    chrome = [(0.6, 0.5, 10.0, 0.3), (0.6, 0.9, 11.0, 1.1)]
+    A = [(0.6 + i * 3.9, 2.6, 3.5, 2.4) for i in range(3)]
+    B = [(0.6, 2.4, 7.0, 3.6), (8.2, 2.6, 3.6, 1.4)]
+    with _t.TemporaryDirectory() as td:
+        prs = _dk.blank_deck()
+        for boxes in (chrome + A, chrome + B):
+            sl = _dk.add_slide(prs)
+            for (x, y, w, h) in boxes:
+                _dk.text(sl, x, y, w, h, [[(W, 14, _dk.DEEP, False, False, _dk.FONT)]])
+            _dk.speaker_notes(sl, "n")
+        out = _P(td) / "comp.pptx"
+        prs.save(str(out))
+        sigs = _cp.variant_signatures(out, [0, 1])
+    return {"variants": [{"label": "A", "signature": sigs[0]},
+                         {"label": "B", "signature": sigs[1]}],
+            "picked": "B",
+            "why": "B carries its claim in one beat; A buried it under three equal columns"}
+
+
 def _blindread_ok(n, record=None):
     """A self-consistent blind_read block: findings COMPUTED from these answers, never typed —
     the gate re-derives them, so a hand-written list tests the wrong thing."""
@@ -107,6 +133,9 @@ filled["content"]["audience_brief"] = {
 filled["critic"] = {"waived": "user declined", "waived_category": "user-waived"}
 filled["render_selfcheck"] = {"slides": [{"n": 1, "verdict": "ok"}, {"n": 2, "verdict": "ok"}]}
 filled["blind_read"] = _blindread_ok(2, filled)
+# The skeleton ships PLACEHOLDER signatures on purpose (`check` must report them as unfilled); a
+# FILLED record carries measured ones, which is what this suite is asserting is shape-clean.
+d["composition"] = _composition_ok()
 check(deck_gates.check(filled) == [], "a filled record is shape-clean", deck_gates.check(filled))
 
 broken = json.loads(json.dumps(filled))

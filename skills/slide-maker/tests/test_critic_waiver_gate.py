@@ -30,7 +30,39 @@ RENDER = SKILL / "scripts" / "render_deck.py"
 GOOD_REASON = ("No subagent dispatch on this host, so the content and design lenses were "
                "run inline in the author's own context.")
 
+
+def composition_ok():
+    """A real composition competition: two MEASURED skeletons and a reason that names them.
+
+    🔴 Measured, never hand-written — `composition_probe.py` is the only legitimate source of a
+    signature, and the gate re-checks that the variants really are different compositions. A typed
+    fixture would be the theatre the check exists to refuse.
+    """
+    import sys as _s, tempfile as _t
+    _s.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import composition_probe as _cp, deckkit as _dk
+    W = "a real line of words that carries this page"
+    chrome = [(0.6, 0.5, 10.0, 0.3), (0.6, 0.9, 11.0, 1.1)]
+    A = [(0.6 + i * 3.9, 2.6, 3.5, 2.4) for i in range(3)]      # three columns
+    B = [(0.6, 2.4, 7.0, 3.6), (8.2, 2.6, 3.6, 1.4)]            # one dominant block
+    with _t.TemporaryDirectory() as td:
+        prs = _dk.blank_deck()
+        for boxes in (chrome + A, chrome + B):
+            sl = _dk.add_slide(prs)
+            for (x, y, w, h) in boxes:
+                _dk.text(sl, x, y, w, h, [[(W, 14, _dk.DEEP, False, False, _dk.FONT)]])
+            _dk.speaker_notes(sl, "n")
+        out = Path(td) / "comp.pptx"
+        prs.save(str(out))
+        sigs = _cp.variant_signatures(out, [0, 1])
+    return {"variants": [{"label": "A", "signature": sigs[0]},
+                         {"label": "B", "signature": sigs[1]}],
+            "picked": "B",
+            "why": "B carries its claim in one beat; A buried it under three equal columns"}
+
+
 DESIGN_OK = {
+    "composition": composition_ok(),
     "concept": {"chosen": "the deck is a picture of a signal being recovered from noise",
                 "rejected": [{"concept": "a clock running out", "why_lost": "makes time the subject, not fidelity"},
                              {"concept": "a pair of hands", "why_lost": "no room for the data-consistency argument"}]},

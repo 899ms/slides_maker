@@ -46,6 +46,7 @@ GATES = ".deck-gates.json"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audience_brief as ab  # noqa: E402
 import blind_read as brd  # noqa: E402
+import composition_probe as cpx  # noqa: E402
 import taste_ledger as tl  # noqa: E402
 from material_probe import (CARVES as MATERIAL_PROBE_CARVES,  # noqa: E402
                             file_value as _mp_file, waiver_faults as _mp_faults)
@@ -144,6 +145,14 @@ def template(slides=None, delivery="presented"):
                                                "is a look, not a move>"},
             "signature_proof": [{"role": r, "slide": 0, "png": "render/slideNN.png"}
                                 for r in ANCHOR_ROLES],
+            # THE SIGNATURE PAGE, COMPETED. Never hand-written: `composition_probe.py compare
+            # <probe>.pptx --slides 1,2,3` measures each variant and the gate re-checks that they
+            # really are different compositions rather than one layout restyled.
+            "composition": {
+                "variants": [{"label": "A", "signature": "<composition_probe.py measured this>"},
+                             {"label": "B", "signature": "<... and this>"}],
+                "picked": "<A | B | …>",
+                "why": "<what you SAW that decided it — name the versions you compared>"},
             "direction_gate": {"verdict": "<the directions_diversity.py verdict>",
                                "picked": "<the direction the user chose>",
                                "candidates": "<path to directions.json>"},
@@ -339,6 +348,15 @@ def check(gates):
         for f in brd.recompute_faults(br, record=gates, slide_count=len(gates.get("content", {}).get("slides") or []) or None):
             problems.append("`blind_read`: " + f)
 
+    # The signature page must have been COMPETED, not composed once. Shape pre-flight only —
+    # `render_deck --gate-check` remains the authority, and the carve lives there too.
+    _dp = tl.design_of(gates)
+    _cmp = _dp.get("composition") if isinstance(_dp, dict) else None
+    _cons = str((_dp or {}).get("boldness") or "").lower().startswith("conserv")
+    if _cmp is not None or not _cons:
+        for f in cpx.competition_faults(_cmp):
+            problems.append("`design_plan.composition` " + (f if f is not cpx.MISSING else f))
+
     # What this user has already corrected by hand, on earlier decks. An empty ledger asks nothing.
     for f in tl.faults(tl.design_of(gates), tl.load()):
         problems.append(f)
@@ -451,6 +469,17 @@ def _selftest():
     d["material_probe"] = {"png": "render/slide04.png", "safe_version": "two captioned pictures"}
     d["signature_proof"] = [{"role": r, "slide": i + 4, "png": "render/slide%02d.png" % (i + 4)}
                             for i, r in enumerate(ANCHOR_ROLES)]
+    # Two genuinely different placeholder compositions — ink on the left vs ink on the right.
+    # 🔴 The skeleton must PASS its own gate: a template whose own values are rejected teaches the
+    # shape by failing, which this repo has shipped once already.
+    _cv = [{"label": "A", "signature": {"cols": 2, "rows": 1, "grid": [[0.30, 0.02]], "blocks": 3,
+                                        "dominance": 0.25, "centroid": [0.28, 0.5], "axis": 0.4,
+                                        "ink": 0.32}},
+           {"label": "B", "signature": {"cols": 2, "rows": 1, "grid": [[0.02, 0.30]], "blocks": 2,
+                                        "dominance": 0.70, "centroid": [0.74, 0.5], "axis": -0.3,
+                                        "ink": 0.32}}]
+    d["composition"] = {"variants": _cv, "picked": "B",
+                        "why": "B carries its claim in one beat; A buried it under the list"}
     d["checkpoint"] = {"mode": "approved", "record": "posted in chat"}
     g["content"]["audience_brief"] = {
         "who": "the three people who sign off the migration, deciding whether to fund phase 2",

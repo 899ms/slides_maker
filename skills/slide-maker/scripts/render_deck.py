@@ -2346,6 +2346,33 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                           "beside it catch the other two: a design approved on a spacious page that "
                           "cannot hold the deck's densest one, and charts that obey none of the "
                           "palette/type decisions made against text.")
+                # 🔴 THE SIGNATURE PAGE IS COMPETED, NOT COMPOSED ONCE. Everything above proves
+                # the move SURVIVED the build; nothing asked whether a different composition of
+                # the same page would have carried it better. This skill compares LOOKS at deck
+                # level (the direction gate) and has never compared COMPOSITIONS at page level —
+                # `check_direction_applied.py` says so itself, naming skeleton and motif as NOT
+                # CHECKED. Cost is near zero: LibreOffice startup dominates a render, so 3
+                # variants in one pass cost what 1 costs. See composition_probe.py.
+                import composition_probe as _cpx
+                _comp = (design or {}).get("composition")
+                _carved = str((design or {}).get("boldness") or "").lower().startswith("conserv")
+                if _comp is None and _carved:
+                    print("[gates] composition competition: not required — `boldness: "
+                          "conservative` declares no aesthetic risk to choose between")
+                elif _cpx.is_waived(_comp):
+                    for _f in _cpx.waiver_faults(_comp):
+                        die("`design_plan.composition.waived` " + _f)
+                    print("[gates] composition competition WAIVED [{}] — {}"
+                          .format(_comp.get("waived_category"), _comp.get("waived")))
+                else:
+                    _cf = _cpx.competition_faults(_comp)
+                    if _cf and _cf[0] is _cpx.MISSING:
+                        die("`design_plan.composition` " + _cpx.MISSING)
+                    for _f in _cf:
+                        die("`design_plan.composition`: " + _f)
+                    print("[gates] composition competition: {} compositions tried, `{}` picked"
+                          .format(len(_comp.get("variants") or []), _comp.get("picked")))
+
                 for _a in _ap.normalise(proof):
                     proof_file = _ap.anchor_file(_a)
                     png = Path(proof_file)

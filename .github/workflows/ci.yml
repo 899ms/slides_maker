@@ -974,6 +974,13 @@ jobs:
           grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/envensure.log || {
             echo "::error::test_env_ensure did not run to completion"; exit 1; }
 
+      - name: Composition competition (the measure must generalise off its own corpus)
+        run: |
+          set -o pipefail
+          python tests/test_composition_probe.py | tee /tmp/compprobe.log
+          grep -qE "\\] ok$" /tmp/compprobe.log || {
+            echo "::error::test_composition_probe did not run to completion"; exit 1; }
+
       - name: Inventory guard is a detector (attack it, not just run it)
         run: |
           set -o pipefail

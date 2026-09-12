@@ -982,6 +982,18 @@ def check_content(
         for _f in _brd.recompute_faults(_bread, record=evidence, slide_count=_n_br):
             errors.append("blind_read: " + _f)
 
+    # The signature page competed rather than composed once — wired here in the SAME change as
+    # the shared path, for the reason stated above: a floor kept in one runtime only is how the
+    # other quietly stops enforcing it.
+    import composition_probe as _cpx
+    import taste_ledger as _tl0
+    _design = _tl0.design_of(evidence)
+    _cmp = _design.get("composition") if isinstance(_design, dict) else None
+    _cons = str((_design or {}).get("boldness") or "").lower().startswith("conserv")
+    if _cmp is not None or not _cons:
+        for _f in _cpx.competition_faults(_cmp):
+            errors.append("design.composition " + _f)
+
     import taste_ledger as _tl
     for _f in _tl.faults(_tl.design_of(evidence), _tl.load()):
         errors.append(_f)
