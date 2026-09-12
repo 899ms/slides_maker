@@ -25,13 +25,30 @@ import deckkit as dk                    # noqa: E402
 import check_direction_applied as cda   # noqa: E402
 
 fails: list[str] = []
+skipped: list[str] = []
 W, H = 13.333, 7.5
 INK = dk.RGBColor.from_string("111111")
+EA = "Songti SC"
+# 🔴 A width in inches is only true where the glyphs exist. On a Linux runner with no CJK face,
+# `Songti SC` substitutes to DejaVu and a CJK width comes back at Latin metrics — so asserting the
+# INCHES there tests the runner's font list, not this fix. The repo already had this convention
+# (`test_cjk_measurement.HAVE_CJK_FONT`); this file shipped without it and turned CI red three
+# times while passing on the author's Mac. What is font-INDEPENDENT — that the run carries <a:ea>
+# at all, and that a left-aligned CJK title reads left — is still asserted everywhere.
+HAVE_CJK_FONT = not dk._font_substituted(EA)
 
 
 def check(cond, msg):
     if not cond:
         fails.append(msg)
+
+
+def check_metric(cond, msg):
+    """A check whose truth needs a real CJK font present — skipped loudly, never silently."""
+    if not HAVE_CJK_FONT:
+        skipped.append(msg)
+        return
+    check(cond, msg)
 
 
 def centre_of(left, width, align=None, text="job-hunt"):
@@ -75,13 +92,23 @@ check(c3 > 0.60, "a full-width RIGHT-ALIGNED title scored {:.0%} — ink should 
 # 3.18in, against a true 5.00in — a 40% under-report that would drag a left-aligned CJK title even
 # further left and pass this test for the wrong reason. So the order is asserted against a latin
 # string of the same glyph count, under the same setup a real deck has.
-dk.EAFONT = "Songti SC"
+dk.EAFONT = EA
 c_cn, cb_cn = centre_of(0.9, W - 1.8, text="求职工具介绍")
 c_lat, _ = centre_of(0.9, W - 1.8, text="abcdef")
 check(cb_cn["from_ink"], "ink not measured on a CJK title")
 check(c_cn < 0.40, "a left-aligned CJK title scored {:.0%}".format(c_cn))
-check(c_cn > c_lat, "six CJK glyphs measured no wider than six latin ones — the measuring face is "
-                    "falling back to <a:latin> and every CJK width is short by about half")
+# font-INDEPENDENT: the run must carry an <a:ea> face at all. Without it the measuring face falls
+# back to <a:latin> on EVERY machine, CJK font or not — which is the actual defect class.
+prs_cn = dk.blank_deck(W, H)
+s_cn = dk.add_slide(prs_cn)
+dk.text(s_cn, 0.9, 3.55, W - 1.8, 1.35, [[("求职工具介绍", 60, INK, True, False)]])
+xml_cn = "".join(sh._element.xml for sh in s_cn.shapes)
+check("<a:ea " in xml_cn or "<a:ea/>" in xml_cn,
+      "a CJK run carries no <a:ea> face, so `_ink_rect` measures it in the latin face on every "
+      "machine — the width is then short by about half and no font can fix it")
+check_metric(c_cn > c_lat,
+             "six CJK glyphs measured no wider than six latin ones — the measuring face is "
+             "falling back to <a:latin> and every CJK width is short by about half")
 
 # ── the fallback is VISIBLE, never disguised as a measurement ────────────────────────────────────
 class _Dud:
@@ -99,6 +126,10 @@ check(cbf.get("from_ink") is False,
       "from the box' must not look identical downstream")
 
 print("\n".join("FAIL " + f for f in fails) if fails else "", end="")
+if skipped:
+    print("  ({} width check(s) skipped: {!r} is not installed here, so a CJK width would be "
+          "DejaVu's — the face-routing check above is the font-independent half and it ran)"
+          .format(len(skipped), EA))
 print("[test_cover_ink_not_box] {}".format(
     "FAILED: {} problem(s)".format(len(fails)) if fails else "ok"))
 sys.exit(1 if fails else 0)
