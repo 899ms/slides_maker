@@ -974,6 +974,20 @@ jobs:
           grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/envensure.log || {
             echo "::error::test_env_ensure did not run to completion"; exit 1; }
 
+      - name: Inventory guard is a detector (attack it, not just run it)
+        run: |
+          set -o pipefail
+          python tests/test_inventory_wired.py | tee /tmp/invwired.log
+          grep -qE "\\] ok$" /tmp/invwired.log || {
+            echo "::error::test_inventory_wired did not run to completion"; exit 1; }
+
+      - name: Every script, agent and reference is in the file inventory
+        run: |
+          set -o pipefail
+          python scripts/check_inventory.py | tee /tmp/inventory.log
+          grep -q "0 problem(s)" /tmp/inventory.log || {
+            echo "::error::a capability exists that references/file-inventory.md never names"; exit 1; }
+
       - name: Every test file is wired into CI
         run: |
           set -o pipefail
