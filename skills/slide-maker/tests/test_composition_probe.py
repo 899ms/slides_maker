@@ -182,6 +182,51 @@ check(not cp.competition_faults(dict(GOOD, why="B 的主张一眼读得出来，
       "a real CJK reason was rejected — `len()` instead of reason_width would do exactly this")
 check(cp.competition_faults({"waived": "x", "waived_category": "template-locked"}),
       "a carve with a token reason passed")
+
+# ── 🔴 THE CARVE MUST BE TRUE OF THE ARTIFACT, NOT MERELY TYPED ─────────────────────────────────
+# The icon gate paid for this lesson already: "the word was doing the work, not the fact". The
+# generated-identity branch (Q1 d) is the case that matters — it sits on a BLANK deck, so it must
+# not be able to borrow `template-locked`, whose whole claim is that someone's template is in play.
+with tempfile.TemporaryDirectory() as td:
+    blank = deck_of([CHROME + THREE_COL] * 8, Path(td) / "generated.pptx")
+    tiny = deck_of([CHROME + THREE_COL] * 2, Path(td) / "tiny.pptx")
+    ok, why = cp.carve_holds({"waived": "the generated identity owns the look",
+                              "waived_category": "template-locked"}, blank, {})
+    check(not ok, "a GENERATED visual identity borrowed `template-locked` — it is built on a blank "
+                  "deck, and the Q1 choice decides the LOOK SOURCE, never who composes the pages")
+    check("blank" in why.lower() or "stock" in why.lower(),
+          "the refusal does not say why: {}".format(why[:120]))
+    check(not cp.carve_holds({"waived": "a small deck, nothing to compete",
+                              "waived_category": "tiny-ask"}, blank, {})[0],
+          "an 8-slide deck claimed `tiny-ask`")
+    check(cp.carve_holds({"waived": "a two-slide answer, no signature page",
+                          "waived_category": "tiny-ask"}, tiny, {})[0],
+          "a genuinely tiny deck was refused its carve")
+    check(not cp.carve_holds({"waived": "no aesthetic risk was taken here",
+                              "waived_category": "conservative"}, blank,
+                             {"design_plan": {"boldness": "bold"}})[0],
+          "a deck declaring `bold` claimed the `conservative` carve")
+    # 🔴 and on the CODEX schema, where the design block is called `design`
+    check(not cp.carve_holds({"waived": "no aesthetic risk was taken here",
+                              "waived_category": "conservative"}, blank,
+                             {"design": {"boldness": "bold"}})[0],
+          "the carve check missed the Codex spelling — the runtime this generalisation is about")
+    check(cp.carve_holds({"waived": "no aesthetic risk was taken here",
+                          "waived_category": "conservative"}, blank,
+                         {"design_plan": {"boldness": "conservative"}})[0],
+          "a genuinely conservative deck was refused")
+    # `user-waived` stays as declared, like the icon gate's `editorial-register`
+    check(cp.carve_holds({"waived": "the user asked for one layout throughout",
+                          "waived_category": "user-waived"}, blank, {})[0],
+          "`user-waived` was measured — what the user said is not a property of the file")
+    # never fail the gate on the reader itself
+    for junk in (None, "/nonexistent.pptx"):
+        try:
+            cp.carve_holds({"waived_category": "template-locked"}, junk, {})
+        except Exception as e:                                         # noqa: BLE001
+            fails.append("carve_holds raised on {!r}: {}".format(junk, e))
+check("carve_holds" in (SCRIPTS / "render_deck.py").read_text(encoding="utf-8"),
+      "render_deck accepts the carve on the WORD alone — the check exists but nothing calls it")
 check(not cp.competition_faults({"waived": "a provided template owns this composition entirely",
                                  "waived_category": "template-locked"}),
       "a properly claimed carve was rejected")

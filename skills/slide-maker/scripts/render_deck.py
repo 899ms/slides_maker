@@ -2362,6 +2362,13 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                 elif _cpx.is_waived(_comp):
                     for _f in _cpx.waiver_faults(_comp):
                         die("`design_plan.composition.waived` " + _f)
+                    # 🔴 And the CATEGORY must be true of the built file, not merely typed. The
+                    # icon gate learned this the hard way — "the word was doing the work, not the
+                    # fact" — and a generated visual identity (Q1 d) sits on a blank deck, so it
+                    # cannot borrow `template-locked`.
+                    _ok, _why = _cpx.carve_holds(_comp, pptx, gates)
+                    if not _ok:
+                        die("`design_plan.composition.waived`: " + _why)
                     print("[gates] composition competition WAIVED [{}] — {}"
                           .format(_comp.get("waived_category"), _comp.get("waived")))
                 else:

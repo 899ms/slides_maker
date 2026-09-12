@@ -165,8 +165,12 @@ shared path did not. Under a genuine exception, waive it in writing (`content.sl
 🔴 **The waiver now
 leaves a RECORD OF WHAT YOU DECIDED IN THE USER'S PLACE — `interview.picks`, one row per Step-0
 axis** (angle · audience · purpose · template · language · goal · density · length · style ·
-builds), each saying who answered it: `stated` (the user), `genre-default` (the reading the request
-already implies), `from-material`, `not-applicable`, or **`delegated`** — you. A delegated pick
+builds), each saying who answered it, **on a ladder ordered by distance from what the user actually
+said**: `stated` → `genre-default` (the reading the request already implies) →
+`inferred-from-request` (the request does not say it, but something in it points at it) →
+`from-material` → `not-applicable` → **`delegated`** (nothing pointed at it; this is your
+preference). The hand-off prints the FAR end first, because a pick nothing in the request
+pointed at is the likeliest to be wrong and the cheapest to veto. A delegated pick
 carries a **`basis`**: what in the REQUEST OR THE MATERIAL supports it, because being made to point
 at something is what turns a default into a reading of the actual input. The three that decide
 everything downstream — **audience · purpose · template** — also carry an **`alternative`**: what
@@ -1133,7 +1137,7 @@ than the current working directory, so `python /path/to/build_<deck>.py` works f
 > restylings. Record it as `design_plan.composition` — the measured signatures, the pick, and
 > **`why`: what you SAW, naming the versions you compared**. `looks better` is the sentence this
 > whole step exists to replace. A `boldness: conservative` deck is not asked (it declared no
-> aesthetic risk); a provided template claims `template-locked`.
+> aesthetic risk); a provided template claims `template-locked`. 🔴 Every carve is checked AGAINST THE BUILT FILE, not accepted as a word — and a **generated visual identity (Q1 d) sits on a blank deck, so it cannot borrow it**: the Q1 choice decides the LOOK SOURCE, never who composes the pages.
 > The `boldness:` / `signature move:` contract is approved as **prose**. The pixels that either honour
 > it or sand it back to safe do not appear until Step 5, after the whole deck is built — at which point
 > the critic's "the signature move got sanded" finding costs a rebuild, and that cost is exactly why it

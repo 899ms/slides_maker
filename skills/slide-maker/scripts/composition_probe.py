@@ -321,6 +321,61 @@ MIN_WHY = 24
 # pretending otherwise.
 
 
+def carve_holds(rec, pptx_path=None, gates=None) -> tuple[bool, str]:
+    """Is the claimed carve TRUE OF THE ARTIFACT? Returns (ok, why_not).
+
+    🔴 THE LESSON THIS REPO ALREADY PAID FOR, and which the first version of this file repeated.
+    `render_deck._icon_none_category_holds` says it exactly: "The category was checked against a
+    fixed list of strings and nothing else, so any of the four words cleared the gate. Measured on
+    this repo's own deck: `motif-dominant` was written for a deck, accepted, and the first human
+    reader's first note was 'icons should be here'. **The word was doing the work, not the fact.**"
+    A carve that is only a word is a waiver anyone can type.
+
+      template-locked   the deck must really be built on someone's TEMPLATE. 🔴 This is the one
+                        that matters for the GENERATED-identity branch (Q1 d): a generated look is
+                        built on a BLANK deck, so it fails this check and cannot borrow the carve.
+                        Step 2 is branch-invariant — the Q1 choice "decides only the LOOK SOURCE",
+                        never who composes the pages — and a generated identity does not compose
+                        them for you.
+      conservative      `design_plan.boldness` must really say conservative.
+      tiny-ask          the deck must really be small.
+      user-waived       left as declared, the way `editorial-register` is: what the user said is
+                        not a property of the file, and forcing a measurement onto it would
+                        invent one.
+    """
+    cat = str((rec or {}).get("waived_category") or "").strip().lower()
+    if cat == "conservative":
+        # `blind_read.design_of` is the ONE owner of the design_plan/design spelling — importing it
+        # rather than re-spelling the keys here is the rule that stopped the third runtime drift.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from blind_read import design_of as _design_of
+        dial = str((_design_of(gates) or {}).get("boldness") or "").strip().lower()
+        if dial and not dial.startswith("conserv"):
+            return False, ("category 'conservative' but `design_plan.boldness` is {!r} — the carve "
+                           "exists for a deck that DECLARED it took no aesthetic risk, and this one "
+                           "declared the opposite.".format(dial))
+        return True, ""
+    if cat in ("tiny-ask", "template-locked") and pptx_path:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import render_deck as _rd
+            from pptx import Presentation
+            n = len(Presentation(str(pptx_path)).slides)
+        except Exception:                                              # noqa: BLE001
+            return True, ""                    # never fail the gate on the reader itself
+        if cat == "tiny-ask":
+            if n > 3:
+                return False, ("category 'tiny-ask' on a {}-slide deck — a deck that large has a "
+                               "signature page worth competing for.".format(n))
+            return True, ""
+        ok, why = _rd._icon_none_category_holds("template-locked", str(pptx_path), [])
+        if not ok:
+            return False, (why or "the deck carries no template") + \
+                (" 🔴 A GENERATED visual identity is not a template: it is built on a blank deck, "
+                 "and it decides the LOOK, never who composes the pages.")
+    return True, ""
+
+
 def is_waived(rec) -> bool:
     return isinstance(rec, dict) and bool(str(rec.get("waived") or "").strip())
 

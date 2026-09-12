@@ -146,6 +146,30 @@ check(dp.faults({"picks": [dict(record()["picks"][1], axis="made-up")]}, auto=Tr
 check(dp.faults({"picks": [dict(record()["picks"][1], source="made-up")]}, auto=True),
       "an invented source passed")
 
+# ── 🔴 THE LADDER SERVES THE USER'S INTENT, NOT THE FIELD COUNT ─────────────────────────────────
+# The point of the source ladder is reading ORDER at hand-off: a pick nothing in the request
+# pointed at is the likeliest to be wrong and the cheapest to veto, so it must come first.
+check(dp.SOURCES.index("stated") < dp.SOURCES.index("inferred-from-request")
+      < dp.SOURCES.index("delegated"),
+      "the ladder is not ordered by distance from what the user actually said")
+mixed = {"picks": [
+    {"axis": "language", "source": "stated", "value": "English"},
+    {"axis": "density", "source": "delegated", "value": "balanced", "basis": BASIS},
+    {"axis": "goal", "source": "inferred-from-request", "value": "inform", "basis": BASIS},
+]}
+order = [p["source"] for p in dp.delegated(mixed)]
+check(order and order[0] == "delegated",
+      "the hand-off order does not put the furthest-from-stated pick first: {}".format(order))
+check("stated" not in order, "a pick the USER made was listed as something decided for them")
+check(len(order) == 2, "an `inferred-from-request` pick was dropped from the hand-off — it still "
+                       "was not the user's own words")
+# an inferred pick CLAIMS the request points at it, so it owes the pointer
+noptr = record()
+noptr["picks"][dp.AXES.index("goal")] = {"axis": "goal", "source": "inferred-from-request",
+                                         "value": "inform"}
+check(any("basis" in x for x in dp.faults(noptr, auto=True)),
+      "`inferred-from-request` passed with no basis — that claim IS the difference from `delegated`")
+
 # ── 🔴 WIRED INTO EVERY GATE PATH — and the Codex one especially ─────────────────────────────────
 # Measured before this change: 16 of the 17 shared gate sections were mirrored on the Codex path
 # and `checkpoints` was the exception — the one record that says whether a human approved anything,

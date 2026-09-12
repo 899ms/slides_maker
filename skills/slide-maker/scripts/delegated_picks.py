@@ -51,7 +51,20 @@ AXES = ("angle", "audience", "purpose", "template", "language", "goal", "density
         "style", "builds")
 
 # Picks whose provenance changes what the record MEANS.
-SOURCES = ("stated", "delegated", "genre-default", "from-material", "not-applicable")
+# 🔴 A LADDER, ORDERED BY DISTANCE FROM WHAT THE USER ACTUALLY SAID. The point is not to label a
+# decision; it is to make the ones furthest from the user's own words the LOUDEST at hand-off.
+#   stated               the user said it
+#   genre-default        the request's genre already implies it (「介绍巴黎的 PPT」 → the city
+#                        introduction people actually give)
+#   inferred-from-request  the request does not say it, but something IN the request points at it
+#   from-material        the source material settles it
+#   not-applicable       this axis does not apply to this deck
+#   delegated            nothing in the request or the material points at it — this is my
+#                        preference, and it is the rung that must be shown first
+SOURCES = ("stated", "genre-default", "inferred-from-request", "from-material", "not-applicable",
+           "delegated")
+# Ordered by how far the pick sits from the user's own words; the hand-off prints the far end first.
+_DISTANCE = {s: i for i, s in enumerate(SOURCES)}
 
 # 🔴 Never invented. See the module docstring for the deck this cost.
 NEVER_DELEGATED = ("angle",)
@@ -135,6 +148,8 @@ def faults(interview, *, auto: bool) -> list[str]:
                        "building regulation and passed every gate.".format(axis))
         if src in ("stated", "genre-default", "from-material"):
             continue                                   # the user or the input supplied it
+        # `inferred-from-request` CLAIMS the request points at it, so it owes the pointer even
+        # though it is not a free choice — that claim is the whole difference from `delegated`.
         if _w(p.get("basis")) < MIN_BASIS:
             out.append("`{}` was decided FOR the user and gives no `basis` — point at what in the "
                        "request or the material supports it. `I judged it` is the sentence this "
@@ -155,10 +170,17 @@ def faults(interview, *, auto: bool) -> list[str]:
 
 
 def delegated(interview) -> list[dict]:
-    """The picks the user did NOT make — what the hand-off note must surface."""
+    """The picks the user did NOT make, FURTHEST FROM THEIR OWN WORDS FIRST.
+
+    The hand-off has a reading order, and it should not be the order the axes happen to be listed
+    in. A pure `delegated` pick — nothing in the request or the material pointed at it — is the one
+    most likely to be wrong and the one a glance can veto, so it goes at the top.
+    """
     picks = (interview or {}).get("picks") if isinstance(interview, dict) else None
-    return [p for p in (picks or []) if isinstance(p, dict)
-            and str(p.get("source") or "").strip().lower() == "delegated"]
+    rows = [p for p in (picks or []) if isinstance(p, dict)
+            and str(p.get("source") or "").strip().lower() in ("delegated", "inferred-from-request")]
+    return sorted(rows, key=lambda p: -_DISTANCE.get(
+        str(p.get("source") or "").strip().lower(), 0))
 
 
 MISSING = (
