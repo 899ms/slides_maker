@@ -134,6 +134,82 @@ def main():
         check("one design_plan stop, not two", out.count("] design_plan\n") == 1, out)
         check("...and it is the one that ran first", "not a dial" in out, out)
 
+        print("== INDEPENDENT problems WITHIN one section are all named in ONE run ==")
+        # 🔴 The batching above is ACROSS sections. Inside one, nine sites had the shape
+        #       for f in <module>.faults(record):   # every fault already computed…
+        #           die(prefix + f)                 # …and all but the first thrown away
+        # so a record with three thin audience_brief rows cost THREE fail -> fix -> re-run
+        # round-trips, one per row. MEASURED on a real 12-page build: the same record reported 2
+        # faults per run before and 9 after, and the build took EIGHT hand-off runs to converge.
+        rec = full_record()
+        for d in rec["content"]["audience_brief"]["decisions"][:3]:
+            d["decision"] = "adopt it"          # each row is independent of the others
+            d["needs"] = "some info"
+        rc, out = gate(deck, rec)
+        n_ab = out.count("] content.audience_brief\n")
+        check("three thin decisions report as three stops, not one", n_ab >= 3,
+              "got {} content.audience_brief stop(s); the faults() list is being computed and "
+              "discarded again:\n{}".format(n_ab, out))
+        check("...and it still blocks", rc != 0, out)
+
+        # The same mechanism, tested where the CI fixture cannot reach: `_style_applied_gate` needs
+        # a real build script to fail against and `form_reach` needs a component sweep, so the
+        # three independent design_plan SUB-GATES cannot all be broken by a record alone. MEASURED
+        # on the real 12-page deck that motivated this: they reported as [1/9] [2/9] [3/9]
+        # design_plan in ONE run, having cost three separate runs before. So the mechanism is
+        # tested directly, and the wiring is asserted by name.
+        import importlib.util as _ilu
+        _spec = _ilu.spec_from_file_location("_rd_for_step", RENDER)
+        _rd = _ilu.module_from_spec(_spec)
+        _spec.loader.exec_module(_rd)
+        _rd._COLLECTED = []
+        with _rd._gate_section("probe"):
+            with _rd._gate_step():
+                _rd.die("first independent fault")
+            with _rd._gate_step():
+                _rd.die("second independent fault")
+            _rd.die("a dependent fault aborts the rest")
+            _rd.die("this must NOT be reached")
+        msgs = [m for _, m, _ in _rd._COLLECTED]
+        check("_gate_step lets two independent faults through", len(msgs) >= 3,
+              "collected {!r}".format(msgs))
+        check("...and a bare die() still aborts what follows it",
+              "this must NOT be reached" not in msgs, "collected {!r}".format(msgs))
+
+        # WIRED: the nine compute-all-report-one loops and the independent sub-gates must stay
+        # wrapped. A behavioural test cannot see a loop that was quietly unwrapped in a section no
+        # fixture reaches, and every one of these cost a real round-trip.
+        src = RENDER.read_text(encoding="utf-8")
+        check("the faults() loops are still wrapped", src.count("with _gate_step():") >= 15,
+              "only {} _gate_step site(s) remain; the compute-all-discard-the-rest shape is back"
+              .format(src.count("with _gate_step():")))
+        # Only the shape that was actually broken: a loop whose body's FIRST statement is a bare
+        # `die(`. A loop over field NAMES whose body is an `if` is a different thing and is left
+        # alone — a guard that flags those is noise, and noise is how a guard stops being read.
+        import re as _re
+        _lines = src.splitlines()
+        _checked = 0
+        for i, ln in enumerate(_lines):
+            if not _re.match(r"\s*for \w+ in .+:\s*$", ln):
+                continue
+            nxt = next((x for x in _lines[i + 1:] if x.strip()), "")
+            if not _re.match(r"\s*die\(", nxt):
+                continue                       # body is not a bare die(); not this shape
+            _checked += 1
+            check("`{}` reports every fault".format(ln.strip()[:42]), False,
+                  "its body dies on the first item, discarding the rest: {!r}".format(nxt))
+        check("no compute-all-report-one loop remains", _checked == 0,
+              "{} loop(s) still die on their first item".format(_checked))
+
+        # 🔴 …WITHOUT weakening the dependency rule the section above pins: where a later check
+        # reads a value the failed one was meant to establish, the first stop must still win alone.
+        rec = full_record()
+        rec["design_plan"]["boldness"] = "spicy"
+        rec["design_plan"].pop("type_scale")
+        rec["design_plan"].pop("direction_gate")         # an INDEPENDENT one on top
+        rc, out = gate(deck, rec)
+        check("a dependent stop still suppresses only what reads it", "not a dial" in out, out)
+
         print("== a structural failure is reported alone and still blocks ==")
         (deck_dir / ".deck-gates.json").unlink()
         p = subprocess.run([sys.executable, str(RENDER), str(deck), "--gate-check", "--static"],

@@ -141,6 +141,34 @@ def _gate_section(label):
         _SECTION = prev
 
 
+@contextlib.contextmanager
+def _gate_step():
+    """One INDEPENDENT check INSIDE a section — its failure does not suppress the next one.
+
+    🔴 WHY. `_gate_section` batches ACROSS sections; inside one, the first `die()` still aborted
+    the rest. That is correct where a later check reads a value the failed one establishes, and
+    wrong everywhere else — and "everywhere else" was the common case. MEASURED, on a real 12-page
+    build: nine sites had the shape
+
+        for f in <module>.faults(record):    # every fault already computed…
+            die(prefix + f)                  # …and all but the first thrown away
+
+    so a record with three thin `audience_brief.decisions` cost THREE fail -> fix -> re-run
+    round-trips, one per row, at the most expensive moment of the session. The same build paid
+    three more on `blind_read` findings and two on independent `design_plan` sub-gates: eight
+    hand-off runs where two would have done. The information was in hand every time.
+
+    Use it ONLY around a check whose failure leaves nothing downstream reading its result — items
+    of one `faults()` list, and sub-gates that read different keys. Where a real dependency exists,
+    let `die()` abort the section as before: inventing follow-on faults from a value that was never
+    established is worse than a second round-trip.
+    """
+    try:
+        yield
+    except _GateStop:
+        pass
+
+
 def die(msg, code=1):
     if _COLLECTED is not None:
         _COLLECTED.append((_SECTION, msg, code))
@@ -2288,13 +2316,16 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             # all, so a deck recording "brutalist for engineering - beat blueprint" and built with
             # deckkit's stock defaults passed here and on the Codex path alike. The competition ran,
             # the winner was written down, and nothing carried it into the build.
-            _style_applied_gate(design, pptx)
+            with _gate_step():                 # reads style_pick; nothing below reads its result
+                _style_applied_gate(design, pptx)
             # The tokens are checked against the RECORD (assets/sources.json) and against the built
             # deck, not merely against the grammar: a `searched, none found` rung with no recorded
             # search, and a CC BY photo with no credit on any slide, are both invisible to a
             # field-presence check and both were shipping.
-            _image_provenance_gate(design, pptx)
-            _direction_gate(design, os.path.dirname(os.path.abspath(pptx)) or ".")
+            with _gate_step():                 # reads image_sources
+                _image_provenance_gate(design, pptx)
+            with _gate_step():                 # reads direction_gate
+                _direction_gate(design, os.path.dirname(os.path.abspath(pptx)) or ".")
             scale = design["type_scale"]
             if not isinstance(scale, dict) or not all(
                     isinstance(scale.get(k), (int, float)) for k in ("display", "title", "body")):
@@ -2361,7 +2392,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                           "conservative` declares no aesthetic risk to choose between")
                 elif _cpx.is_waived(_comp):
                     for _f in _cpx.waiver_faults(_comp):
-                        die("`design_plan.composition.waived` " + _f)
+                        with _gate_step():
+                            die("`design_plan.composition.waived` " + _f)
                     # 🔴 And the CATEGORY must be true of the built file, not merely typed. The
                     # icon gate learned this the hard way — "the word was doing the work, not the
                     # fact" — and a generated visual identity (Q1 d) sits on a blank deck, so it
@@ -2376,7 +2408,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                     if _cf and _cf[0] is _cpx.MISSING:
                         die("`design_plan.composition` " + _cpx.MISSING)
                     for _f in _cf:
-                        die("`design_plan.composition`: " + _f)
+                        with _gate_step():
+                            die("`design_plan.composition`: " + _f)
                     print("[gates] composition competition: {} compositions tried, `{}` picked"
                           .format(len(_comp.get("variants") or []), _comp.get("picked")))
 
@@ -2409,7 +2442,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             # A rule whose documented exception cannot be recorded forces a false record.
             if isinstance(probe, dict) and probe.get("waived"):
                 for _f in _mp_faults(probe):
-                    die("`design_plan.material_probe.waived` " + _f)
+                    with _gate_step():
+                        die("`design_plan.material_probe.waived` " + _f)
                 print("[gates] material probe: WAIVED [{}] — {}".format(
                     str(probe.get("waived_category")).strip().lower(),
                     str(probe.get("waived"))[:80]))
@@ -2562,7 +2596,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             print("[gates] taste ledger: empty — nothing this user has taught is still ungated")
         else:
             for _f in _tl.faults(_tl.design_of(gates), _entries):
-                die(_f)
+                with _gate_step():
+                    die(_f)
             print("[gates] taste ledger: {} active entry(ies), all accounted for".format(len(_live)))
 
     with _gate_section('content.arc'):
@@ -2738,7 +2773,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         _brief = (gates.get("content") or {}).get("audience_brief")
         if _ab.is_waived(_brief):
             for _f in _ab.waiver_faults(_brief):
-                die("`content.audience_brief.waived` " + _f)
+                with _gate_step():
+                    die("`content.audience_brief.waived` " + _f)
             print("[gates] audience brief: WAIVED [{}] — {}".format(
                 str(_brief.get("waived_category")).strip().lower(),
                 str(_brief.get("waived"))[:70]))
@@ -2746,7 +2782,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             die("`content.audience_brief` " + _ab.MISSING)
         else:
             for _f in _ab.faults(_brief):
-                die("`content.audience_brief`: " + _f)
+                with _gate_step():
+                    die("`content.audience_brief`: " + _f)
             print("[gates] audience brief: {} decision(s) — {}".format(
                 len(_brief.get("decisions") or []), str(_brief.get("who"))[:64]))
 
@@ -2981,7 +3018,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             if _df and _df[0] is _dpk.MISSING:
                 die(_dpk.MISSING)
             for _f in _df:
-                die("`interview.picks`: " + _f)
+                with _gate_step():
+                    die("`interview.picks`: " + _f)
             _deleg = _dpk.delegated(_iv)
             print("[gates] delegated picks: {} of {} axes decided FOR the user"
                   .format(len(_deleg), len(_dpk.AXES)))
@@ -3124,7 +3162,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         _brd = _section(gates, "blind_read")
         if _br.is_waived(_brd):
             for _f in _br.waiver_faults(_brd):
-                die("`blind_read.waived` " + _f)
+                with _gate_step():
+                    die("`blind_read.waived` " + _f)
             # As loud as the critic's own waiver, and for the same reason: a deck that shipped
             # without an outside look and a deck that passed one produce the same green line
             # otherwise. The critic waiver prints NOT INDEPENDENTLY REVIEWED and tells the author
@@ -3142,7 +3181,8 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             if _bf and _bf[0] is _br.MISSING:
                 die("`blind_read` " + _br.MISSING)
             for _f in _bf:
-                die("`blind_read`: " + _f)
+                with _gate_step():
+                    die("`blind_read`: " + _f)
             # The findings must be DERIVABLE from the answers. Without this, a HARD finding edited
             # down to a `note` passes with no answer owed, and an emptied list reads as a clean
             # deck — `render_selfcheck`'s `ok` in a new costume. Pass the WHOLE record: naming the
@@ -3217,11 +3257,14 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         _surface_gate(pptx, gates)
 
     with _gate_section('register_pixels'):
-        _register_pixels_gate(pptx)
+        with _gate_step():
+            _register_pixels_gate(pptx)
 
     with _gate_section('register_guard'):
-        _register_guard_gate(pptx, gates)
-        _direction_applied_gate(pptx, gates)
+        with _gate_step():
+            _register_guard_gate(pptx, gates)
+        with _gate_step():                     # cover / bg / type are independent axes
+            _direction_applied_gate(pptx, gates)
         _register_kit_note(pptx, gates)
         _register_keep_note(pptx, gates)
 
