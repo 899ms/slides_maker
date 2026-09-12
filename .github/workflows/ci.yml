@@ -1024,6 +1024,13 @@ jobs:
           grep -qE "\\] (ok|SKIP)" /tmp/gnear.log || {
             echo "::error::test_ground_repeat_names_all did not run to completion"; exit 1; }
 
+      - name: Canon rules that convert into measurements (Mayer / Knaflic / Tufte)
+        run: |
+          set -o pipefail
+          python tests/test_canon_probe.py | tee /tmp/canon.log
+          grep -qE "\\] ok$" /tmp/canon.log || {
+            echo "::error::test_canon_probe did not run to completion"; exit 1; }
+
       - name: A gate report stays readable when read through `tail`
         run: |
           set -o pipefail

@@ -109,6 +109,17 @@ Two time sinks compress well: ingesting material/assets, and the critic loop.
   - **Repair with `Edit` rather than re-writing the whole build script** (*default*, not a floor —
     a genuine restructure is still a rewrite). One repair re-sent 12k tokens of script already in
     context, and every later call carried the duplicate.
+  - **The canon is cited here in prose and MEASURED in `scripts/canon_probe.py` — know which is
+    which.** Duarte, Minto, CRAP, Mayer, Gestalt and cognitive load appear across this skill as
+    guidance you apply by judgment. Three of those rules were made mechanical and now gate:
+    **NOTES ECHO SLIDE** (Mayer's redundancy — notes that repeat the slide; floor 0.75, real decks
+    top out at 0.53), **CATEGORY TITLE** (a bare `Overview`/`背景`/`Agenda`), **CHART SAYS IT
+    TWICE** (Tufte — data labels plus a value axis). Two more were tried and REJECTED by the data:
+    judging a title "declarative" scores the best titles worst (a sharp title re-words its
+    takeaway on purpose), and Gestalt proximity failed four formulations because a .pptx records
+    coordinates and no notion of which shapes belong together. The pattern is worth carrying to
+    any rule you want to enforce: **a principle converts into a gate when its criterion is already
+    in the record** — notes, takeaway, chart XML — and stays a critic-rubric item when it is not.
   - 🔴 **NEVER pipe a gate through `tail`/`head`. Read the whole report.** Every gate batches on
     purpose — `deck_gates.py check`, `render_deck.py --gate-check` and `codex_delivery_gate.py`
     each list ALL their faults in one run and number them `[4/9]`. MEASURED, on a real 12-page

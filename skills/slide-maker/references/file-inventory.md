@@ -436,6 +436,29 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   reported as a hand-roll (or the audit trains agents to stop using components); the direction gate
   must move the ink, not just the colourway; and a `--slides` preview must be byte-identical to the
   same page from a full render, leaving no cache behind.
+- `canon_probe.py` — the part of the presentation canon that CONVERTS into a measurement over the
+  built deck. This skill already cites Duarte, Minto, CRAP, Mayer, Gestalt and cognitive load, all
+  of it in prose and none of it measured — which by the skill's own enforcement invariant makes
+  them advisory. Three rules were made mechanical, each calibrated on 29 delivered decks / 349
+  slides rather than on invented examples, and each measured at 0 false positives there: **NOTES
+  ECHO SLIDE** (Mayer's redundancy principle — similarity between a slide's text and its speaker
+  notes; real decks top out at 0.53 with a median of 0.10, so the floor sits at 0.75), **CATEGORY
+  TITLE** (Knaflic — a title from an enumerated set of bare labels, `Overview` / `背景` / `Agenda`;
+  cover and section roles are exempt), and **CHART SAYS IT TWICE** (Tufte — data labels AND a value
+  axis/gridlines print the same number twice). The last two are high-precision and deliberately
+  low-recall: they are floors, not critics.
+
+  🔴 Two candidates were REJECTED BY THE DATA and the docstring records why, so that "tried and it
+  does not work" never looks like "nobody thought of it". Knaflic's declarative-title rule measured
+  as overlap with the recorded takeaway has median 0.33 and scores the BEST titles LOWEST — a sharp
+  title re-words on purpose — so judging "declarative" stays a critic-rubric item. Gestalt proximity
+  failed four separate formulations (shared-top grouping flagged 51 merely y-aligned rows; adding
+  equal width+height dropped peers whose captions wrapped; dropping height left a timeline whose
+  markers SHOULD be unevenly spaced; intra- vs inter-group distance "flagged" 200 of 360 pairs on
+  guessed pairings). The root cause is structural: a .pptx records coordinates and no notion of
+  which shapes belong together. The rules that convert all share one property — their criterion is
+  already IN the record. Run by both gate paths; backed by `tests/test_canon_probe.py`, which
+  asserts each rule fires on its defect and stays silent on the real shape it must not flag.
 - `check_reason_width.py` — no written-reason floor may be measured with `len()`. `len()` counts
   CODEPOINTS, so `len(reason) < 12` means "12 letters" in English and roughly twice the information
   in Chinese: the bar silently doubles for the users least able to see why their reason was

@@ -3319,6 +3319,27 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
     with _gate_section('timidity'):
         _check_timidity(pptx, delivery, gates)
 
+    with _gate_section('canon'):
+        # Three rules from the presentation canon that a built .pptx can actually DECIDE —
+        # Mayer's redundancy principle, Knaflic's category-label title, Tufte's redundant
+        # data-ink. Every threshold was calibrated on 29 delivered decks / 349 slides and two
+        # other candidates were REJECTED by that data (see canon_probe.py's docstring): they are
+        # findings, not warnings, because all three have measured 0 false positives on that
+        # corpus. The skill cites six frameworks in prose and measured none of them; this is the
+        # part of the canon that converts.
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import canon_probe as _cn                                 # noqa: PLC0415
+            _cnf = _cn.faults(pptx, gates)
+        except Exception as _exc:                                     # never silently
+            print("  [--] canon rules NOT CHECKED — {}: {}".format(type(_exc).__name__, _exc))
+            _cnf = []
+        for _f in _cnf:
+            with _gate_step():
+                die("canon: " + _f)
+        if not _cnf:
+            print("[gates] canon: notes-echo, category titles and chart redundancy all clean")
+
     with _gate_section('density'):
         # ── DENSITY: a slide is a visual aid, not a document ────────────────────────
         # This one is a gate rather than a warning because the warning already existed and was

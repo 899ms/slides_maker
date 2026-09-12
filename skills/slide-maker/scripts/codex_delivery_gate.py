@@ -701,6 +701,26 @@ def forbidden_icon_rasterizer_calls(script_path: Path, errors: list[str]) -> lis
     return sorted(set(blocked))
 
 
+def check_canon(deck_path, evidence, errors: list[str]) -> None:
+    """The three canon rules a built .pptx can decide — the same module the shared path runs.
+
+    Mayer's redundancy principle, Knaflic's category-label title and Tufte's redundant data-ink,
+    each calibrated on 29 delivered decks / 349 slides with 0 measured false positives. Imported
+    rather than re-implemented: this repo's two gate paths have drifted apart three times, each
+    time on a concern one of them re-typed instead of sharing.
+    """
+    if deck_path is None:
+        return
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import canon_probe                                            # noqa: PLC0415
+        found = canon_probe.faults(str(deck_path), evidence if isinstance(evidence, dict) else None)
+    except Exception as exc:                                          # never silently
+        print(f"  [--] canon rules NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    errors.extend("canon: " + f for f in found)
+
+
 def check_lint(lint: dict[str, Any], delivery: str, evidence: dict[str, Any], errors: list[str]) -> None:
     findings = lint.get("findings", [])
     if not isinstance(findings, list):
@@ -2315,6 +2335,7 @@ def evaluate(
                     errors.append("could not read final PPTX to count slides")
                 elif actual_count != count:
                     errors.append(f"deck.slide_count is {count}, but final PPTX contains {actual_count} slides")
+    check_canon(deck_path, evidence, errors)
     check_lint(lint, delivery, evidence, errors)
     if expected_slides:
         check_content(evidence, root, expected_slides, errors)
