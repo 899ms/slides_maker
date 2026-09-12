@@ -61,6 +61,18 @@ MIN_RULE = 12
 ID_RX = re.compile(r"^[a-z0-9][a-z0-9-]{1,48}$")
 
 
+def _w(text) -> int:
+    """Width, not codepoints — the same bar in Chinese as in English.
+
+    🔴 `len()` counts CODEPOINTS, so a CJK reason clears a floor at half the information an
+    English one needs: 「敢不敢把求职材料交给它」 is 11 codepoints and was rejected by a floor of
+    12, while a 12-letter English phrase carrying a third as much passed. Measured on a real
+    Chinese deck built with this skill. ONE definition, imported — see written_reason.py.
+    """
+    from written_reason import reason_width
+    return reason_width(text)
+
+
 def ledger_path() -> Path:
     env = os.environ.get("SLIDE_MAKER_TASTE_LEDGER")
     if env:
@@ -110,10 +122,10 @@ def entry_faults(e) -> list[str]:
     eid = str(e.get("id") or "").strip()
     if not ID_RX.match(eid):
         out.append("`id` must be a short kebab-case slug, got {!r}.".format(eid))
-    if len(str(e.get("quote") or "").strip()) < MIN_QUOTE:
+    if _w(e.get("quote")) < MIN_QUOTE:
         out.append("{}: `quote` must carry the user's OWN words. A rule with no quote is something "
                    "you decided and attributed to them.".format(eid or "?"))
-    if len(str(e.get("rule") or "").strip()) < MIN_RULE:
+    if _w(e.get("rule")) < MIN_RULE:
         out.append("{}: `rule` must say what to DO about it, not restate the complaint."
                    .format(eid or "?"))
     if str(e.get("binds_at") or "").strip().lower() not in BINDS:
@@ -168,7 +180,7 @@ def faults(design_plan, entries) -> list[str]:
             continue
         if row.get("applied") is True:
             continue
-        if len(str(row.get("why_not") or "").strip()) < MIN_RULE:
+        if _w(row.get("why_not")) < MIN_RULE:
             out.append("`taste_applied[{}]` is not applied and gives no reason. A rule the user "
                        "taught is skipped in WRITING or not at all.".format(eid))
     return out

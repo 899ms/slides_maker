@@ -51,6 +51,18 @@ _COMPREHENSION_OPENERS = (
     "be aware", "get a sense", "了解", "理解", "认识", "知道", "明白", "掌握", "感受")
 
 
+def _w(text) -> int:
+    """Width, not codepoints — the same bar in Chinese as in English.
+
+    🔴 `len()` counts CODEPOINTS, so a CJK reason clears a floor at half the information an
+    English one needs: 「敢不敢把求职材料交给它」 is 11 codepoints and was rejected by a floor of
+    12, while a 12-letter English phrase carrying a third as much passed. Measured on a real
+    Chinese deck built with this skill. ONE definition, imported — see written_reason.py.
+    """
+    from written_reason import reason_width
+    return reason_width(text)
+
+
 def _is_comprehension(text):
     t = str(text or "").strip().lower()
     return any(t.startswith(v) or t.startswith(("to " + v, "to  " + v)) for v in
@@ -73,7 +85,7 @@ def waiver_faults(brief) -> list[str]:
     if cat not in CARVES:
         out.append("needs a `waived_category` naming the carve: {}. A deck being hard to think "
                    "about is not one of them.".format(" | ".join(CARVES)))
-    if len(str((brief or {}).get("waived") or "").strip()) < MIN_TEXT:
+    if _w((brief or {}).get("waived")) < MIN_TEXT:
         out.append("needs a written reason beside the category — who the audience is and why they "
                    "have nothing to decide.")
     return out
@@ -84,7 +96,7 @@ def faults(brief) -> list[str]:
     out: list[str] = []
     if not isinstance(brief, dict):
         return [MISSING]
-    if len(str(brief.get("who") or "").strip()) < MIN_TEXT:
+    if _w(brief.get("who")) < MIN_TEXT:
         out.append("`who` must say who is in the room and what they are about to do.")
     rows = brief.get("decisions")
     if not isinstance(rows, list) or len(rows) < MIN_DECISIONS:
@@ -97,11 +109,11 @@ def faults(brief) -> list[str]:
         if not isinstance(r, dict):
             out.append("`decisions[{}]` must be an object.".format(i))
             continue
-        if len(str(r.get("decision") or "").strip()) < MIN_TEXT:
+        if _w(r.get("decision")) < MIN_TEXT:
             out.append("`decisions[{}].decision` is empty — name what they must decide.".format(i))
         elif _is_comprehension(r.get("decision")):
             comprehension += 1
-        if len(str(r.get("needs") or "").strip()) < MIN_TEXT:
+        if _w(r.get("needs")) < MIN_TEXT:
             out.append("`decisions[{}].needs` is empty. This is the half that aims the research: "
                        "a decision with no stated need gathers nothing.".format(i))
     if rows and comprehension * 2 >= len(rows):

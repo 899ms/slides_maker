@@ -62,6 +62,18 @@ GROUND_SHARE = 0.85
 MIN_BLOCK_SHARE = 0.004
 
 
+def _w(text) -> int:
+    """Width, not codepoints — the same bar in Chinese as in English.
+
+    🔴 `len()` counts CODEPOINTS, so a CJK reason clears a floor at half the information an
+    English one needs: 「敢不敢把求职材料交给它」 is 11 codepoints and was rejected by a floor of
+    12, while a 12-letter English phrase carrying a third as much passed. Measured on a real
+    Chinese deck built with this skill. ONE definition, imported — see written_reason.py.
+    """
+    from written_reason import reason_width
+    return reason_width(text)
+
+
 def _grid_dims(aspect: float) -> tuple[int, int]:
     """(cols, rows) shaped to the canvas, so cells stay roughly square on any surface."""
     aspect = max(0.2, min(5.0, float(aspect or 1.0)))
@@ -387,7 +399,7 @@ def waiver_faults(rec) -> list[str]:
         out.append("needs a `waived_category` naming the carve: {}. `template-locked` is the real "
                    "one for a provided template — the composition is the template's, and there is "
                    "nothing to choose between.".format(" | ".join(CARVES)))
-    if len(str((rec or {}).get("waived") or "").strip()) < MIN_WHY:
+    if _w((rec or {}).get("waived")) < MIN_WHY:
         out.append("needs a written reason beside the category.")
     return out
 

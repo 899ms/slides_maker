@@ -1399,11 +1399,22 @@ def big_numeral(slide, x, y, n, *, mode="marker", color=MAGENTA, size=None, w=No
 
 
 def stat_row(slide, x, y, w, items, *, ink=DEEP, accent=MAGENTA, serif=None, dividers=True,
-             fig_size=34, label_c=MUTE):
+             fig_size=34, label_c=MUTE, divider_c=None):
     """Editorial big-number row: items = [(figure, unit, label), ...] in 2-4 equal columns with
     optional vertical hairline dividers. For 2-4 standout numbers with no trend to plot.
-    BY CONSTRUCTION: a figure never wraps mid-number (an over-wide one scales down, floor 15pt)
-    and caption height is measured — returns the real bottom y."""
+    BY CONSTRUCTION: a figure never wraps mid-number (an over-wide one scales down, floor 15pt),
+    and BOTH the figure's height and the caption's height are MEASURED — returns the real bottom y.
+
+    🔴 The figure block used to be a hardcoded 0.7in box with the caption pinned at y+0.66, while
+    `fig_size` was a parameter. MEASURED: a 44pt figure is 0.684in of ink, so the caption's TOP sat
+    inside the figure's last line — `TEXT COLLISION` on every column, at render time only, for any
+    `fig_size` above about 43. Identical in Chinese and Latin, so it was never a CJK issue. Both
+    numbers now come from `measure_text` at the size actually used, floored at the old constants so
+    every deck at fig_size <= 40 lands byte-identically where it did before.
+
+    `divider_c` colours the hairlines (default #DDDDDD). The old hardcoded value is 1.13:1 on a
+    cream ground and fails WCAG 1.4.11 there, which left `dividers=False` as the only way out.
+    """
     if not items:
         return y
     n = len(items); gap = 0.4; cw = (w - (n - 1) * gap) / n
@@ -1420,13 +1431,25 @@ def stat_row(slide, x, y, w, items, *, ink=DEEP, accent=MAGENTA, serif=None, div
         runs = [(str(fig), fsz, ink, True, False, _nface)]
         if unit:
             runs.append((" " + str(unit), fsz * 0.42, accent, True, False, _nface))
-        tb = text(slide, cx, y, cw, 0.7, [runs], space_after=0)
+        # 🔴 Measured from the SAME model the linter reads — `_ink_rect`, not `measure_text`.
+        # `measure_text` defaults to line_h_factor 1.12 while the renderer lays out at 1.2, so it
+        # under-reports a big figure by ~7% (0.622in reported vs 0.667in of ink at 40pt) and the
+        # caption still landed inside the figure at 52pt after a first fix that used it. Two
+        # geometry models disagreeing by a constant is exactly what this helper exists to prevent,
+        # so the box is placed generously, the real ink is read back, and the box is then trimmed.
+        tb = text(slide, cx, y, cw, max(0.7, fsz / 72.0 * 2.0), [runs], space_after=0)
         tb.text_frame.word_wrap = False
+        _r = _ink_rect(tb, _bbox_in(tb))
+        fig_h = _r[0][3] if _r else measure_text(mruns, cw, fsz, font=_nface, pad=0.0)
+        box_h = max(0.7, fig_h + 0.02)
+        cap_y = max(0.66, fig_h + 0.02)
+        tb.height = Inches(box_h)
         cap_h = max(0.4, measure_text([(str(label), False)], cw, 12, pad=0.04))
-        text(slide, cx, y + 0.66, cw, cap_h, [[(str(label), 12, label_c, False, False)]], space_after=0)
-        bottom = max(bottom, y + 0.66 + cap_h + 0.04)
+        text(slide, cx, y + cap_y, cw, cap_h, [[(str(label), 12, label_c, False, False)]], space_after=0)
+        bottom = max(bottom, y + cap_y + cap_h + 0.04)
         if dividers and i > 0:
-            box(slide, cx - gap / 2, y + 0.06, 0.014, 0.9, fill=RGBColor(0xDD, 0xDD, 0xDD))
+            box(slide, cx - gap / 2, y + 0.06, 0.014, max(0.9, cap_y + 0.24),
+                fill=divider_c if divider_c is not None else RGBColor(0xDD, 0xDD, 0xDD))
     return bottom
 def _set_baseline(run, pct):
     """Raise (or lower, if negative) a run by `pct` percent of its font size via the OOXML baseline
@@ -8282,8 +8305,11 @@ def _measuring_face(run):
 def _ink_rect(sh, bb):
     """The rectangle the GLYPHS actually fill inside a text frame `sh` (bbox `bb`), accounting for
     measured wraps, the frame's inner margins, the vertical anchor and the paragraph alignment.
-    Returns (x, y, w, h) in inches, or None if there's no measurable text. The ink box can be
-    SHORTER/NARROWER than the frame (the common case) or, when text overflows, TALLER than it."""
+    Returns ``((x, y, w, h), (natural_w, natural_h), (size, lines, wrapped, align_x))`` with every
+    length in inches — NOT the bare rect: `r[0]` is the ink rectangle, and indexing `r[2]` for a
+    width silently reads the metadata tuple instead. Returns None if there's no measurable text.
+    The ink box can be SHORTER/NARROWER than the frame (the common case) or, when text overflows,
+    TALLER than it."""
     try:
         tf = sh.text_frame
     except Exception:

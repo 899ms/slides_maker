@@ -99,6 +99,18 @@ not no nor do does did done have has had page slide deck
 _CJK = r"一-鿿㐀-䶿぀-ヿ가-힯"
 
 
+def _w(text) -> int:
+    """Width, not codepoints — the same bar in Chinese as in English.
+
+    🔴 `len()` counts CODEPOINTS, so a CJK reason clears a floor at half the information an
+    English one needs: 「敢不敢把求职材料交给它」 is 11 codepoints and was rejected by a floor of
+    12, while a 12-letter English phrase carrying a third as much passed. Measured on a real
+    Chinese deck built with this skill. ONE definition, imported — see written_reason.py.
+    """
+    from written_reason import reason_width
+    return reason_width(text)
+
+
 def tokens(text) -> list[str]:
     """Content tokens for overlap scoring, CJK-aware."""
     s = str(text or "").lower()
@@ -576,7 +588,7 @@ def waiver_faults(rec) -> list[str]:
         out.append("needs a `waived_category` naming the carve: {}. A runtime with no reader is "
                    "`no-reader` — which RECORDS that the deck shipped unread, rather than implying "
                    "it was read.".format(" | ".join(CARVES)))
-    if len(str((rec or {}).get("waived") or "").strip()) < MIN_TEXT:
+    if _w((rec or {}).get("waived")) < MIN_TEXT:
         out.append("needs a written reason beside the category.")
     return out
 
@@ -620,13 +632,13 @@ def faults(rec, slide_count=None) -> list[str]:
         if sev == "note":
             continue          # a judgement call the critic weighs; not a defect to answer
         res = str(f.get("resolution") or "").strip()
-        if len(res) < MIN_TEXT:
+        if _w(res) < MIN_TEXT:
             out.append("`findings[{}]` ({} on slide {}) has no resolution. Every finding is "
                        "ANSWERED in writing — what you changed, or why the reader was wrong. "
                        "`ok` is not an answer to a disagreement."
                        .format(i, f.get("code") or "?", f.get("n")))
         elif sev == "hard" and not str(f.get("fixed") or "").strip() \
-                and len(str(f.get("refuted") or "").strip()) < MIN_TEXT:
+                and _w(f.get("refuted")) < MIN_TEXT:
             # 🔴 `refuted` exists because the reader is not infallible and must not be treated as
             # such. Measured on the first real run: the reader's `legible_text` for one slide
             # listed the same sentence under two different cards; the rendered page has no such

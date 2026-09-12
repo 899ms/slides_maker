@@ -436,6 +436,22 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   reported as a hand-roll (or the audit trains agents to stop using components); the direction gate
   must move the ink, not just the colourway; and a `--slides` preview must be byte-identical to the
   same page from a full render, leaving no cache behind.
+- `check_reason_width.py` — no written-reason floor may be measured with `len()`. `len()` counts
+  CODEPOINTS, so `len(reason) < 12` means "12 letters" in English and roughly twice the information
+  in Chinese: the bar silently doubles for the users least able to see why their reason was
+  rejected. Measured on a real Chinese deck — `audience_brief` rejected an 11-codepoint decision
+  against `MIN_TEXT = 12` while a 12-letter English phrase carrying a third as much passed.
+  `written_reason.reason_width` had shipped months earlier and twelve sites across six modules
+  simply never reached for it, two of them written the same day as a module that used it correctly,
+  which is why this is a guard and not just a fix. It scans `scripts/*.py` for a `len(...)`
+  compared against a NAMED floor (`MIN_TEXT` / `MIN_WHY` / `MIN_RULE` / `MIN_QUOTE` / …) and leaves
+  literal comparisons alone — `len(x) < 2` is an emptiness test, not an information floor. The
+  match is deliberately split in two (find the floor, then ask whether the compared expression
+  calls `len`), because a single paren-counting regex CANNOT cross the inner `)` of
+  `len(str(x.get("k") or "").strip())` — the form ten of the twelve real sites used — and the first
+  version of this guard reported CLEAN on the planted bug. Deliberate exceptions go in `ALLOWLIST`
+  with a reason. Backed by `tests/test_reason_width_floors.py`, which plants the bug in both
+  spellings and fails if the guard misses either.
 - `check_gate_parity.py` — the two runtimes must gate the same concerns, or CI fails. Every
   `_gate_section` in the shared path must be reachable in `codex_delivery_gate.py`, and every shared
   contract module one path imports must be imported by the other. It does NOT check they enforce

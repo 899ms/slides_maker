@@ -68,6 +68,37 @@ def _dist(a, b):
     return sum(abs(int(a[i:i + 2], 16) - int(b[i:i + 2], 16)) for i in (0, 2, 4))
 
 
+def _block_rect(size, sh):
+    """Where the cover title's GLYPHS sit — not where its text BOX sits.
+
+    🔴 A full-width, left-aligned title box has its geometric centre at exactly 50% of the canvas
+    while every glyph hugs the left margin. Reading `sh.left + sh.width/2` therefore calls a
+    textbook LOW-LEFT cover "centred" — and, symmetrically, passes a genuinely centred cover whose
+    box happens to sit off to one side. False positive AND false negative from the same line.
+    Measured on a real deck: a 0.90in-left, 11.53in-wide title box scored 50.0% with its
+    `job-hunt` wordmark flush left.
+
+    `deckkit._ink_rect` already solves this — it accounts for the frame's margins, the measured
+    wraps, the vertical anchor and the PARAGRAPH ALIGNMENT, and measures CJK through `<a:ea>`. It
+    is used here rather than re-derived, because a second copy of a geometry model is how this
+    repo's two gate paths have drifted apart before. When it cannot measure (no runs, an exotic
+    frame), the box is the honest fallback and is marked as such, so "measured the ink" and
+    "guessed from the box" never look identical downstream.
+    """
+    box = {"size": size, "left": (sh.left or 0) / 914400.0,
+           "w": (sh.width or 0) / 914400.0, "top": (sh.top or 0) / 914400.0, "from_ink": False}
+    try:
+        import deckkit as _dk
+        bb = _dk._bbox_in(sh)
+        r = _dk._ink_rect(sh, bb) if bb is not None else None
+    except Exception:                                  # never silently: fall back, flagged
+        return box
+    rect = r[0] if r else None      # _ink_rect returns (rect, natural, meta); rect is (x,y,w,h)
+    if not rect or rect[2] <= 0:
+        return box
+    return {"size": size, "left": rect[0], "w": rect[2], "top": rect[1], "from_ink": True}
+
+
 def _face(stack):
     return (str(stack or "").split(",")[0].strip().strip("'\"").lower()) or None
 
@@ -114,10 +145,9 @@ def facts(pptx):
                 except Exception:
                     continue
                 if best is None or big > best[0]:
-                    best = (big, (sh.left or 0) / 914400.0, (sh.width or 0) / 914400.0,
-                            (sh.top or 0) / 914400.0)
+                    best = (big, sh)
             if best:
-                cover_block = {"size": best[0], "left": best[1], "w": best[2], "top": best[3]}
+                cover_block = _block_rect(best[0], best[1])
     ground = max(grounds, key=grounds.get) if grounds else None
     sized = [r for r in runs if r[0] > 0 and r[1]]
     display = max(sized, key=lambda r: r[0])[1] if sized else None
@@ -248,11 +278,15 @@ def check(pptx, gates=None, deck_dir=None):
         centre = (cb["left"] + cb["w"] / 2.0) / max(0.01, got["canvas_w"])
         is_centred = abs(centre - 0.5) <= CENTRED
         if cover == "centred" and not is_centred:
-            _flag("cover", "the picked direction's cover is CENTRED and the deck's title block sits "
-                           "at {:.0%} of the width".format(centre))
+            _flag("cover", "the picked direction's cover is CENTRED and the deck's title {} sits "
+                           "at {:.0%} of the width"
+                           .format("ink" if cb.get("from_ink") else "box (ink not measurable)",
+                                   centre))
         if cover == "low-left" and is_centred:
-            _flag("cover", "the picked direction's cover is LOW-LEFT and the deck's title block is "
-                           "centred")
+            _flag("cover", "the picked direction's cover is LOW-LEFT and the deck's title {} sits "
+                           "at {:.0%} of the width"
+                           .format("ink" if cb.get("from_ink") else "box (ink not measurable)",
+                                   centre))
     elif cover:
         out.setdefault("unchecked", []).append(
             "cover — {!r} is a judgement this cannot settle from the file".format(cover))

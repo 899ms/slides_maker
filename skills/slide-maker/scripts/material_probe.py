@@ -38,6 +38,12 @@ MIN_REASON = 20
 FILE_KEYS = ("png", "path")
 
 
+def _w(text) -> int:
+    """Width, not codepoints — the same bar in Chinese as in English (see written_reason.py)."""
+    from written_reason import reason_width
+    return reason_width(text)
+
+
 def file_value(probe) -> str:
     """The probe's rendered-slide path under EITHER spelling, or "" if it names none."""
     for k in FILE_KEYS:
@@ -62,7 +68,7 @@ def waiver_faults(probe) -> list[str]:
                    "you see whether it reads as deliberate or as nothing."
                    .format(" | ".join(CARVES)))
     reason = str((probe or {}).get("waived") or "").strip()
-    if len(reason) < MIN_REASON:
+    if _w(reason) < MIN_REASON:
         out.append("needs a written reason beside the category — which template, which mimic, how "
                    "many slides. A bare category is a label, not a decision.")
     return out

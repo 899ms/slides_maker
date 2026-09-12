@@ -1002,6 +1002,28 @@ jobs:
           grep -qE "\\] ok$" /tmp/compprobe.log || {
             echo "::error::test_composition_probe did not run to completion"; exit 1; }
 
+      - name: Reason floors mean the same in every language (len() is twice as strict in CJK)
+        run: |
+          set -o pipefail
+          python scripts/check_reason_width.py
+          python tests/test_reason_width_floors.py | tee /tmp/rwidth.log
+          grep -qE "\\] ok$" /tmp/rwidth.log || {
+            echo "::error::test_reason_width_floors did not run to completion"; exit 1; }
+
+      - name: Cover axis reads the INK, not the text box
+        run: |
+          set -o pipefail
+          python tests/test_cover_ink_not_box.py | tee /tmp/coverink.log
+          grep -qE "\\] ok$" /tmp/coverink.log || {
+            echo "::error::test_cover_ink_not_box did not run to completion"; exit 1; }
+
+      - name: stat_row sizes its figure block by measurement, at every fig_size
+        run: |
+          set -o pipefail
+          python tests/test_stat_row_measured.py | tee /tmp/statrow.log
+          grep -qE "\\] ok$" /tmp/statrow.log || {
+            echo "::error::test_stat_row_measured did not run to completion"; exit 1; }
+
       - name: Inventory guard is a detector (attack it, not just run it)
         run: |
           set -o pipefail
