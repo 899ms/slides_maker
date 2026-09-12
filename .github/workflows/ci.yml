@@ -974,6 +974,27 @@ jobs:
           grep -qE "(^[0-9]+ passed, 0 failed|\\] ok$)" /tmp/envensure.log || {
             echo "::error::test_env_ensure did not run to completion"; exit 1; }
 
+      - name: Both runtimes gate the same concerns (the guard itself)
+        run: |
+          set -o pipefail
+          python scripts/check_gate_parity.py | tee /tmp/parityguard.log
+          grep -q "0 problem(s)" /tmp/parityguard.log || {
+            echo "::error::the two gate paths have drifted apart"; exit 1; }
+
+      - name: Gate parity (both runtimes gate the same concerns)
+        run: |
+          set -o pipefail
+          python tests/test_gate_parity.py | tee /tmp/parity.log
+          grep -qE "\\] ok$" /tmp/parity.log || {
+            echo "::error::test_gate_parity did not run to completion"; exit 1; }
+
+      - name: Delegated picks (auto mode must say what it decided for the user)
+        run: |
+          set -o pipefail
+          python tests/test_delegated_picks.py | tee /tmp/dpicks.log
+          grep -qE "\\] ok$" /tmp/dpicks.log || {
+            echo "::error::test_delegated_picks did not run to completion"; exit 1; }
+
       - name: Composition competition (the measure must generalise off its own corpus)
         run: |
           set -o pipefail

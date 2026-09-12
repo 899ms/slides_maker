@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audience_brief as ab  # noqa: E402
 import blind_read as brd  # noqa: E402
 import composition_probe as cpx  # noqa: E402
+import delegated_picks as dpk  # noqa: E402
 import taste_ledger as tl  # noqa: E402
 from material_probe import (CARVES as MATERIAL_PROBE_CARVES,  # noqa: E402
                             file_value as _mp_file, waiver_faults as _mp_faults)
@@ -84,7 +85,19 @@ def template(slides=None, delivery="presented"):
     return {
         # The interview's answers, scaffolded so they cannot be forgotten: a capability that does
         # not enter the skeleton is one the next deck rediscovers by failing a gate.
-        "interview": {k: "<{}>".format(INTERVIEW_HINT[k]) for k in INTERVIEW_AXES},
+        # 🔴 `picks` matters ONLY on a deck whose checkpoints were delivered as `auto` — it records
+        # WHO answered each Step-0 question, because a value the user gave and one the skill
+        # invented are otherwise byte-identical. A supervised run drops it. `angle` may never be
+        # `delegated`. See delegated_picks.py.
+        "interview": dict(
+            {k: "<{}>".format(INTERVIEW_HINT[k]) for k in INTERVIEW_AXES},
+            picks=[{"axis": "angle", "source": "genre-default | stated",
+                    "value": "<the deck the request already implies>"},
+                   {"axis": "audience", "source": "delegated",
+                    "value": "<who is in the room>",
+                    "basis": "<what in the request or the material points at them>",
+                    "alternative": "<who else it could have been for, and why not>"},
+                   "<one row per axis: " + " · ".join(dpk.AXES) + ">"]),
         "delivery": delivery,
         "content": {
             "slides": [{"slide": i + 1, "role": "<cover|hook|evidence|framework|…>",
@@ -356,6 +369,11 @@ def check(gates):
     if _cmp is not None or not _cons:
         for f in cpx.competition_faults(_cmp):
             problems.append("`design_plan.composition` " + (f if f is not cpx.MISSING else f))
+
+    # What the skill decided FOR the user — only on a deck that waived the stops.
+    if dpk.is_auto(gates):
+        for f in dpk.faults(gates.get("interview"), auto=True):
+            problems.append("`interview.picks` " + f)
 
     # What this user has already corrected by hand, on earlier decks. An empty ledger asks nothing.
     for f in tl.faults(tl.design_of(gates), tl.load()):

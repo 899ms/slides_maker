@@ -2963,6 +2963,26 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
                       "before the build".format(_dense))
 
     with _gate_section('checkpoints'):
+        # 🔴 WHAT THE SKILL DECIDED FOR THE USER. `checkpoint.mode: auto` says the STOPS were
+        # waived; it says nothing about the picks made in their place, so a language the user gave
+        # and a language the skill invented are byte-identical from here on. Binds only on an auto
+        # deck — a supervised run is untouched. See delegated_picks.py for the deck this cost.
+        import delegated_picks as _dpk
+        if _dpk.is_auto(gates):
+            _iv = gates.get("interview")
+            _df = _dpk.faults(_iv, auto=True)
+            if _df and _df[0] is _dpk.MISSING:
+                die(_dpk.MISSING)
+            for _f in _df:
+                die("`interview.picks`: " + _f)
+            _deleg = _dpk.delegated(_iv)
+            print("[gates] delegated picks: {} of {} axes decided FOR the user"
+                  .format(len(_deleg), len(_dpk.AXES)))
+            for _p in _deleg:
+                print("        {}: {} — {}".format(_p.get("axis"), _p.get("value"),
+                                                   str(_p.get("basis"))[:70]))
+            print("        Repeat these in the hand-off note: a pick the user never sees is a "
+                  "decision they never made.")
         # DELEGATION MUST BE VISIBLE AT DELIVERY. The per-deck auto waiver turns the two 🔴 stops into
         # FYIs, and SKILL.md is explicit that it "removes the stop, never the record". But a run that
         # posted both FYIs and a run that posted neither hand over identical decks, so the user finds

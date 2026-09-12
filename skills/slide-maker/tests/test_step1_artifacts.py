@@ -89,6 +89,38 @@ def gate(deck, gates):
     return p.returncode, p.stdout + p.stderr
 
 
+def _iv_axes():
+    """The four axes `gate()` injects when `interview` is absent — kept here so ADDING `picks`
+    does not displace them, which is what happened on the first attempt."""
+    return {"language": "English", "density": "balanced", "length": "medium 9-15", "goal": "inform"}
+
+
+def _picks_ok():
+    """The delegated-picks record an AUTO deck owes — one row per Step-0 axis, sourced.
+
+    🔴 An auto deck answered Step 0 itself, so `interview.picks` says WHO answered each question.
+    These fixtures set `mode: auto` deliberately, which is exactly when that record binds.
+    """
+    import sys as _s
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import delegated_picks as _dp
+    B = "the request names the subject and no venue at all"
+    A = "a conference room was plausible; the request says 'send it to me'"
+    rows = []
+    for ax in _dp.AXES:
+        if ax == "angle":
+            rows.append({"axis": ax, "source": "genre-default",
+                         "value": "the deck the request already implies"})
+        elif ax in _dp.ALTERNATIVE_REQUIRED:
+            rows.append({"axis": ax, "source": "delegated", "value": "a real chosen value",
+                         "basis": B, "alternative": A})
+        else:
+            rows.append({"axis": ax, "source": "delegated", "value": "a real chosen value",
+                         "basis": B})
+    return rows
+
+
 def record(n=3, **content):
     c = content_ok(n)
     c.update(content)
@@ -280,6 +312,7 @@ def main():
         rec["content"]["slides_waived"] = "三页 CI 夹具，没有可分页的论证"
         rec["content"].pop("slides")
         rec["content"]["checkpoint"]["mode"] = "auto"
+        rec["interview"] = dict(_iv_axes(), picks=_picks_ok())
         rc, out = gate(deck, rec)
         check("a written waiver is honoured", rc == 0 and "WAIVED" in out, out)
         rec["content"]["slides_waived"] = "无"
@@ -301,11 +334,13 @@ def main():
 
         rec = record()
         rec["content"]["checkpoint"] = {"mode": "auto", "record": "x"}
+        rec["interview"] = dict(_iv_axes(), picks=_picks_ok())
         rc, out = gate(deck, rec)
         check("a mode with no record is not a record", rc != 0, out)
 
         rec = record()
         rec["content"]["checkpoint"]["mode"] = "auto"
+        rec["interview"] = dict(_iv_axes(), picks=_picks_ok())
         rec["design_plan"]["checkpoint"]["mode"] = "auto"
         rc, out = gate(deck, rec)
         check("both FYIs pass under the auto waiver", rc == 0, out)
@@ -359,9 +394,14 @@ def main():
           _dg.INTERVIEW_AXES == ("language", "density", "length", "goal")
           and set(_dg.INTERVIEW_HINT) == set(_dg.INTERVIEW_AXES),
           _dg.INTERVIEW_AXES)
+    # `picks` is named EXPLICITLY rather than relaxed to a superset test: an exact set still
+    # catches an axis being dropped AND a stray key being added, and the skeleton is where a new
+    # capability has to appear or the next deck rediscovers it by failing a gate — which is this
+    # assertion's own argument, and the reason `picks` belongs there.
     check("`deck_gates.py --init` SCAFFOLDS them — a capability that does not enter the skeleton "
           "is one the next deck rediscovers by failing a gate",
-          set(_dg.template(slides=3).get("interview") or {}) == set(_dg.INTERVIEW_AXES))
+          set(_dg.template(slides=3).get("interview") or {})
+          == set(_dg.INTERVIEW_AXES) | {"picks"})
 
     _cdg_path = pathlib.Path(__file__).resolve().parent.parent / "scripts" / "codex_delivery_gate.py"
     _spec = _ilu.spec_from_file_location("cdg_iv", _cdg_path)

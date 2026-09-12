@@ -162,6 +162,22 @@ opened with "you decide the rest" — and those two are the decks whose design c
 direction came back wrong. `content.slides` is not a new field either: `codex_delivery_gate.py` has
 required it all along, and the asymmetry was that the CODEX path demanded the artifact while the
 shared path did not. Under a genuine exception, waive it in writing (`content.slides_waived`). Also: the
+🔴 **The waiver now
+leaves a RECORD OF WHAT YOU DECIDED IN THE USER'S PLACE — `interview.picks`, one row per Step-0
+axis** (angle · audience · purpose · template · language · goal · density · length · style ·
+builds), each saying who answered it: `stated` (the user), `genre-default` (the reading the request
+already implies), `from-material`, `not-applicable`, or **`delegated`** — you. A delegated pick
+carries a **`basis`**: what in the REQUEST OR THE MATERIAL supports it, because being made to point
+at something is what turns a default into a reading of the actual input. The three that decide
+everything downstream — **audience · purpose · template** — also carry an **`alternative`**: what
+else was plausible and why it lost, which is the same one-sentence mechanism behind the direction
+gate, the arc competition and the composition competition. 🔴 **`angle` may never be `delegated`:**
+delegation covers preferences, never information only the user has, and never WHICH DECK THIS IS —
+measured, a run read 「你自行决定」 as licence to pick the angle and shipped a thesis on 19th-century
+building regulation, passing every gate. Enforced by `scripts/delegated_picks.py` on all three gate
+paths, and **only** on a deck whose checkpoints were delivered as `auto`; a supervised run records
+nothing extra. Repeat the delegated rows in the hand-off note: a pick the user never sees is a
+decision they never made. Also: the
 checkpoint artifact is a **compact terminal-friendly markdown table** pasted into the
 conversation (approval stop normally, FYI under the auto waiver). The waiver covers the
 preference/approval 🔴 stops — the content and design checkpoints, the Q1=d hero checkpoint,

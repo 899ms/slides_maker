@@ -985,6 +985,17 @@ def check_content(
     # The signature page competed rather than composed once — wired here in the SAME change as
     # the shared path, for the reason stated above: a floor kept in one runtime only is how the
     # other quietly stops enforcing it.
+    # 🔴 THE CHECKPOINT LEDGER AND THE DELEGATED PICKS — the one gate section the shared path had
+    # and this one did not. Measured by comparing the two files: 16 of 17 sections were mirrored
+    # here and `checkpoints` was the exception, which is precisely the record that says whether a
+    # human approved anything. On the runtime most likely to compress the pipeline into one pass,
+    # that was the wrong section to be missing.
+    import delegated_picks as _dpk
+    if _dpk.is_auto(evidence):
+        _dpf = _dpk.faults(evidence.get("interview"), auto=True)
+        for _f in _dpf:
+            errors.append("interview.picks " + _f)
+
     import composition_probe as _cpx
     import taste_ledger as _tl0
     _design = _tl0.design_of(evidence)

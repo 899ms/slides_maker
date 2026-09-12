@@ -436,6 +436,23 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   reported as a hand-roll (or the audit trains agents to stop using components); the direction gate
   must move the ink, not just the colourway; and a `--slides` preview must be byte-identical to the
   same page from a full render, leaving no cache behind.
+- `check_gate_parity.py` — the two runtimes must gate the same concerns, or CI fails. Every
+  `_gate_section` in the shared path must be reachable in `codex_delivery_gate.py`, and every shared
+  contract module one path imports must be imported by the other. It does NOT check they enforce
+  identically — a delivery gate and a pre-flight legitimately differ in strictness — only that
+  neither is missing the concern entirely, which is the failure that has actually happened, three
+  times: `png`/`path`, `design_plan`/`design`, and `checkpoints`. Deliberate one-sidedness goes in
+  its ALLOWLIST with a reason.
+- `delegated_picks.py` — what the skill decided ON THE USER'S BEHALF, recorded and floored.
+  Binds ONLY on a deck whose checkpoints were delivered as `auto` (read from `checkpoint.mode`, both
+  schemas) — a supervised run is untouched, so the cost lands exactly where the risk is.
+  `interview.picks` carries one row per Step-0 axis with its `source` (`stated` · `genre-default` ·
+  `from-material` · `not-applicable` · `delegated`); a `delegated` pick needs a **`basis`** pointing
+  at the request or the material, and the three that aim everything downstream (audience · purpose ·
+  template) also need an **`alternative`**. 🔴 `angle` may never be `delegated` — the measured
+  failure is a run that read "decide everything yourself" as licence to pick the angle and shipped a
+  thesis nobody asked for, passing every gate. Gives `references/auto-delegation-quality-gates.md`
+  and `checkpoint-convention.md`'s delegated-picks rule their first deterministic backstop.
 - `composition_probe.py` — measure a slide's COMPOSITION so two versions of one page can be told
   apart mechanically: `probe <deck>.pptx --slide N` · `compare <deck>.pptx --slides 1,2,3`. Reads
   the BUILT pptx, never a render, and never measured text ink — so it reads a Chinese deck exactly
