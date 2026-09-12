@@ -97,6 +97,21 @@ with tempfile.TemporaryDirectory() as td:
     check("\\u" not in p.read_text(encoding="utf-8"),
           "the ledger escaped non-ASCII; the file is meant to be human-readable")
 
+# ── 🔴 THE CODEX SCHEMA CALLS IT `design`, NOT `design_plan` ─────────────────────────────────────
+# This module's first version reached for `design_plan` on the Codex path, where that key has never
+# existed — so the gate was permanently unsatisfiable there and no non-Claude agent could have
+# delivered a deck with a non-empty ledger. Same drift as png/path, third occurrence. One owner now.
+check(tl.design_of({"design_plan": {"taste_applied": []}}) == {"taste_applied": []},
+      "design_of misses the shared spelling")
+check(tl.design_of({"design": {"boldness": "bold"}}) == {"boldness": "bold"},
+      "design_of misses the CODEX spelling — the taste gate would be unsatisfiable on that runtime")
+for junk in (None, 7, "str", []):
+    check(tl.design_of(junk) == {}, "design_of must return {{}} on a malformed record ({!r})".format(junk))
+_E2 = dict(E)
+check(not tl.faults(tl.design_of({"design": {"taste_applied": [{"id": E["id"], "applied": True}]}}),
+                    [_E2]),
+      "a Codex record that DID record taste_applied was still rejected")
+
 # ── wired into every gate path, like every other shared contract ─────────────────────────────────
 for name in ("render_deck.py", "deck_gates.py", "codex_delivery_gate.py"):
     src = (SCRIPTS / name).read_text(encoding="utf-8")

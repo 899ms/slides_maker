@@ -161,17 +161,29 @@ def selfcheck_ok(n_slides: int = 3) -> dict:
                        for i in range(1, n_slides + 1)]}
 
 
-def blindread_ok(n_slides: int = 3) -> dict:
-    """A clean `blind_read` artifact: one answer per slide, every finding answered in writing."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+def blindread_ok(n_slides=3, record=None):
+    """A clean `blind_read` artifact for an n-slide deck, SELF-CONSISTENT by construction.
+
+    🔴 The findings are produced by `blind_read.compare()` over these very answers, not typed —
+    because the gate re-derives them and requires every one that owes an answer to be present with
+    the same severity. A hand-written findings list is exactly what that recompute exists to catch,
+    so a hand-written FIXTURE is a fixture that tests the wrong thing.
+    """
+    import sys as _s
+    _s.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
     import blind_read as _br
     q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
          for k, _ in _br.QUESTIONS}
-    return {"answers": [dict(q, n=i + 1, elements={k: 0 for k in _br.ELEMENT_KEYS})
-                        for i in range(n_slides)],
-            "findings": [{"n": 1, "code": "READ_LEGIBILITY", "severity": "ask",
-                          "finding": "the caption reads dim against the ground",
-                          "resolution": "raised the caption to the 4.5:1 token and re-rendered"}]}
+    answers = [dict(q, n=i + 1,
+                    elements=dict({k: 0 for k in _br.ELEMENT_KEYS}, text_blocks=2, photos=1),
+                    legible_text=["a real line of words that carries this page"])
+               for i in range(n_slides)]
+    found = _br.compare(answers, total=n_slides, record=record)
+    return {"answers": answers,
+            "findings": [dict(f, resolution="re-read the page at full size and acted on it",
+                              **({"fixed": "rebuilt that page with measured layout"}
+                                 if f["severity"] == "hard" else {}))
+                         for f in found]}
 
 
 def fit_content(gates: dict, pptx) -> dict:
@@ -206,10 +218,10 @@ def fit_content(gates: dict, pptx) -> dict:
     # A test that sets `blind_read` on purpose (waived, corrupted, short a slide) is left alone.
     brd = out.get("blind_read")
     if brd is None:
-        out["blind_read"] = blindread_ok(n)
+        out["blind_read"] = blindread_ok(n, out)
     elif isinstance(brd, dict) and "answers" in brd and not brd.get("waived") \
             and len(brd.get("answers") or []) != n:
-        out["blind_read"] = blindread_ok(n)
+        out["blind_read"] = blindread_ok(n, out)
     # A bare `{"verdict": "consent"}` fixture no longer clears the gate on its own — a consent now
     # REQUIRES the recorded review artifact (path + sha256), the last self-cert hole closed. Most
     # fixtures use a bare consent only as a stand-in for "the critic was clean" while they test some

@@ -414,6 +414,19 @@ TEMPLATE = {
             # ... one verdict per remaining slide
         ],
     },
+    # THE BLIND READ — the one check here that needs an actor OUTSIDE the author, and the only
+    # answer to the limit `render_selfcheck` states about itself (a lazy 'ok' passes). NEVER typed
+    # by hand: `blind_read.py packet <deck>` emits PNG paths + a fixed question list, an independent
+    # reader answers it WITHOUT being shown this file, and `blind_read.py compare <deck> --answers
+    # <its json> --write` fills both fields below. The gate re-runs that comparison over the
+    # recorded answers, so an edited severity or a deleted finding is caught.
+    #   No independent reader in this runtime? Replace the two fields with
+    #   {"waived": "<why>", "waived_category": "no-reader"} — which RECORDS that the deck shipped
+    #   UNREAD, a different claim from saying it was read.
+    "blind_read": {
+        "answers": "<blind_read.py packet ... -> an independent reader -> its JSON, verbatim>",
+        "findings": "<blind_read.py compare ... --write fills this; answer every one in writing>",
+    },
     "waivers": [],
 }
 
@@ -963,11 +976,14 @@ def check_content(
     elif _bread is None:
         errors.append("blind_read " + _brd.MISSING.split("\n")[0])
     else:
-        for _f in _brd.faults(_bread, len(content.get("slides") or []) or None):
+        _n_br = len(content.get("slides") or []) or None
+        for _f in _brd.faults(_bread, _n_br):
+            errors.append("blind_read: " + _f)
+        for _f in _brd.recompute_faults(_bread, record=evidence, slide_count=_n_br):
             errors.append("blind_read: " + _f)
 
     import taste_ledger as _tl
-    for _f in _tl.faults(evidence.get("design_plan"), _tl.load()):
+    for _f in _tl.faults(_tl.design_of(evidence), _tl.load()):
         errors.append(_f)
 
     if "open_ledger" not in content:

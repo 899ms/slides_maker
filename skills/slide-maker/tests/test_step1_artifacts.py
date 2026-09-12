@@ -49,6 +49,7 @@ import arc_divergence  # noqa: E402
 import render_deck as RD  # noqa: E402
 
 SCRIPTS = pathlib.Path(__file__).resolve().parent.parent / "scripts"
+from test_critic_waiver_gate import blindread_ok  # noqa: E402,F401
 from test_critic_waiver_gate import (  # noqa: E402
     ARC_CANDIDATES, DESIGN_OK, GOOD_REASON, PROV_OK, build_deck, content_ok, selfcheck_ok,
     write_proof,
@@ -91,14 +92,15 @@ def gate(deck, gates):
 def record(n=3, **content):
     c = content_ok(n)
     c.update(content)
-    return {"critic": {"waived": GOOD_REASON, "waived_category": "no-dispatch-on-host",
-                       "inline_ran": True},
-            "design_plan": copy.deepcopy(DESIGN_OK), "content": c,
-            "render_selfcheck": selfcheck_ok(n),
-            "blind_read": {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
-                                      for i in range(n)],
-                          "findings": []},
-            "provenance": copy.deepcopy(PROV_OK)}
+    g = {"critic": {"waived": GOOD_REASON, "waived_category": "no-dispatch-on-host",
+                    "inline_ran": True},
+         "design_plan": copy.deepcopy(DESIGN_OK), "content": c,
+         "render_selfcheck": selfcheck_ok(n),
+         "provenance": copy.deepcopy(PROV_OK)}
+    # Computed from `g` itself — the gate re-derives the findings from the answers, so a typed
+    # findings list would fail for a reason none of these tests is about.
+    g["blind_read"] = blindread_ok(n, g)
+    return g
 
 
 def main():

@@ -35,6 +35,29 @@ machine, and **disagreement is the useful output**.
 it *as a pictogram*. A faint hairline shape you cannot make out is not an icon — it is an
 `unreadable` entry, and saying so is the finding.
 
+## 🔴 Tagging problems — required unless you are writing in English or Chinese
+
+A problem may be a plain string, or an object `{"what": "…", "kind": "…"}`. The triage that turns
+your observations into findings reads keywords, and **its keyword sets cover English and Chinese
+only**. Write a defect in Dutch, German, Japanese, French — any other language — and it matches
+nothing, becomes a silent "judgement call", and the deck reads as clean. So:
+
+- **Writing in English or Chinese?** Plain strings are fine; `kind` is welcome and never hurts.
+- **Writing in any other language?** Use the object form and tag every problem.
+
+| `kind` | means | how it is treated |
+|---|---|---|
+| `clipped` | TEXT is cut off, overflowing, or past the frame | must be fixed |
+| `bleed` | a DECORATIVE shape runs off the edge | must be answered |
+| `overlap` | elements sit on top of each other | must be fixed |
+| `contradiction` | two things on the page disagree — a number, a label, a legend | must be fixed |
+| `legibility` | too small, too faint, too low-contrast to read | must be answered |
+| `unkeyed` | a colour, mark or axis with no key, legend or label | must be answered |
+| `judgement` | a taste call, not a defect ("no imagery on a food page") | recorded for the critic |
+
+You choose the KIND; you never choose how serious it is. That stays fixed in the gate, so the same
+observation weighs the same whoever read the deck.
+
 ## Output shape
 
 ```json
@@ -43,7 +66,9 @@ it *as a pictogram*. A faint hairline shape you cannot make out is not an icon �
    "claim": "…", "about": "…", "largest": "…",
    "elements": {"text_blocks": 0, "photos": 0, "icons": 0, "charts": 0,
                 "diagrams": 0, "tables": 0, "marks": 0},
-   "legible_text": ["…"], "unreadable": [], "problems": []},
+   "legible_text": ["…"], "unreadable": [],
+   "problems": ["a plain string is fine in English or Chinese",
+                {"what": "de voettekst is afgesneden", "kind": "clipped"}]},
   …one object per slide, n = 1…N…
 ]}
 ```

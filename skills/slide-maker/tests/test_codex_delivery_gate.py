@@ -19,6 +19,26 @@ import tempfile
 import zlib
 from pathlib import Path
 
+
+def _blindread_ok(n, record=None):
+    """A self-consistent blind_read block for the CODEX evidence schema."""
+    import sys as _s
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import blind_read as _br
+    q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+         for k, _ in _br.QUESTIONS}
+    answers = [dict(q, n=i + 1,
+                    elements=dict({k: 0 for k in _br.ELEMENT_KEYS}, text_blocks=2, photos=1),
+                    legible_text=["a real line of words that carries this page"])
+               for i in range(n)]
+    return {"answers": answers,
+            "findings": [dict(f, resolution="re-read the page at full size and acted on it",
+                              **({"fixed": "rebuilt that page with measured layout"}
+                                 if f["severity"] == "hard" else {}))
+                         for f in _br.compare(answers, total=n, record=record)]}
+
+
 # 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
 # so a test that reads the real one passes or fails by whatever the developer happens to
 # have taught the skill — the same "passes by luck" class as a hash-salted fixture.
@@ -439,9 +459,9 @@ def fixture(root: Path) -> tuple[dict, dict, dict, Path]:
         ],
         # The actor's render look — one verdict per slide (this fixture deck is a single page).
         "render_selfcheck": {"slides": [{"n": 1, "verdict": "ok — cover reads clean"}]},
-        "blind_read": {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
-                                   for i in range(1)],
-                       "findings": []},
+        # The blind read. Findings are COMPUTED from these answers (the gate re-derives them), and
+        # the record is the CODEX schema — `design` + `icons`, not `design_plan` — which is exactly
+        # the divergence this fixture has to exercise.
         "waivers": [],
     }
     lint = {
@@ -451,6 +471,11 @@ def fixture(root: Path) -> tuple[dict, dict, dict, Path]:
         "stats": {"warnings": []},
     }
     components = fresh_component_audit(build, deck)
+    # Built from `evidence` ITSELF, and after it exists: the gate re-derives the findings from the
+    # answers using this whole record, which on the Codex schema means `icons[]` — so a fixture that
+    # computed them against `None` would miss READ_PLAN_UNSEEN and fail for a reason no test here
+    # is about. (That miss is also the proof the Codex icon lookup now works at all.)
+    evidence["blind_read"] = _blindread_ok(1, evidence)
     return evidence, lint, components, build
 
 

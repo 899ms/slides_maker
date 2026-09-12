@@ -2095,6 +2095,21 @@ critic round — full rationale in `references/design-principles.md`):
 > contradiction that had passed the provenance gate, the critic, and fifteen `ok` verdicts.
 > No independent reader in this runtime? Claim the carve `no-reader` — which *records that the deck
 > shipped unread* rather than implying it was read.
+>
+> 🔴 **Do not hand-write `blind_read.findings`, and do not edit a severity.** The gate re-runs the
+> comparison over the recorded ANSWERS and requires every finding that owes an answer to be there
+> with the same severity — so a HARD finding edited down to a `note`, or a findings list emptied to
+> look clean, is caught and named. (Added after an audit showed both tricks passing: the first
+> version's "nothing to write `ok` into" was true of the *shape* and not yet of the *content*.)
+> Adding a finding the comparator missed is welcome and never flagged. If it complains after you
+> legitimately changed the record, that means the comparison is stale — re-run `compare --write`.
+>
+> 🔴 **Reading a deck that is not in English or Chinese?** The triage's keyword sets cover those two,
+> so a defect written in any other language falls through to `note` and the deck reads as clean. The
+> reader must then tag each problem: `{"what": "…", "kind": "clipped|bleed|overlap|contradiction|
+> legibility|unkeyed|judgement"}`. The reader picks the KIND; the gate still decides the severity.
+> Either way the record carries a `READ_TRIAGE_COVERAGE` line stating how many problems were
+> classified, so "all judgement calls" can never pass for "all fine" in silence.
 - **Overflow / contrast / footer / glyphs** — no clipped or spilling text, ≥4.5:1 contrast,
   nothing jammed on the footer, no tofu/missing glyphs, and **no orphaned punctuation** (a lone 。/，
   or single glyph stranded on its own row — set `deckkit.EAFONT` so PowerPoint's kinsoku keeps it

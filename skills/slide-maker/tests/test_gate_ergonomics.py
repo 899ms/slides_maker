@@ -55,6 +55,27 @@ check(p.returncode == 0 and tail[0].endswith("0 failed"),
 
 import deck_gates                                                            # noqa: E402
 
+
+def _blindread_ok(n, record=None):
+    """A self-consistent blind_read block: findings COMPUTED from these answers, never typed —
+    the gate re-derives them, so a hand-written list tests the wrong thing."""
+    import sys as _s
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import blind_read as _br
+    q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+         for k, _ in _br.QUESTIONS}
+    answers = [dict(q, n=i + 1,
+                    elements=dict({k: 0 for k in _br.ELEMENT_KEYS}, text_blocks=2, photos=1),
+                    legible_text=["a real line of words that carries this page"])
+               for i in range(n)]
+    return {"answers": answers,
+            "findings": [dict(f, resolution="re-read the page at full size and acted on it",
+                              **({"fixed": "rebuilt that page with measured layout"}
+                                 if f["severity"] == "hard" else {}))
+                         for f in _br.compare(answers, total=n, record=record)]}
+
+
 # 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
 # so a test that reads the real one passes or fails by whatever the developer happens to
 # have taught the skill — the same "passes by luck" class as a hash-salted fixture.
@@ -85,9 +106,7 @@ filled["content"]["audience_brief"] = {
                   {"decision": "what the headline claims", "needs": "the one fact that survives"}]}
 filled["critic"] = {"waived": "user declined", "waived_category": "user-waived"}
 filled["render_selfcheck"] = {"slides": [{"n": 1, "verdict": "ok"}, {"n": 2, "verdict": "ok"}]}
-filled["blind_read"] = {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
-             for i in range(2)],
- "findings": []}
+filled["blind_read"] = _blindread_ok(2, filled)
 check(deck_gates.check(filled) == [], "a filled record is shape-clean", deck_gates.check(filled))
 
 broken = json.loads(json.dumps(filled))

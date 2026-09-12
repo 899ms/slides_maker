@@ -2527,7 +2527,7 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         if not _live:
             print("[gates] taste ledger: empty — nothing this user has taught is still ungated")
         else:
-            for _f in _tl.faults(gates.get("design_plan"), _entries):
+            for _f in _tl.faults(_tl.design_of(gates), _entries):
                 die(_f)
             print("[gates] taste ledger: {} active entry(ies), all accounted for".format(len(_live)))
 
@@ -3071,13 +3071,30 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         if _br.is_waived(_brd):
             for _f in _br.waiver_faults(_brd):
                 die("`blind_read.waived` " + _f)
-            print("[gates] blind read WAIVED ({}) — {}"
-                  .format(_brd.get("waived_category"), _brd.get("waived")))
+            # As loud as the critic's own waiver, and for the same reason: a deck that shipped
+            # without an outside look and a deck that passed one produce the same green line
+            # otherwise. The critic waiver prints NOT INDEPENDENTLY REVIEWED and tells the author
+            # to repeat it in the hand-off note; this is its twin for the render.
+            print("[gates] blind read WAIVED [{}] — NOBODY OUTSIDE LOOKED AT THE RENDER"
+                  .format(_brd.get("waived_category")))
+            print("        {}".format(_brd.get("waived")))
+            if str(_brd.get("waived_category") or "") == "no-reader":
+                print("        The deck ships UNREAD: the per-slide `ok` verdicts above are the "
+                      "author's own eye, which is the thing this check exists to not rely on.")
+            print("        Say this in the hand-off note too; a waiver the user never sees is a "
+                  "silence.")
         else:
             _bf = _br.faults(_brd, _deck_slide_count(pptx))
             if _bf and _bf[0] is _br.MISSING:
                 die("`blind_read` " + _br.MISSING)
             for _f in _bf:
+                die("`blind_read`: " + _f)
+            # The findings must be DERIVABLE from the answers. Without this, a HARD finding edited
+            # down to a `note` passes with no answer owed, and an emptied list reads as a clean
+            # deck — `render_selfcheck`'s `ok` in a new costume. Pass the WHOLE record: naming the
+            # sub-keys at a call site is how the two schemas drift.
+            for _f in _br.recompute_faults(_brd, record=gates,
+                                           slide_count=_deck_slide_count(pptx)):
                 die("`blind_read`: " + _f)
             _fs = _brd.get("findings") or []
             _hard = [f for f in _fs if isinstance(f, dict)

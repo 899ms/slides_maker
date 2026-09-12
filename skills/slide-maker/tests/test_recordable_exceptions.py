@@ -39,6 +39,27 @@ import deck_gates as dg                   # noqa: E402
 import render_deck as rd                  # noqa: E402
 import codex_delivery_gate as cg          # noqa: E402
 
+
+def _blindread_ok(n, record=None):
+    """A self-consistent blind_read block: findings COMPUTED from these answers, never typed —
+    the gate re-derives them, so a hand-written list tests the wrong thing."""
+    import sys as _s
+    from pathlib import Path as _P
+    _s.path.insert(0, str(_P(__file__).resolve().parent.parent / "scripts"))
+    import blind_read as _br
+    q = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+         for k, _ in _br.QUESTIONS}
+    answers = [dict(q, n=i + 1,
+                    elements=dict({k: 0 for k in _br.ELEMENT_KEYS}, text_blocks=2, photos=1),
+                    legible_text=["a real line of words that carries this page"])
+               for i in range(n)]
+    return {"answers": answers,
+            "findings": [dict(f, resolution="re-read the page at full size and acted on it",
+                              **({"fixed": "rebuilt that page with measured layout"}
+                                 if f["severity"] == "hard" else {}))
+                         for f in _br.compare(answers, total=n, record=record)]}
+
+
 # 🔴 HERMETIC: point the taste ledger at a path that does not exist. It is USER-LEVEL data,
 # so a test that reads the real one passes or fails by whatever the developer happens to
 # have taught the skill — the same "passes by luck" class as a hash-salted fixture.
@@ -71,9 +92,7 @@ def _filled(n=2):
     g["critic"] = {"waived": "the user declined with the deck visible",
                    "waived_category": "user-waived"}
     g["render_selfcheck"] = {"slides": [{"n": i + 1, "verdict": "ok"} for i in range(n)]}
-    g["blind_read"] = {"answers": [{"n": i + 1, "elements": {}, "claim": "seen", "about": "seen", "largest": "seen", "elements": "seen", "legible_text": [], "unreadable": [], "problems": []}
-                 for i in range(n)],
-     "findings": []}
+    g["blind_read"] = _blindread_ok(n, g)
     return g
 
 

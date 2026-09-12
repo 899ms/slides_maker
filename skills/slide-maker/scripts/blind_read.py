@@ -173,12 +173,45 @@ _TEXTY = ("text", "line", "label", "caption", "word", "title", "headline", "foot
           "descender", "sentence", "heading", "number", "字", "文字", "标题", "文案", "说明", "行")
 
 
-def classify_problem(text) -> tuple[str, str] | None:
+# 🔴 THE READER MAY NAME THE KIND, AND ON A NON-ENGLISH DECK IT MUST. The keyword sets above cover
+# English and Chinese. Measured in audit: a Dutch, German, Japanese or French description of the very
+# same defect ("de voettekst is afgesneden") matches nothing and silently becomes a judgement call —
+# so a Japanese deck would report "0 hard, 0 ask, N notes" and read as clean. The keywords stay
+# (they need nothing of the reader on the two languages this skill is used in most), and a `kind`
+# tag overrides them in any language. Severity is still decided HERE, so the gate stays a function
+# of the answers rather than of the reader's opinion.
+KINDS = {
+    "clipped":       ("READ_CLIPPED", "hard"),    # TEXT cut off, overflowing, past the frame
+    "bleed":         ("READ_CLIPPED", "ask"),     # a decorative shape running off the edge
+    "overlap":       ("READ_OVERLAP", "hard"),
+    "contradiction": ("READ_CONTRADICTION", "hard"),
+    "legibility":    ("READ_LEGIBILITY", "ask"),
+    "unkeyed":       ("READ_UNKEYED", "ask"),
+    "judgement":     (None, None),                # a taste call — recorded, never gated
+}
+
+
+def problem_text(p) -> str:
+    """A problem may be a plain string or `{"what": …, "kind": …}` — both are accepted."""
+    if isinstance(p, dict):
+        return str(p.get("what") or p.get("problem") or p.get("text") or "").strip()
+    return str(p or "").strip()
+
+
+def problem_kind(p) -> str:
+    return str(p.get("kind") or "").strip().lower() if isinstance(p, dict) else ""
+
+
+def classify_problem(text, kind="") -> tuple[str, str] | None:
     """(code, severity) for a reported problem, or None if it is a matter of judgement.
 
     Judgement calls are not defects and must not be gated as if they were: "a page about food with
     no food imagery" is exactly the note a critic should make and exactly the note a build should
     be free to overrule."""
+    k = str(kind or "").strip().lower()
+    if k in KINDS:
+        code, sev = KINDS[k]
+        return (code, sev) if code else None
     t = str(text or "").lower()
     if any(k in t for k in _CONTRA) or _SAYS_BUT.search(t):
         return ("READ_CONTRADICTION", "hard")
@@ -210,6 +243,52 @@ _SPARSE_ROLES = ("cover", "title", "section", "divider", "closer", "close", "end
                  "q&a", "qa", "agenda")
 
 
+# ── reading the RECORD, which has two schemas ────────────────────────────────────────────────────
+# 🔴 THE GATES MUST NOT SPELL THESE KEYS THEMSELVES. The shared record (`.deck-gates.json`) and the
+# Codex record (`.codex-deck-evidence.json`) are different schemas for the same facts, and every
+# time a check has reached into one of them by hand the two have drifted: `png` vs `path` (which is
+# why `material_probe.file_value` exists), and then `design_plan` vs `design` — caught in audit,
+# after this module's first version read `design_plan` on a path that has only ever had `design`,
+# which would have made the taste gate unsatisfiable on every Codex run.
+DESIGN_KEYS = ("design_plan", "design")
+# Words that mean "this deck planned NO icons". The shared record's `icon_family` is prose, not an
+# enum — real delivered decks carry "none — waived with reason. The deck's categories are carried by
+# LINE STYLE…" and "No icons used." An equality test against "none" calls both of those a plan for
+# icons and then reports the reader for not seeing any.
+_NO_ICONS = ("none", "no ", "n/a", "na", "-", "–", "—", "skip", "without",
+             "无", "没有", "不用", "未用", "不使用")
+
+
+def design_of(record) -> dict:
+    """The design block, from EITHER schema. Never raises on a malformed record."""
+    if not isinstance(record, dict):
+        return {}
+    for k in DESIGN_KEYS:
+        v = record.get(k)
+        if isinstance(v, dict):
+            return v
+    return {}
+
+
+def planned_icon_family(record) -> str:
+    """The icon family this deck PLANNED, from either schema — "" when it planned none.
+
+    shared : `design_plan.icon_family`, a prose string
+    codex  : `icons`, a list of per-slide {slide, family, asset, sha256, rasterizer}
+    """
+    fam = str(design_of(record).get("icon_family") or "").strip()
+    if not fam:
+        rows = record.get("icons") if isinstance(record, dict) else None
+        if isinstance(rows, list):
+            fams = sorted({str(r.get("family") or "").strip() for r in rows
+                           if isinstance(r, dict) and str(r.get("family") or "").strip()})
+            fam = ", ".join(fams)
+    low = fam.lower().lstrip("*_ \t")
+    if not fam or any(low.startswith(w) for w in _NO_ICONS):
+        return ""
+    return fam
+
+
 # ── the reader packet ────────────────────────────────────────────────────────────────────────────
 def render_pngs(deck_dir: Path, out_dir: str = "render") -> list[tuple[int, Path]]:
     """Slide PNGs, in order. Bookend thumbnails and contact sheets are not slides."""
@@ -238,8 +317,12 @@ def build_packet(deck_dir: Path, out_dir: str = "render") -> dict:
     every one of those primes the answer this gate exists to obtain independently."""
     pngs = render_pngs(deck_dir, out_dir)
     if not pngs:
-        raise SystemExit("[blind-read] no slide PNGs under {}/{} — render first, or claim the "
-                         "`no-render` carve.".format(deck_dir, out_dir))
+        raise SystemExit(
+            "[blind-read] no slide PNGs under {}/{} — nothing to read.\n"
+            "  Render first:  python3 scripts/render_deck.py <deck>.pptx {}   (out dir is POSITIONAL)\n"
+            "  Or, if this deck genuinely has no render, claim the carve in the record:\n"
+            '    "blind_read": {{"waived": "<why>", "waived_category": "no-render"}}'
+            .format(deck_dir, out_dir, out_dir))
     old = stale(deck_dir, pngs)
     if old:
         raise SystemExit("[blind-read] {} PNG(s) are older than the .pptx ({}…). A stale render "
@@ -268,6 +351,20 @@ def _int(v):
     return v if isinstance(v, int) and not isinstance(v, bool) else 0
 
 
+def _as_list(v):
+    """A list, whatever the reader actually sent. A bare string is ONE item, never its characters."""
+    if v is None:
+        return []
+    if isinstance(v, (str, bytes)):
+        return [v]
+    if isinstance(v, dict):
+        return [v]
+    try:
+        return list(v)
+    except TypeError:
+        return [v]
+
+
 def _role_of(rec):
     return str((rec or {}).get("role") or "").strip().lower()
 
@@ -280,11 +377,22 @@ def _sparse_ok(rec, n, total):
     return n == 1 or n == total          # no record: only the bookends get the benefit of the doubt
 
 
-def compare(answers, content=None, design_plan=None, total=None) -> list[dict]:
+def compare(answers, content=None, design_plan=None, total=None, record=None) -> list[dict]:
     """Disagreements between what the reader SAW and what the record CLAIMS.
 
     `content` / `design_plan` may be None — a deck with no record still gets every record-free
-    check (coverage, unreadable, placeholders, empty pages, on-screen repetition)."""
+    check (coverage, unreadable, placeholders, empty pages, on-screen repetition).
+
+    🔴 GATES SHOULD PASS `record=` (the whole `.deck-gates.json` / `.codex-deck-evidence.json`) and
+    let this function dig. Naming the sub-keys at the call site is how the two schemas drift apart,
+    every time, in this repo."""
+    if isinstance(record, dict):
+        # isinstance, not truthiness: a caller that passes a slide COUNT here by mistake must not
+        # take the whole gate down with an AttributeError deep inside a comparison.
+        if content is None:
+            content = record.get("content")
+        if design_plan is None:
+            design_plan = {"icon_family": planned_icon_family(record)}
     out: list[dict] = []
     rows = [r for r in (answers or []) if isinstance(r, dict)]
     by_n = {}
@@ -315,6 +423,7 @@ def compare(answers, content=None, design_plan=None, total=None) -> list[dict]:
 
     seen_about: dict[str, int] = {}
     icons_seen = photos_seen = 0
+    n_problems = n_triaged = n_kinded = 0     # triage COVERAGE — see check 10
 
     for n in sorted(by_n):
         r = by_n[n]
@@ -323,9 +432,12 @@ def compare(answers, content=None, design_plan=None, total=None) -> list[dict]:
         counts = {k: _int(el.get(k)) for k in ELEMENT_KEYS}
         icons_seen += counts["icons"]
         photos_seen += counts["photos"]
-        legible = [str(t) for t in (r.get("legible_text") or []) if str(t).strip()]
-        unread = [str(t) for t in (r.get("unreadable") or []) if str(t).strip()]
-        probs = [str(t) for t in (r.get("problems") or []) if str(t).strip()]
+        # A reader that answers `legible_text` with one long STRING instead of a list would
+        # otherwise be iterated character by character — no crash, but every later measurement
+        # (placeholder scan, content-word count) silently reads per glyph.
+        legible = [str(t) for t in _as_list(r.get("legible_text")) if str(t).strip()]
+        unread = [str(t) for t in _as_list(r.get("unreadable")) if str(t).strip()]
+        probs = [p for p in _as_list(r.get("problems")) if problem_text(p)]
         largest = str(r.get("largest") or "").strip()
         claim = str(r.get("claim") or "").strip()
         about = str(r.get("about") or "").strip()
@@ -374,11 +486,18 @@ def compare(answers, content=None, design_plan=None, total=None) -> list[dict]:
         # 6 — WHAT THE READER SAW GOING WRONG, TRIAGED. Broken → a finding to answer; judgement →
         # an observation for the critic. See classify_problem() for why the relay is not flat.
         for p in probs:
-            hit = classify_problem(p)
+            txt, kind = problem_text(p), problem_kind(p)
+            n_problems += 1
+            if kind:
+                n_kinded += 1
+            hit = classify_problem(txt, kind)
             if hit:
-                out.append(_finding(n, hit[0], hit[1], p[:200]))
+                n_triaged += 1
+                out.append(_finding(n, hit[0], hit[1], txt[:200]))
             else:
-                out.append(_finding(n, "READ_NOTE", "note", p[:200]))
+                if kind:
+                    n_triaged += 1        # a `judgement` tag IS a classification, just a quiet one
+                out.append(_finding(n, "READ_NOTE", "note", txt[:200]))
 
         # 7 — THE PAGE READS AS SOMETHING ELSE. The core comparison.
         take = str((rec or {}).get("takeaway") or "").strip()
@@ -412,7 +531,32 @@ def compare(answers, content=None, design_plan=None, total=None) -> list[dict]:
     # sees none is the measured Melbourne defect, and nothing in the pipeline could see it.
     dp = design_plan if isinstance(design_plan, dict) else {}
     fam = str(dp.get("icon_family") or "").strip().lower()
-    if by_n and fam and fam not in ("none", "n/a", "-") and icons_seen == 0:
+    # 10 — 🔴 THE TRIAGE'S OWN COVERAGE, ALWAYS RECORDED. Four times in this repo a gate has printed
+    # a number smaller than its population and nobody subtracted. The keyword sets cover English and
+    # Chinese, so on a Dutch or Japanese deck a real defect quietly becomes a judgement call and the
+    # page reads as clean.
+    #
+    # I tried to DETECT that from the outcome and could not do it honestly: Dutch "overlappen"
+    # contains "overlap" and matches by accident, so "recognised nothing" under-fires; and a real
+    # English deck measured 42% classified, so a ratio threshold over-fires. What is always true and
+    # never a guess is the COUNT — so state it, every time, and let the number be visible in the
+    # record instead of inferring a cause from it. Costs no answer; removes the silence.
+    if n_problems:
+        out.append(_finding(0, "READ_TRIAGE_COVERAGE", "note",
+                            "triage coverage: {} problem(s) reported, {} classified as a defect "
+                            "class, {} carried an explicit `kind` tag. Unclassified ones are "
+                            "recorded as judgement calls and owe no answer — which is also what a "
+                            "deck in a language the keyword sets do not cover looks like from here."
+                            .format(n_problems, n_triaged, n_kinded)))
+    # …and the one case that is unambiguous enough to demand an answer.
+    if n_problems >= 3 and n_triaged == 0 and n_kinded == 0:
+        out.append(_finding(0, "READ_TRIAGE_BLIND", "ask",
+                            "the triage recognised 0 of {} problem description(s). Either this deck "
+                            "genuinely has only taste notes, or its language is outside the keyword "
+                            "sets (English + Chinese) and the reader should tag each problem with "
+                            "`kind` ({}).".format(n_problems, " | ".join(sorted(KINDS)))))
+
+    if by_n and fam and icons_seen == 0:
         out.append(_finding(0, "READ_PLAN_UNSEEN", "hard",
                             "the design plan sets `icon_family: {}`, and the reader saw ZERO icons "
                             "across all {} slides. Either they never reached the build, or they are "
@@ -491,6 +635,63 @@ def faults(rec, slide_count=None) -> list[str]:
             out.append("`findings[{}]` ({}) is a HARD finding — it needs `fixed` naming the change "
                        "that removed it, or `refuted` saying what you checked on the rendered page "
                        "that shows the reader was wrong.".format(i, f.get("code") or "?"))
+    return out
+
+
+def recompute_faults(rec, record=None, slide_count=None, content=None, design_plan=None
+                     ) -> list[str]:
+    """🔴 The recorded findings must be DERIVABLE from the recorded answers.
+
+    WHY THIS EXISTS, and it is the difference between a record and a VERIFIABLE one. This module's
+    first version claimed "there is nothing to write `ok` into". Attacked in audit, that claim was
+    too strong: the findings are ordinary JSON, so editing one HARD finding's severity to `note`
+    made it pass with no answer owed, and deleting the findings list outright passed as "a genuinely
+    clean deck". Both are exactly the `render_selfcheck` failure in a new costume.
+
+    `compare()` is a pure function of the answers, so the gate can simply run it again and require
+    every finding it computes to be present with the SAME severity. Faking now means faking the
+    ANSWERS — inventing a plausible claim, element count, legible-text list and problem list for
+    every slide — which is the same bar as faking the critic, and nothing like deleting a line.
+
+    EXTRA findings are allowed and unflagged: noticing something the comparator did not is good
+    behaviour, and forbidding it would punish the careful. Only removal and downgrade are caught.
+    """
+    if not isinstance(rec, dict):
+        return []
+    answers = rec.get("answers")
+    if not isinstance(answers, list):
+        return []                     # `faults()` already complains about the shape; do not double
+    want = compare(answers, content, design_plan, slide_count, record=record)
+    have = rec.get("findings")
+    have = have if isinstance(have, list) else []
+    seen = {}
+    for f in have:
+        if isinstance(f, dict):
+            seen.setdefault((f.get("n"), str(f.get("code") or "")),
+                            str(f.get("severity") or "").lower())
+    out: list[str] = []
+    for w in want:
+        # Only findings that OWE AN ANSWER are required to be present. A `note` owes nothing, so
+        # demanding it back adds churn without closing a hole — and both attacks are still caught:
+        # a deleted hard/ask is absent from `seen`, and a hard edited down to `note` is present
+        # with the wrong severity. (The always-on triage-coverage line is a note, which is why this
+        # exemption exists at all.)
+        if w["severity"] == "note":
+            continue
+        key = (w["n"], w["code"])
+        if key not in seen:
+            out.append("`findings` is missing the {} the recorded answers produce on slide {}: {} "
+                       "— it was removed, or the record changed after the comparison ran. Either "
+                       "way: re-run `blind_read.py compare <deck> --answers <file> --write` and "
+                       "answer what it finds.".format(w["code"], w["n"] or "-", w["finding"][:90]))
+        elif seen[key] != w["severity"]:
+            out.append("`findings` records {} on slide {} as `{}`, but the recorded answers make it "
+                       "`{}`. Severity is computed, not chosen — a HARD finding edited down to a "
+                       "note is the one thing this gate exists to stop."
+                       .format(w["code"], w["n"] or "-", seen[key] or "(none)", w["severity"]))
+    if len(out) > 6:
+        out = out[:6] + ["…and {} more. The whole record is out of step with its own answers; "
+                         "re-run `compare --write`.".format(len(out) - 6)]
     return out
 
 
@@ -717,6 +918,110 @@ def _selftest() -> int:
                                                 "finding": "no imagery"}]}
     if faults(noted, 1):
         fails.append("a note demanded a resolution: {}".format(faults(noted, 1)))
+
+    # ── 🔴 the record must be DERIVABLE from its own answers ─────────────────────────────────────
+    clip = ans(1, claim="c", about="a", largest="title",
+               legible_text=["a real line of words here"],
+               elements={**full["elements"], "text_blocks": 2},
+               problems=["the footer text is cut off by the bottom edge"])
+    honest = {"answers": [clip],
+              "findings": [{"n": 1, "code": "READ_CLIPPED", "severity": "hard", "finding": "x",
+                            "resolution": "raised the footer", "fixed": "moved it up 0.2in"}]}
+    if recompute_faults(honest, slide_count=1):
+        fails.append("recompute: an honest record failed: {}".format(recompute_faults(honest, slide_count=1)))
+    downgraded = json.loads(json.dumps(honest))
+    downgraded["findings"][0]["severity"] = "note"
+    if not recompute_faults(downgraded, slide_count=1):
+        fails.append("recompute: a HARD finding edited down to `note` passed — the exact "
+                     "render_selfcheck failure in a new costume")
+    emptied = {"answers": [clip], "findings": []}
+    if not recompute_faults(emptied, slide_count=1):
+        fails.append("recompute: an emptied findings list passed as a clean deck")
+    plus = json.loads(json.dumps(honest))
+    plus["findings"].append({"n": 1, "code": "MY_OWN", "severity": "ask", "finding": "spotted too",
+                             "resolution": "handled it"})
+    if recompute_faults(plus, slide_count=1):
+        fails.append("recompute: a hand-added EXTRA finding was rejected — noticing more than the "
+                     "comparator is good behaviour and must not be punished")
+
+    # ── 🔴 both record schemas, one owner ────────────────────────────────────────────────────────
+    if planned_icon_family({"design_plan": {"icon_family": "tabler outline"}}) != "tabler outline":
+        fails.append("planned_icon_family: shared schema (design_plan.icon_family) not read")
+    if planned_icon_family({"design": {}, "icons": [{"slide": 2, "family": "lucide"}]}) != "lucide":
+        fails.append("planned_icon_family: CODEX schema (icons[].family) not read — READ_PLAN_UNSEEN "
+                     "would never fire on that runtime")
+    if design_of({"design": {"boldness": "bold"}}) != {"boldness": "bold"}:
+        fails.append("design_of: the Codex spelling `design` is not found")
+    for prose in ("none — waived with reason. LINE STYLE carries the categories",
+                  "No icons used.", "n/a", "无"):
+        if planned_icon_family({"design_plan": {"icon_family": prose}}):
+            fails.append("planned_icon_family: {!r} read as a PLAN for icons — real delivered decks "
+                         "carry exactly this prose and would be reported for having none"
+                         .format(prose[:40]))
+    # …and the check itself must still fire through the record path
+    seen_via_record = compare(
+        [ans(1, claim="c", about="a", legible_text=["a real line of words on the page"],
+             elements={**full["elements"], "text_blocks": 2, "photos": 1})],
+        total=1, record={"icons": [{"slide": 2, "family": "lucide"}]})
+    want(["READ_PLAN_UNSEEN"], seen_via_record, "planned icons unseen via record=")
+
+    # ── 🔴 a problem in a language the keywords do not cover ─────────────────────────────────────
+    nl = [ans(1), ans(2, claim="c", about="a", largest="t",
+                      legible_text=["een echte regel tekst hier"],
+                      elements={**full["elements"], "text_blocks": 2},
+                      problems=["de voettekst is afgesneden door de onderrand",
+                                "de paginanummers overlappen de tekst",
+                                "het bijschrift is te klein om te lezen"]), ans(3)]
+    got_nl_raw = compare(nl, total=3)
+    # 🔴 Dutch "overlappen" CONTAINS "overlap", so one of the three matches by accident — which is
+    # exactly why "recognised nothing" cannot be the language signal. What must be true regardless
+    # is that the record SAYS how much was classified.
+    want(["READ_TRIAGE_COVERAGE"], got_nl_raw,
+         "an untagged foreign-language problem list must state its triage coverage, not go quiet")
+    cov = [f for f in got_nl_raw if f["code"] == "READ_TRIAGE_COVERAGE"]
+    if cov and ("3 problem(s) reported, 1 classified" not in cov[0]["finding"]):
+        fails.append("the coverage line does not report the real numbers: {}"
+                     .format(cov[0]["finding"][:90]))
+    # the strong case — nothing recognised at all — still demands an answer
+    nl0 = [ans(1), ans(2, claim="c", about="a", largest="t",
+                       legible_text=["een echte regel tekst hier"],
+                       elements={**full["elements"], "text_blocks": 2},
+                       problems=["de voettekst is afgesneden door de onderrand",
+                                 "het bijschrift is te klein om te lezen",
+                                 "de kleuren vechten met elkaar"]), ans(3)]
+    want(["READ_TRIAGE_BLIND"], compare(nl0, total=3),
+         "zero recognised out of three must SAY so, not read as a clean deck")
+    # …and a `kind` tag classifies it in any language
+    nl_tagged = [ans(1), ans(2, claim="c", about="a", largest="t",
+                             legible_text=["een echte regel tekst hier"],
+                             elements={**full["elements"], "text_blocks": 2},
+                             problems=[{"what": "de voettekst is afgesneden", "kind": "clipped"},
+                                       {"what": "paginanummers overlappen", "kind": "overlap"},
+                                       {"what": "geen legenda", "kind": "unkeyed"}]), ans(3)]
+    got_nl = compare(nl_tagged, total=3)
+    want(["READ_CLIPPED", "READ_OVERLAP", "READ_UNKEYED"], got_nl, "kind tags classify in any language")
+    wantnt(["READ_TRIAGE_BLIND"], got_nl, "a tagged deck is not reported as untriaged")
+    if [f for f in got_nl if f["code"] == "READ_CLIPPED" and f["severity"] != "hard"]:
+        fails.append("a `clipped` kind must be HARD — severity is the gate's to decide")
+    if classify_problem("anything at all", "judgement") is not None:
+        fails.append("`judgement` must stay a note, whatever the words say")
+    # an English deck whose problems are all genuine taste calls must NOT be accused of a language miss
+    taste_only = [ans(1), ans(2, claim="c", about="a", largest="t",
+                              legible_text=["a real line of words here"],
+                              elements={**full["elements"], "text_blocks": 2},
+                              problems=["a page about food with no food imagery",
+                                        "large empty band in the lower third",
+                                        "only one of the three items has a photo"]), ans(3)]
+    want(["READ_TRIAGE_BLIND"], compare(taste_only, total=3),
+         "…and it ASKS rather than assuming — an English deck of pure taste notes answers it in "
+         "one sentence, which is cheaper than a language miss going unseen")
+
+    # ── a bare string where a list belongs must be ONE item, not its characters ──────────────────
+    if _as_list("一整段文字") != ["一整段文字"]:
+        fails.append("_as_list split a string into characters — every later measurement would "
+                     "then count per glyph")
+    if _as_list(None) != [] or _as_list(["a"]) != ["a"]:
+        fails.append("_as_list mangled a normal value")
 
     # the contract itself: a filled record with unanswered findings must NOT pass
     good = {"answers": [ans(1)], "findings": [{"n": 1, "code": "READ_CLAIM", "severity": "ask",

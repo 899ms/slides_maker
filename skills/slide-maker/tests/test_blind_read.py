@@ -156,6 +156,83 @@ for cn, want in (("页脚文字被切掉", "READ_CLIPPED"), ("页码和正文重
     check(got and got[0] == want,
           "Chinese problem {!r} triaged as {} — a CJK deck would report all-taste".format(cn, got))
 
+# ── 🔴 TWO RECORD SCHEMAS, ONE OWNER ─────────────────────────────────────────────────────────────
+# The shared record and the Codex record are different schemas for the same facts. Every time a
+# check has reached into one of them by hand they have drifted — `png` vs `path` first, then
+# `design_plan` vs `design`, which this module's own first version reproduced. The gates must pass
+# the WHOLE record and let the contract dig.
+check(br.planned_icon_family({"design_plan": {"icon_family": "tabler outline"}}) == "tabler outline",
+      "the shared spelling design_plan.icon_family is not read")
+check(br.planned_icon_family({"design": {}, "icons": [{"slide": 2, "family": "lucide"}]}) == "lucide",
+      "the CODEX spelling (icons[].family) is not read — READ_PLAN_UNSEEN could never fire there")
+check(br.design_of({"design": {"boldness": "bold"}}) == {"boldness": "bold"},
+      "design_of does not find the Codex spelling `design`")
+for prose in ("none — waived with reason. LINE STYLE carries the categories", "No icons used.",
+              "n/a", "无"):
+    check(not br.planned_icon_family({"design_plan": {"icon_family": prose}}),
+          "{!r} read as a PLAN for icons — real delivered decks carry exactly this prose and would "
+          "be reported for having none".format(prose[:34]))
+for junk in (None, 3, "a string", [1, 2]):
+    check(br.design_of(junk) == {} and br.planned_icon_family(junk) == "",
+          "a malformed record ({!r}) must return empty, not raise".format(junk))
+    try:
+        br.compare([one], total=1, record=junk)
+    except Exception as e:                                             # noqa: BLE001
+        fails.append("compare crashed on record={!r}: {}".format(junk, e))
+# the gates must not name the sub-keys themselves
+for name in ("render_deck.py", "deck_gates.py", "codex_delivery_gate.py"):
+    src = (SCRIPTS / name).read_text(encoding="utf-8")
+    check('get("design_plan")' not in src or "design_of" in src,
+          "{} still reaches for `design_plan` by hand — that key does not exist in the Codex "
+          "schema, which is the drift this contract owns".format(name))
+    check("recompute_faults" in src,
+          "{} does not re-derive the findings from the answers, so an edited severity passes there"
+          .format(name))
+
+# ── 🔴 THE RECORD MUST BE DERIVABLE FROM ITS OWN ANSWERS ─────────────────────────────────────────
+_clip = dict(one, legible_text=["a real line of words here"],
+             elements=dict({k: 0 for k in br.ELEMENT_KEYS}, text_blocks=2),
+             problems=["the footer text is cut off by the bottom edge"])
+_honest = {"answers": [_clip],
+           "findings": [{"n": 1, "code": "READ_CLIPPED", "severity": "hard", "finding": "x",
+                         "resolution": "raised the footer", "fixed": "moved it up 0.2in"}]}
+check(not br.recompute_faults(_honest, slide_count=1), "an honest record failed the recompute")
+_down = json.loads(json.dumps(_honest))
+_down["findings"][0]["severity"] = "note"
+check(br.recompute_faults(_down, slide_count=1),
+      "a HARD finding hand-edited down to `note` passed — that is render_selfcheck's `ok` in a new "
+      "costume, and it is the reason this recompute exists")
+check(br.recompute_faults({"answers": [_clip], "findings": []}, slide_count=1),
+      "an emptied findings list passed as a genuinely clean deck")
+_plus = json.loads(json.dumps(_honest))
+_plus["findings"].append({"n": 1, "code": "SPOTTED_MYSELF", "severity": "ask", "finding": "y",
+                          "resolution": "handled"})
+check(not br.recompute_faults(_plus, slide_count=1),
+      "a hand-added EXTRA finding was rejected — noticing more than the comparator is good "
+      "behaviour and must not be punished")
+check(not br.recompute_faults({"answers": "not a list"}, slide_count=1),
+      "recompute double-reports a shape problem that faults() already owns")
+
+# ── 🔴 A DECK IN A LANGUAGE THE KEYWORDS DO NOT COVER ────────────────────────────────────────────
+for cn_kind, want_code, want_sev in (("clipped", "READ_CLIPPED", "hard"),
+                                     ("bleed", "READ_CLIPPED", "ask"),
+                                     ("overlap", "READ_OVERLAP", "hard"),
+                                     ("contradiction", "READ_CONTRADICTION", "hard"),
+                                     ("legibility", "READ_LEGIBILITY", "ask"),
+                                     ("unkeyed", "READ_UNKEYED", "ask")):
+    got = br.classify_problem("een beschrijving in het Nederlands", cn_kind)
+    check(got == (want_code, want_sev),
+          "kind={!r} must classify in ANY language, got {}".format(cn_kind, got))
+check(br.classify_problem("de voettekst is afgesneden", "judgement") is None,
+      "`judgement` must stay a note whatever the words say — the reader picks the KIND, never the "
+      "severity")
+check(br.problem_text({"what": "x", "kind": "clipped"}) == "x" and br.problem_text("y") == "y",
+      "a problem must be readable in both the plain-string and the tagged-object form")
+_gui = (ROOT / "agents" / "blind-reader.md").read_text(encoding="utf-8")
+check("kind" in _gui and "judgement" in _gui and "clipped" in _gui,
+      "agents/blind-reader.md does not tell the reader about `kind`, so a non-EN/CN deck would be "
+      "read without tags and every defect would become a judgement call")
+
 # ── determinism: no hash-salted anything (this repo has shipped that bug once) ────────────────────
 runs = {json.dumps([f["code"] for f in br.compare([one], total=1)]) for _ in range(5)}
 check(len(runs) == 1, "compare() is not deterministic across runs")

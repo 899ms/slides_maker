@@ -392,6 +392,34 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   the checker rejects) · `set <deck-dir> <dotted.path> <value>` · `check <deck-dir>` (EVERY shape
   problem at once — the half `--gate-check` deliberately cannot batch). A shape pre-flight, never
   the gate: it never opens the .pptx.
+- `blind_read.py` — the BLIND READ-BACK: the one check that reads the rendered PICTURE rather than
+  the file. `packet <deck-dir>` emits PNG paths + a fixed 7-question list and **nothing else** (no
+  takeaways, no design plan, no deck title — each would prime the answer); an independent reader
+  answers it (`agents/blind-reader.md`); `compare <deck-dir> --answers <f> [--write]` COMPUTES the
+  disagreements against the record and triages them **hard** (fix + record `fixed`) / **ask**
+  (answer in writing) / **note** (a judgement call, for the critic, owes nothing). The gate
+  re-derives the findings from the recorded answers, so an edited severity or a deleted finding is
+  caught. `refuted` is a legal exit — the reader is not infallible. Carves: `no-render` ·
+  **`no-reader`** (records that the deck shipped UNREAD, which is not the same as saying it was
+  read) · `tiny-ask` · `user-waived`. It owns the two-schema key lookups (`design_of`,
+  `planned_icon_family`) so no gate spells `design_plan`/`design` or `icon_family`/`icons[]` itself.
+- `taste_ledger.py` — what THIS user has already corrected by hand, so the next deck does not
+  relearn it: `add` · `list [--binds-at …] [--format prompt]` · `retire <id> --gate <CODE>` ·
+  `check <deck-dir>`. Data lives OUTSIDE the repo (`~/.slide-maker/taste-ledger.json`, override
+  with `$SLIDE_MAKER_TASTE_LEDGER`) — a user's verbatim words are not repo content. **Self-limiting:
+  an entry is RETIRED once it earns a deterministic gate**, so the ledger only ever holds
+  taught-but-ungated rules. An empty ledger asks nothing; the gate checks each rule was CONSIDERED,
+  never that it was obeyed.
+- `audience_brief.py` — the AUDIENCE BRIEF contract (`content.audience_brief`): who is in the room
+  and the ≥3 decisions they must make, written BEFORE the research because the frame aims it.
+  Rejects a brief whose rows are "understand X" comprehension goals — that is the subject brief in
+  disguise, and it passed every shape check until this rejected it.
+- `material_probe.py` — the Step-2 material probe contract, and the one owner of the `png`/`path`
+  file-key spelling that the shared and Codex records had already drifted on.
+- `anchor_proof.py` — the THREE-anchor signature proof contract (signature · complex · data).
+- `check_tests_wired.py` — every `tests/test_*.py` must be named by a CI step, or CI fails.
+  Measured: 16 files had never run, one of them already red with 4 failing assertions and nothing
+  reporting it. Deliberate exclusions go in its ALLOWLIST with a written reason.
 - `fetch_images.py` — the SOURCED-photo pipeline: `search` (look, download nothing) · `fetch`
   (download candidates + write the `sources.json` provenance ledger) · `adopt` (mark the one you
   chose, after LOOKING) · `ledger --tokens|--credits` (the plan's evidence rows, and the credit
@@ -427,6 +455,7 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   deck — the redesign path) · `ingest.py` (ingest a NON-PDF source — `doctext`/`office` for Word/Office,
   `frames` for a video's visual track, `probe` to route — with the vision/audio fidelity floor).
 **Agents** (`agents/`): `content-planner.md` (Step-1 CONTENT deep-understand + claim ledger + per-slide message; the content checkpoint) · `slide-design.md` (the art director — Step-2 design language + per-slide form/layout/rhythm + icons + appear-animation + the Form ledger; the design checkpoint) · `critic.md` (independent critic brief — the two review lenses + JSON schema) · `arbiter.md` (high-stakes finding cross-validation + fix-verification; no-op low-stakes) · `asset-prep.md` (execution-only asset materializer — crops/equations/plates/icons after the design plan is approved; zero design decisions) · `openai.yaml` (Codex display metadata).
+- `blind-reader.md` — the BLIND READER: handed slide PNGs and a fixed question list, never the content record. Reports what a viewer SEES so a machine can compare it against what the authors CLAIM; disagreement is the useful output. Tags each problem with a `kind` when writing in a language outside the triage's English/Chinese keyword sets.
 
 **References** (`references/`, loaded on demand): `auto-delegation-quality-gates.md` (**auto mode rigor enforcement** — "decide yourself" means "you choose", not "skip steps"; checkpoint protocol, image legibility floors, component discipline, critic requirement) · `canvas-formats.md` (per-surface layout DNA for the non-16:9 formats — square/rednote/story/A4 — + the repurpose/batch pattern; pairs `scripts/formats.py`) · `design-principles.md` (the craft / the "why"; incl. the **C.R.A.P. framework** — Contrast · Repetition · Alignment · Proximity) · `design-gallery.md` (style+component catalogue mined from 21 pro decks — pick a preset, reach for the right component) · `semantic-color-contract.md` (bind a hue to a concept deck-wide) · `review-rubrics.md` (universal + per-purpose review criteria) · `design-by-purpose.md` (per-purpose look for "design a clean one") · `form-selection.md` (**content-shape → candidate FORMS** — the single design-decision map; generate a set, pick deliberately) · `schematic-diagrams.md` (**HOW to draw a labelled SCIENCE schematic** — force/ray/circuit/apparatus/vector/wave; matplotlib/domain-lib recipes for precise/label-critical ones, OR the image tool for complex/stylized/template-matched ones with labels overlaid native; + the domain-accuracy fidelity gate) · `data-viz.md` (pick the chart type; editable-native vs raster) · `image-generation.md` (when/how; topical, text-free, consistently placed; **TEXT LEGIBILITY floor — scrim required for all text-over-image**) · `icons.md` (one coherent open-licensed icon family, recolored, restrained) · `generated-template.md` (Q1's image-tool template branch) · `style-analysis.md` (mimic a style example, Q4) · `font-guidance.md` (portable fonts, tofu recovery) · `multilingual.md` (non-Latin / CJK / RTL) · `east-asian-aesthetic.md` (Chinese ink / traditional looks — paper · seal · CJK numerals · `ink_wash`/`eastern_traditional`) · `animation.md` (when/why + `anim.py`) · `large-deck-orchestration.md` (section fan-out; default is single-author) · `collaborative-mode.md` (direction→outline→draft gates) · `redesign-existing-deck.md` (diagnose-then-rebuild) · `handoff-and-iteration.md` (delivery + iterate without clobbering edits) · `design-intelligence-addendum.md` (the deck-level design gates Step 2 measures against — rhythm map · block-dependency audit · Concept→Visualization table · semantic-colour ledger · variation floors) · `troubleshooting-faq.md` (**symptom → cause → fix for every error surface** — env · build exceptions · both lints · render · images · CJK — plus the FAQ; consult on any failure, and report findings to the user in its plain-language form) · `user-taste.md` (the registry-root `taste.md` — schema · read protocol · dial-ledger promotion + consented-look write-back) · `examples/` (`build_example_generic.py`, `style_example.py`, `section_example.py`).
 

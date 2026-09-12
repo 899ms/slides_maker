@@ -127,6 +127,20 @@ def entry_faults(e) -> list[str]:
 
 
 # ── the gate contract ────────────────────────────────────────────────────────────────────────────
+def design_of(record) -> dict:
+    """The design block, from EITHER schema — ONE owner, imported, never re-spelled here.
+
+    🔴 `blind_read.design_of` knows that the shared record calls it `design_plan` and the Codex
+    record calls it `design`. This module's first version reached for `design_plan` on the Codex
+    path, where that key has never existed, which made this gate permanently unsatisfiable there —
+    the same `png`/`path` drift `material_probe.file_value` was written to end, third occurrence.
+    A second copy of the key list here would be the fourth.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from blind_read import design_of as _shared
+    return _shared(record)
+
+
 def faults(design_plan, entries) -> list[str]:
     """Did the design step READ the ledger? Empty ledger → nothing to check, always.
 

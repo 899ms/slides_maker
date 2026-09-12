@@ -336,9 +336,11 @@ def check(gates):
     else:
         for f in brd.faults(br, len(gates.get("content", {}).get("slides") or []) or None):
             problems.append("`blind_read`: " + f)
+        for f in brd.recompute_faults(br, record=gates, slide_count=len(gates.get("content", {}).get("slides") or []) or None):
+            problems.append("`blind_read`: " + f)
 
     # What this user has already corrected by hand, on earlier decks. An empty ledger asks nothing.
-    for f in tl.faults(gates.get("design_plan"), tl.load()):
+    for f in tl.faults(tl.design_of(gates), tl.load()):
         problems.append(f)
     return problems
 
@@ -461,13 +463,21 @@ def _selftest():
     g["content"]["open_ledger"] = []          # swept; the source marks nothing as unresolved
     g["critic"] = {"waived": "user declined with the deck visible", "waived_category": "user-waived"}
     g["render_selfcheck"] = {"slides": [{"n": i + 1, "verdict": "ok"} for i in range(3)]}
-    # A blind read whose findings are all answered — the shape a clean deck records.
-    _bq = ("claim", "about", "largest", "elements", "legible_text", "unreadable", "problems")
+    # A blind read whose findings are COMPUTED from its own answers and then answered. Typing the
+    # findings by hand is precisely what `recompute_faults` catches, so a hand-typed fixture would
+    # be testing the wrong thing.
+    _bq = {k: ([] if k in ("legible_text", "unreadable", "problems") else "a real observation")
+           for k, _ in brd.QUESTIONS}
+    _bans = [dict(_bq, n=i + 1,
+                  elements=dict({k: 0 for k in brd.ELEMENT_KEYS}, text_blocks=2, photos=1),
+                  legible_text=["a real line of words that carries this page"])
+             for i in range(3)]
     g["blind_read"] = {
-        "answers": [dict({k: "" for k in _bq}, n=i + 1, elements={}) for i in range(3)],
-        "findings": [{"n": 2, "code": "READ_LEGIBILITY", "severity": "ask",
-                      "finding": "the caption is dim",
-                      "resolution": "raised the caption to the 4.5:1 token"}]}
+        "answers": _bans,
+        "findings": [dict(f, resolution="re-read the page at full size and acted on it",
+                          **({"fixed": "rebuilt that page with measured layout"}
+                             if f["severity"] == "hard" else {}))
+                     for f in brd.compare(_bans, total=3, record=g)]}
     probs = check(g)
     if not probs:
         ok.append("a fully-filled record passes")
