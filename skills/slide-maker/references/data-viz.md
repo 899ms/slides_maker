@@ -47,6 +47,12 @@ The recipes render a themed PNG → place with `deckkit.picture(out, ..., fit="c
 - **Choropleth (value per region)** — one value PER COUNTRY / PER PROVINCE shaded on a real map → **`deckkit.choropleth(slide, x, y, w, h, data, mapname)`** where `mapname` = `'europe'` · `'world'` · `'china'` (provinces). Built on public-domain geometry (Natural Earth countries · DataV China provinces) via `scripts/maps.py`, projected (Albers for a region, equirectangular for the world), light→`accent` ramp with a neutral no-data fill. Key `data` by ISO-3166 alpha-2/alpha-3 or English name (countries) or province name/adcode (china); unmatched keys are reported. Title + gradient legend are NATIVE deckkit text (CJK-safe), so the map PNG stays language-agnostic. Geometry is fetched once and cached like icons (needs matplotlib — already a dep — and network on first use). Use it instead of a `dot_strip` when the geography itself carries meaning; keep `dot_strip` when a handful of named values on a common scale say it more simply.
 
 ## Chart anti-patterns (each one has shipped an ugly or misleading chart — check by name)
+- **The same number twice** — data labels on every point AND a value axis with gridlines print
+  each value in two places, so half the chart's ink carries no information (Tufte: erase
+  redundant data-ink). Pick the one the reader will actually use: direct labels when the
+  values ARE the message and there are few of them, the axis when the SHAPE is the message.
+  Gated as `CHART SAYS IT TWICE`; note that `native_chart` cannot produce the combination,
+  so this bites on hand-edited charts and on decks arriving from elsewhere.
 - **Dual-axis abuse** — two unrelated series forced onto twin axes to fake correlation; use it only
   for one genuinely paired ↑/↓ story, and colour-key each axis to its series.
 - **Too many series** — >4 lines/bars per chart turns evidence into spaghetti; split, or grey all

@@ -34,6 +34,13 @@ few seconds." But first know the *delivery mode*, because the density rules flex
   count as presented); the slide shows the *phrase*, the speaker says the
   *sentence*. **The default.** One-idea-per-slide, few-words, big "read-from-the-back" type, "more
   slides not denser," and "spoken prose lives in speaker notes" all apply *here*.
+  🔴 **The notes say what the slide does NOT.** Mayer's redundancy principle: when the
+  narration repeats text the audience is already reading, the two compete and recall drops —
+  the notes are the *next* layer (the why, the caveat, the example, the answer to the
+  question this page invites), never a prose copy of the page. Measured across 253 real
+  noted slides in this repo, at most 0.71 of a notes block is verbatim slide text and the
+  median is 0.11; `canon_probe.py` gates `NOTES ECHO SLIDE` above that, but the point is to
+  write them as a different layer, not to clear a number.
 - **Read-alone** (leave-behind, pre-read, emailed status, reference / appendix deck) — **no speaker**,
   so each slide must carry the sentence a speaker would otherwise say: **self-contained, complete
   lines and legitimately denser slides are the deliverable, not a flaw**; size type to arm's-length

@@ -87,6 +87,12 @@ Score each dimension; cite specific slides.
    without the plan, a bare "Results"/"Method"-style label on a slide that visibly argues or
    shows evidence is still flagged from the pixels. Structural slides (cover/divider/agenda/
    closing) are exempt — the closer is deliberately named "Conclusion"-style.
+   **The narrowest case is now mechanical:** `canon_probe.py` gates `CATEGORY TITLE` on a
+   bare enumerated label (`Overview` / `背景` / `Agenda`), so anything that reaches you has
+   already cleared that floor — spend the judgement on the half a gate cannot decide, which
+   is whether a title that IS a sentence actually asserts this page's point. Measured, that
+   half resists automation: overlap between a title and its planned takeaway scores the
+   SHARPEST titles lowest, because a good title re-words on purpose.
 2. **Results legibility.** This is the one people get wrong most. Can the audience
    *actually see* the evidence from a normal viewing distance — figures large
    enough, key differences pointed at, in-figure labels readable? A results slide

@@ -504,6 +504,26 @@ or critic schema validity.
 The gate also re-runs `component_audit.py` against the recorded final PPTX and build script, so a stale
 or hand-authored component JSON cannot certify the deck.
 
+It also runs `canon_probe.py` on the recorded PPTX — three rules from the presentation canon that a
+built file can DECIDE, each calibrated on 29 delivered decks / 349 slides with 0 measured false
+positives there, and each reported as a numbered `canon:` error:
+
+- **`NOTES ECHO SLIDE`** — Mayer's redundancy principle. Speaker notes that repeat the slide split
+  the audience's attention. Fires when the notes are ≥75% the same text as the slide, OR when ≥85%
+  of the NOTES is verbatim slide text — the second half matters because the real failure lifts one
+  or two lines rather than the whole page, and the symmetric measure scores that only ~0.6. Write
+  the notes as the next layer: the why, the caveat, the example, the answer the page invites.
+- **`CATEGORY TITLE`** — a bare enumerated label (`Overview` / `背景` / `Agenda`). Cover, divider,
+  section and closing roles are exempt, and `Timeline` / `Roadmap` are carved out because they name
+  the artifact ON the page, not the kind of page. The judgement half — whether a title that IS a
+  sentence actually asserts this page's point — stays with the critic, measured to resist
+  automation: overlap with the planned takeaway scores the SHARPEST titles lowest.
+- **`CHART SAYS IT TWICE`** — Tufte. Data labels on every point AND a value axis/gridlines print the
+  same number twice. `native_chart` cannot produce the combination, so this bites on hand-edited
+  charts and on decks that arrived from elsewhere.
+
+None of these is waivable by a generic `accepted` flag: each names one page and one fix.
+
 The receipt is written only after `CODEX DELIVERY GATE: PASS`; the final hand-off guard hashes the
 actual PPTX again. **Do not hand off a Codex-verified deck, expose its file link, or use an output
 citation unless `CODEX HANDOFF GUARD: PASS` is in the current run log.** If a different backend is

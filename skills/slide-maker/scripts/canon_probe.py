@@ -58,7 +58,14 @@ import os
 import re
 import sys
 
-NOTES_ECHO = 0.75        # calibrated: real max 0.53 over 253 slides with notes
+NOTES_ECHO = 0.75        # symmetric near-duplication; calibrated: real max 0.53 over 253 slides
+NOTES_LIFT = 0.85        # 🔴 the fraction of the NOTES that is verbatim slide text.
+# `ratio` alone only catches the degenerate case where the notes copy the WHOLE slide. The real
+# "reading your slides" failure lifts one or two lines, and the notes are then much SHORTER than
+# the slide — measured on a realistic page, copying one sentence scores ratio 0.59 and two
+# sentences 0.70, both UNDER the 0.75 floor, while the lifted fraction is 1.00 for all of them.
+# The measure is asymmetric because the defect is. Calibrated over the same 253 real slides:
+# max 0.71, p99 0.57, median 0.11 — so 0.85 keeps real headroom while catching a verbatim lift.
 MIN_CHARS = 40           # below this, similarity is noise on both sides
 
 # Bare category labels. Deliberately an ENUMERATION, not a heuristic: judging whether a title
@@ -73,6 +80,30 @@ CATEGORY = {
     "概述", "概览", "背景", "简介", "介绍", "目录", "提纲", "总结", "小结", "结论", "方法",
     "方法论", "现状", "分析", "讨论", "结果", "数据", "流程", "下一步",
     "致谢", "谢谢", "附录", "参考文献", "关于我们", "问题", "方案", "展望",
+    # 🔴 This skill builds decks in ANY language and the first version of this set covered 2 of the
+    # 10 it names — a Japanese or German deck simply went unchecked, which is a silent pass, not a
+    # safe default. `_norm` lowercases, so every entry here is lowercase.
+    # ja
+    "概要", "はじめに", "目次", "まとめ", "結論", "背景", "課題", "方法", "結果", "考察",
+    "今後の予定", "参考文献", "ご清聴ありがとうございました", "付録", "アジェンダ",
+    # ko
+    "개요", "소개", "목차", "요약", "결론", "배경", "방법", "결과", "논의", "참고문헌", "감사합니다",
+    # de
+    "überblick", "einführung", "einleitung", "agenda", "inhalt", "zusammenfassung", "fazit",
+    "hintergrund", "methode", "methoden", "ergebnisse", "diskussion", "ausblick", "anhang",
+    "vielen dank", "quellen",
+    # fr
+    "aperçu", "introduction", "sommaire", "ordre du jour", "résumé", "conclusion", "contexte",
+    "méthode", "méthodes", "résultats", "discussion", "annexe", "merci", "références",
+    # es
+    "resumen", "introducción", "índice", "agenda", "conclusión", "conclusiones", "contexto",
+    "método", "métodos", "resultados", "discusión", "anexo", "gracias", "referencias",
+    # it
+    "panoramica", "introduzione", "indice", "sommario", "conclusione", "contesto", "metodo",
+    "risultati", "discussione", "allegato", "grazie", "riferimenti",
+    # nl
+    "overzicht", "inleiding", "inhoud", "samenvatting", "conclusie", "achtergrond", "methode",
+    "resultaten", "discussie", "bijlage", "bedankt", "bronnen",
 }
 # 🔴 NOT in the set, deliberately: `timeline` / `roadmap` / `时间线` / `路线图` name the OBJECT on
 # the page, not the kind of page. A slide whose entire content is one timeline is legitimately
@@ -81,7 +112,10 @@ CATEGORY = {
 # waiver, a false negative costs a weak title the critic can still catch. Found by running the
 # check on the first deck outside the 349-slide calibration corpus — a layout fixture whose
 # titles are form names — which is also evidence the rule has real recall.
-_ARTIFACT_NAMES = {"timeline", "roadmap", "时间线", "路线图", "gantt", "甘特图"}
+_ARTIFACT_NAMES = {"timeline", "roadmap", "时间线", "路线图", "gantt", "甘特图",
+                   "タイムライン", "ロードマップ", "타임라인", "로드맵",
+                   "zeitplan", "zeitachse", "chronologie", "cronología", "cronologia",
+                   "tijdlijn", "calendrier"}
 SKIP_ROLES = ("cover", "closing", "thanks", "end", "section", "divider")
 
 
@@ -139,14 +173,18 @@ def check(pptx, gates=None):
         except Exception:
             pass
         if len(body) >= MIN_CHARS and len(notes) >= MIN_CHARS:
-            r = difflib.SequenceMatcher(None, body, notes).ratio()
-            if r >= NOTES_ECHO:
+            sm = difflib.SequenceMatcher(None, body, notes)
+            r = sm.ratio()
+            lift = sum(b.size for b in sm.get_matching_blocks()) / float(len(notes))
+            if r >= NOTES_ECHO or lift >= NOTES_LIFT:
+                why = ("are {:.0%} the same text as the slide".format(r) if r >= NOTES_ECHO
+                       else "are {:.0%} verbatim slide text".format(lift))
                 out.append(("NOTES ECHO SLIDE", n,
-                            "the speaker notes are {:.0%} the same text as the slide. Mayer's "
-                            "redundancy principle: narrating what the audience is already reading "
-                            "splits their attention and lowers recall — the notes should say what "
-                            "the slide does NOT. (Measured ceiling across 253 real slides: 0.53.)"
-                            .format(r)))
+                            "the speaker notes {}. Mayer's redundancy principle: narrating what "
+                            "the audience is already reading splits their attention and lowers "
+                            "recall — the notes should say what the slide does NOT. (Measured "
+                            "across 253 real slides: sameness tops out at 0.53, lifted text at "
+                            "0.71.)".format(why)))
         if roles.get(n, "") not in SKIP_ROLES:
             t = _title_of(s, canvas_h)
             if t and _norm(t.replace("\n", " ")) in CATEGORY:

@@ -99,6 +99,22 @@ with tempfile.TemporaryDirectory() as _td:
     echo = deck(td, "The build stops at the first red gate", notes=BODY)
     check("NOTES ECHO SLIDE" in codes(cp.check(echo, GATES)),
           "verbatim notes did not fire — the rule that motivated the threshold is not enforced")
+    # 🔴 THE REAL FAILURE SHAPE: notes that lift one or two LINES, not the whole slide. The
+    # symmetric ratio misses it — measured, copying one sentence of a realistic page scores 0.59
+    # and two sentences 0.70, both under the 0.75 floor — because the notes are then much SHORTER
+    # than the slide. The lifted FRACTION of the notes is 1.00 in every one of those cases. This
+    # is the shape "reading your slides" actually takes, so it is asserted explicitly.
+    LONG = ("The four gates each check one thing. " * 3
+            + "Structure, truth, consistency and coverage. "
+            + "A job that cannot be read is marked unverified, and unverified never counts as "
+            + "checked; that line holds for the whole deck.")
+    one_line = ("A job that cannot be read is marked unverified, and unverified never counts as "
+                "checked; that line holds for the whole deck.")
+    lifted = deck(td, "The build stops at the first red gate", body=LONG, notes=one_line)
+    check("NOTES ECHO SLIDE" in codes(cp.check(lifted, GATES)),
+          "notes that lift ONE line verbatim did not fire — that is what reading-your-slides looks "
+          "like, and the symmetric ratio scores it only 0.59")
+
     # …and the legitimate case that sits highest in the real corpus stays silent. 0.53 was measured
     # across 253 slides; a threshold that flags elaboration would flag every well-noted deck.
     near = deck(td, "The build stops at the first red gate",
@@ -134,6 +150,27 @@ with tempfile.TemporaryDirectory() as _td:
         check("CATEGORY TITLE" in codes(cp.check(deck(td, still_bad), GATES)),
               "{!r} stopped firing — the artifact-name carve widened into the real labels"
               .format(still_bad))
+
+    # 🔴 ANY LANGUAGE, because this skill builds decks in any language. The first version of the
+    # enumeration covered 2 of the 10 languages the skill names — a Japanese or German deck simply
+    # went unchecked, and an unchecked deck looks exactly like a clean one.
+    for lang, label in (("ja", "概要"), ("ja", "まとめ"), ("ko", "개요"), ("de", "Überblick"),
+                        ("de", "Zusammenfassung"), ("fr", "Aperçu"), ("es", "Resumen"),
+                        ("it", "Panoramica"), ("nl", "Overzicht"), ("zh", "概述"),
+                        ("en", "Overview")):
+        check("CATEGORY TITLE" in codes(cp.check(deck(td, label), GATES)),
+              "the {} label {!r} is not caught — a deck in that language passes unchecked, which "
+              "reads identically to a clean one".format(lang, label))
+    # …and the artifact-name carve holds in every language it was extended to
+    for artifact in ("タイムライン", "로드맵", "Zeitplan", "Tijdlijn", "Cronología"):
+        check("CATEGORY TITLE" not in codes(cp.check(deck(td, artifact), GATES)),
+              "{!r} was flagged — it names the artifact on the page".format(artifact))
+    # a real title in those languages must survive: widening an enumeration is how a check starts
+    # eating legitimate content
+    for good in ("Acht Wege, eine Seite zu bauen", "四つの門はそれぞれ一つを見る",
+                 "Dos días que deberían ir a otra parte", "Poort één: kopen"):
+        check("CATEGORY TITLE" not in codes(cp.check(deck(td, good), GATES)),
+              "a real non-English title {!r} was flagged as a category label".format(good))
 
     # roles that legitimately carry a label title are exempt
     covergates = {"content": {"slides": [{"slide": 1, "role": "cover", "takeaway": "x"}]}}
