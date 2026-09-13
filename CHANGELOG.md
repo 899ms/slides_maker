@@ -9,6 +9,99 @@ section is a distilled summary — the full notes live on the
 
 ## [Unreleased]
 
+## [5.4.0] — 2026-09-13
+
+**The release about instruments that were measuring the wrong thing.** Every defect in it has the
+same shape: two things that were supposed to agree did not, and one of them reported clean. A
+written-reason floor counted codepoints, so the same number meant twice the information in Chinese.
+A cover-composition check measured the text BOX, so a flush-left title in a full-width frame scored
+dead centre. A build-time footer check asked whether a card reached the footer row while the
+render-time one asked whether text ink reached the reserved band — different questions, so the
+cheap loop passed a deck the expensive loop failed. A batched gate report put its total in a header
+that `tail` removes. The Codex scaffold omitted two fields the Codex gate requires. In each case
+the rule already existed and the instrument could not see it, which is why every fix here ships
+with a detector that was verified by planting the defect back.
+
+### Added
+
+- **`deckkit.disc()` — a circle.** `box(round=True)` is a rounded rectangle at every radius, and
+  `r=d/2` is still a rounded rectangle, so the library could not draw a circle through any public
+  helper while using `MSO_SHAPE.OVAL` seventeen times internally. Measured: a deck whose signature
+  motif was a two-state ring shipped three rendered iterations with a green SQUARE in its place, with
+  no exception and no lint code. Same fill/line grammar as `box`, top-left placement, `h=` for an
+  ellipse, flattened so it carries no inherited theme shadow.
+- **`deckkit.adopt(shape)` — the public escape hatch.** python-pptx leaves the theme `<p:style>` on a
+  hand-added shape, so LibreOffice draws a drop shadow under it; the only cure was the private
+  `_flat`, which an author finds by reading the source. Every primitive deckkit lacks arrives through
+  `add_shape`, so this is contract rather than implementation.
+- **`scripts/canon_probe.py` — the part of the presentation canon that CONVERTS into a measurement.**
+  This skill cited Duarte, Minto, CRAP, Mayer, Gestalt and cognitive load, all in prose and none
+  measured. Three were made mechanical, each calibrated on 29 delivered decks / 349 slides with zero
+  measured false positives: `NOTES ECHO SLIDE` (Mayer's redundancy — notes that repeat the slide,
+  caught by symmetric sameness OR by the fraction of the notes that is verbatim slide text, because
+  the real failure lifts one or two LINES and scores only ~0.6 on the symmetric measure),
+  `CATEGORY TITLE` (a bare `Overview` / `背景` / `概要` / `Überblick`, across nine languages, with
+  `Timeline`/`Roadmap` carved out because they name the artifact rather than the kind of page), and
+  `CHART SAYS IT TWICE` (Tufte — data labels plus a value axis print the same number twice).
+  🔴 Two more were tried and REJECTED BY THE DATA, recorded so "tried and it does not work" never
+  reads as "nobody thought of it": judging a title declarative scores the SHARPEST titles lowest,
+  because a good title re-words its takeaway on purpose; and Gestalt proximity failed four separate
+  formulations because a .pptx records coordinates and no notion of which shapes belong together.
+  The transferable rule is now in SKILL.md — a principle converts into a gate when its criterion is
+  already IN the record, and stays a critic item when the gate would have to guess it.
+- **`scripts/check_reason_width.py`** — no written-reason floor may be measured with `len()`.
+
+### Changed
+
+- 🔴 **Written-reason floors counted CODEPOINTS, so every one of them was twice as strict in
+  Chinese.** Measured: `audience_brief` rejected 「敢不敢把求职材料交给它」 (11 codepoints, width 22)
+  against `MIN_TEXT = 12` while a 12-letter English phrase carrying a third as much passed.
+  `written_reason.reason_width` had shipped months earlier and TWELVE sites across six modules never
+  reached for it — two of them written the same day as a module that used it correctly. The guard is
+  the deliverable, and its FIRST pattern was not a detector: it could not cross the inner `)` of
+  `len(str(x.get("k") or "").strip())`, the form ten of the twelve sites used, and reported clean on
+  the planted bug.
+- 🔴 **The cover axis measured the text BOX, not the ink.** A full-width, left-aligned title centres
+  at exactly 50% of the canvas while every glyph hugs the left margin, so a textbook LOW-LEFT cover
+  was flagged as centred — and, symmetrically, a genuinely centred cover in an off-centre box passed.
+  It now reads `deckkit._ink_rect`, and a fallback says `from_ink: false` so "measured" and "guessed"
+  stop looking identical.
+- 🔴 **`stat_row` sized its figure block with constants while `fig_size` was a parameter**, so a 44pt
+  figure put the caption inside its own last line — at RENDER time only. The first fix used
+  `measure_text` and still collided, because it lays out at line_h_factor 1.12 while the renderer
+  uses 1.2; it now reads back `_ink_rect`, the same model the linter uses. `divider_c` added: the
+  hardcoded `#DDDDDD` is 1.13:1 on a cream ground.
+- 🔴 **Gate reports are batched, and now survive being read through `tail`.** All three paths number
+  every line `[4/9]` and repeat the total after the list, and `render_deck.py --gate-check` flushes
+  stdout before writing its failure block — under a pipe its 30 stderr lines of FAILURES came out
+  ahead of 36 stdout `[gates]` lines, so `2>&1 | tail -20` showed nothing but informational chatter
+  and NOT ONE failure. Independent checks INSIDE a gate section batch too (`_gate_step`): nine sites
+  computed every fault and threw all but the first away, which cost one round-trip per field.
+  Measured on one build: 2 faults reported per run before, 9 after, and eight hand-off runs where two
+  would have done.
+- 🔴 **The build-time footer check is now a superset of the render-time one.** They asked different
+  questions — a CARD reaching the footer chrome row versus TEXT ink reaching the reserved band — so a
+  low text block passed the cheap loop BY CONSTRUCTION and failed at render. Verified on real decks:
+  every slide the render-time check flags is flagged at build time too, firing slightly earlier on
+  purpose.
+- 🔴 **`declare_delivery` now raises when called before `prs.save`,** and an `EDITED SINCE BUILD`
+  mismatch READS THE BUILD SCRIPT's call order instead of asserting that somebody saved over the
+  file. Its docstring said "call it beside the save"; `beside` reads as either side, and called first
+  it records the previous build's hash on every run.
+- 🔴 **`GROUND REPEAT` names every near neighbour with its distance and the threshold,** instead of
+  one and a `break` — which made clearing it a search: measured, an author moved off one ground and
+  landed inside the next deck's tolerance, three rounds to learn a constraint computable on the first.
+- **The Codex `--init` scaffold shows `interview.picks` and `design.composition`,** two fields its own
+  gate REQUIRES. Measured end to end: a run that filled the scaffold was blocked by both, having had
+  no way to know they existed — the rule was bound on both runtimes and displayed on only one.
+- **`deck_gates.py check` recognises a hand-typed record** and says so beside the findings. The
+  template was always complete; nothing stopped an author from bypassing it, and a hand-typed record
+  gets the field NAMES wrong (measured: `name` for `label`).
+- **`motif_legend`'s default placement steps over occupied space** — it and `bottom_callout` both
+  anchored to the bottom of `content_band`, so two defaults collided and the build died on
+  TEXT_OVERLAP with nothing naming the cause. An explicit `y=` still wins.
+
+
 ## [5.3.0] — 2026-09-03
 
 **The release about the frame, and about declarations that erased each other.** Two themes. The
