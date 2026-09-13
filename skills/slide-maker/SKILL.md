@@ -1270,6 +1270,14 @@ The helper set, by job:
   `icon_ghost` an oversized faint watermark, `icon_card` the upper-left feature-card pattern; vary the
   treatment to fit the deck — see `references/icons.md` "Treatments"). *(These exist so you never
   hardcode a low `y` — the recurring overlap/footer bug.)*
+- **Shape primitives:** `box` (a rectangle; `round=True` rounds its corners) and **`disc`** (a
+  CIRCLE, or an ellipse with `h=`). 🔴 **`box(round=True)` cannot draw a circle at any radius** —
+  it is a rounded rectangle and `r=d/2` is still a rounded rectangle. Measured: a deck whose
+  signature motif was a two-state ring shipped three rendered iterations with a green SQUARE where
+  its device belonged, with no error and no lint code, because the library used `MSO_SHAPE.OVAL`
+  seventeen times internally and exposed it nowhere. `disc(s, x, y, d, fill=…, line=…, line_w=…)`
+  takes the same grammar as `box`, places from the TOP-LEFT like every other primitive, and is
+  flattened so it carries no inherited theme shadow.
 - **Text & blocks:** `bullet`, `callout` (auto-grows), `chip`, `modbox` (a labelled MODULE box —
   reach for it as the node when mapping architecture modules / code files / system parts joined by
   `connector`, where a plain `node` is too bare; role word + optional filename/tag), `arrow`, `table` (highlight

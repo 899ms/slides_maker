@@ -1143,6 +1143,53 @@ def _flat(shape):
         pass
     return shape
 
+def disc(slide, x, y, d, h=None, fill=None, line=None, line_w=1.0,
+         grad=None, grad_angle=90.0, grad_radial=False):
+    """A CIRCLE — or an ellipse when `h` differs from `d`. Same fill/line grammar as :func:`box`.
+
+    🔴 THIS EXISTS BECAUSE `box(round=True)` CANNOT DRAW ONE, AT ANY RADIUS. Measured, on a real
+    deck whose signature motif was a two-state ring: `box(round=True)` renders a rounded
+    rectangle, `r=d/2` renders a rounded rectangle, and the deck shipped three rendered
+    iterations with a green SQUARE where its device was supposed to be — with no error, no lint
+    finding, and nothing in the library to reach for instead. deckkit uses `MSO_SHAPE.OVAL`
+    seventeen times internally (icon tiles, badges, `concentric_rings`, node discs) and exposed
+    it nowhere, so every author who wanted a circle found the rounded-rectangle switch and
+    believed it.
+
+    Geometry follows `box`: `(x, y)` is the TOP-LEFT of the bounding square, not the centre, so a
+    disc drops into a `columns()`/`rows()` rect the same way every other primitive does. Pass
+    `h=` for an ellipse.
+
+        dk.disc(s, x, y, 2.2, line=GREEN, line_w=7)          # a ring
+        dk.disc(s, x, y, 0.3, fill=GREEN)                    # a dot
+        dk.disc(s, x, y, 1.4, fill=PANEL, line=HAIR)         # a filled disc with an edge
+
+    Like `box` it is `_flat()`ed, so it carries no inherited theme shadow — the second half of
+    the same trap: a shape added with `slide.shapes.add_shape` outside deckkit keeps the theme
+    `<p:style>` and LibreOffice draws a soft drop shadow under it (`INHERITED_EFFECT`), whose
+    only cure was the private `_flat`.
+
+    Returns the shape, so `tag_motif` / `alt_text` / `bleed_intent` compose with it.
+    """
+    if d <= 0 or (h is not None and h <= 0):
+        raise ValueError("disc: diameter must be positive, got d=%r h=%r" % (d, h))
+    s = _flat(slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(x), Inches(y),
+                                     Inches(d), Inches(h if h is not None else d)))
+    if grad is not None:
+        _grad_fill(s, grad, angle=grad_angle, radial=grad_radial)
+    elif fill is not None:
+        s.fill.solid()
+        s.fill.fore_color.rgb = fill if isinstance(fill, RGBColor) else RGBColor.from_string(str(fill).lstrip("#"))
+    else:
+        s.fill.background()
+    if line is not None:
+        s.line.color.rgb = line if isinstance(line, RGBColor) else RGBColor.from_string(str(line).lstrip("#"))
+        s.line.width = Pt(line_w)
+    else:
+        s.line.fill.background()
+    return s
+
+
 def box(slide, x, y, w, h, fill=None, line=None, line_w=1.0, round=False, corners="all", r=None,
         grad=None, grad_angle=90.0, grad_radial=False):
     """A rectangle. `round=True` rounds all four corners (radius = 8% of the shorter side,

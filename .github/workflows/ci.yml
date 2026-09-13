@@ -1024,6 +1024,20 @@ jobs:
           grep -qE "\\] (ok|SKIP)" /tmp/gnear.log || {
             echo "::error::test_ground_repeat_names_all did not run to completion"; exit 1; }
 
+      - name: deckkit can draw a circle, and box(round=True) still cannot
+        run: |
+          set -o pipefail
+          python tests/test_disc_primitive.py | tee /tmp/disc.log
+          grep -qE "\\] ok$" /tmp/disc.log || {
+            echo "::error::test_disc_primitive did not run to completion"; exit 1; }
+
+      - name: The Codex scaffold shows every field the Codex gate requires
+        run: |
+          set -o pipefail
+          python tests/test_codex_scaffold_complete.py | tee /tmp/cxscaf.log
+          grep -qE "\\] ok$" /tmp/cxscaf.log || {
+            echo "::error::test_codex_scaffold_complete did not run to completion"; exit 1; }
+
       - name: Canon rules that convert into measurements (Mayer / Knaflic / Tufte)
         run: |
           set -o pipefail

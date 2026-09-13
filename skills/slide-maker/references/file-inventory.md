@@ -436,6 +436,13 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   reported as a hand-roll (or the audit trains agents to stop using components); the direction gate
   must move the ink, not just the colourway; and a `--slides` preview must be byte-identical to the
   same page from a full render, leaving no cache behind.
+- `deckkit.disc()` — the circle primitive. `box(round=True)` is a rounded rectangle at
+  every radius, so before this the library could not draw a circle through any public
+  helper while using `MSO_SHAPE.OVAL` seventeen times internally. Same fill/line grammar as
+  `box`, top-left placement, `_flat`ed (no inherited theme shadow), `h=` for an ellipse.
+  Backed by `tests/test_disc_primitive.py`, which also asserts that `box(round=True)` is
+  still NOT an ellipse — the half that makes the new helper worth having.
+
 - `canon_probe.py` — the part of the presentation canon that CONVERTS into a measurement over the
   built deck. This skill already cites Duarte, Minto, CRAP, Mayer, Gestalt and cognitive load, all
   of it in prose and none of it measured — which by the skill's own enforcement invariant makes

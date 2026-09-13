@@ -116,6 +116,19 @@ TEMPLATE = {
         # declined — derived 11 from the ledger". What is NOT valid is silence, whose observed
         # result is a one-slide deck.
         "length": "<what the user said, or how the count was derived when they did not>",
+        # 🔴 REQUIRED on an `auto` deck, and absent from this template until it was measured:
+        # a Codex run that filled the scaffold end-to-end still hit `interview.picks is missing`
+        # as one of 43 blocking errors, having had no way to know the field existed. The gate had
+        # bound it on both runtimes for a while; only the shared path's scaffold showed it.
+        # Delete this key on a SUPERVISED deck — a run where the user answered Step 0 records
+        # nothing extra. One row per axis: angle · audience · purpose · template · language ·
+        # goal · density · length · style · builds.
+        "picks": [
+            {"axis": "angle", "source": "genre-default|stated", "value": "<which deck this is>"},
+            {"axis": "audience", "source": "delegated", "value": "<who>",
+             "basis": "<what in the REQUEST or the MATERIAL points at this>",
+             "alternative": "<what else was plausible, and the clause that lost it>"},
+        ],
     },
     "content": {
         "source_mode": "provided",
@@ -221,6 +234,19 @@ TEMPLATE = {
         "checkpoint": {"mode": "approved", "record": "<decision record>"},
     },
     "design": {
+        # 🔴 REQUIRED, and absent from this template until it was measured alongside
+        # `interview.picks`. Step 4 COMPETES the signature page: build 2-3 different
+        # compositions of it, render them in ONE pass, read them blind, pick by what you SAW.
+        # `label` — not `name`; `why` must name the labels VERBATIM, because a comparison that
+        # never says what it compared is a preference.
+        "composition": {
+            "variants": [
+                {"label": "<A — what varies>", "signature": "<from composition_probe.py>"},
+                {"label": "<B — a different SKELETON, not a recolour>", "signature": "<...>"},
+            ],
+            "picked": "<the label above that won>",
+            "why": "<what you SAW, naming each label>",
+        },
         "direction": {
             "branch": "clean",
             "artifact": "directions.html",
