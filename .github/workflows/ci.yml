@@ -1024,6 +1024,27 @@ jobs:
           grep -qE "\\] (ok|SKIP)" /tmp/gnear.log || {
             echo "::error::test_ground_repeat_names_all did not run to completion"; exit 1; }
 
+      - name: A hand-typed .deck-gates.json is recognised, and init's own output is not nagged
+        run: |
+          set -o pipefail
+          python tests/test_handwritten_record_hint.py | tee /tmp/hwrec.log
+          grep -qE "\\] ok$" /tmp/hwrec.log || {
+            echo "::error::test_handwritten_record_hint did not run to completion"; exit 1; }
+
+      - name: adopt() is public, and two helper defaults stop colliding
+        run: |
+          set -o pipefail
+          python tests/test_adopt_and_legend_default.py | tee /tmp/adopt.log
+          grep -qE "\\] ok$" /tmp/adopt.log || {
+            echo "::error::test_adopt_and_legend_default did not run to completion"; exit 1; }
+
+      - name: The build-time footer check is a superset of the render-time one
+        run: |
+          set -o pipefail
+          python tests/test_footer_band_superset.py | tee /tmp/fband.log
+          grep -qE "\\] ok$" /tmp/fband.log || {
+            echo "::error::test_footer_band_superset did not run to completion"; exit 1; }
+
       - name: deckkit can draw a circle, and box(round=True) still cannot
         run: |
           set -o pipefail

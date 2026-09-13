@@ -1190,6 +1190,25 @@ def disc(slide, x, y, d, h=None, fill=None, line=None, line_w=1.0,
     return s
 
 
+def adopt(shape):
+    """Make a shape added OUTSIDE deckkit behave like one added through it. Returns the shape.
+
+    🔴 WHY IT IS PUBLIC. python-pptx's `add_shape` leaves the theme `<p:style>` on the shape and
+    LibreOffice draws a soft drop shadow under it — `lint_layout` reports `INHERITED_EFFECT`, and
+    the only cure was `_flat`, a PRIVATE function an author has to read the source to find.
+    Measured on a real build: the author hit the finding, went looking, and called the underscore
+    name in a deck script. Every primitive deckkit lacks arrives this way, so the escape hatch is
+    part of the contract rather than an implementation detail.
+
+        from pptx.enum.shapes import MSO_SHAPE
+        sh = dk.adopt(slide.shapes.add_shape(MSO_SHAPE.CHEVRON, ...))
+
+    Prefer a real helper where one exists — `disc` for a circle, `box` for a rectangle. This is for
+    the shapes the library genuinely does not have.
+    """
+    return _flat(shape)
+
+
 def box(slide, x, y, w, h, fill=None, line=None, line_w=1.0, round=False, corners="all", r=None,
         grad=None, grad_angle=90.0, grad_radial=False):
     """A rectangle. `round=True` rounds all four corners (radius = 8% of the shorter side,
@@ -2842,6 +2861,20 @@ def motif_legend(slide, label, *, x=None, y=None, w=4.4, color=None, ink=None, s
         try:
             _bx, _by, _bw, _bh = content_band(slide)
             y = (_by + _bh) - h
+            # 🔴 `bottom_callout` anchors to the SAME line, so two helpers left on their defaults
+            #    collide — measured: a deck put a legend and a callout on one slide and the build
+            #    died on TEXT_OVERLAP, with nothing naming the cause. Step over anything already
+            #    sitting in that strip rather than drawing into it.
+            for _o in slide.shapes:
+                try:
+                    if not getattr(_o, "has_text_frame", False) or not _o.text_frame.text.strip():
+                        continue
+                    _ob = _bbox_in(_o)
+                    if _ob and _ob[1] < y + h and _ob[1] + _ob[3] > y:
+                        y = min(y, _ob[1] - h - 0.12)
+                except Exception:
+                    continue
+            y = max(_by, y)
         except Exception:
             y = sh_h - 0.62 - h
     if glyph == "rule":
@@ -9199,6 +9232,109 @@ def _graze_faults(prs):
     return out
 
 
+# The build-time twin of lint_deck's FOOTER-ZONE check. See _footer_band_faults.
+FOOTER_BAND_PAD = 0.06     # calibrated below; the render-time check adds 0.04 to a model that
+                           # already reads 0.02-0.04 lower than _ink_rect
+
+
+def _footer_band_faults(prs):
+    """Text whose INK dips into the reserved footer band — checked at BUILD time.
+
+    🔴 WHY THIS EXISTS. `lint_layout`'s other footer check asks whether a CARD reaches the actual
+    footer chrome row. `lint_deck`'s asks whether any TEXT's ink dips into the reserved BAND
+    (`h - FOOTER_BAND`). Those are different questions, so a low text block passed the cheap
+    build-time loop BY CONSTRUCTION and failed the expensive render-time one — measured on a real
+    build: five consecutive build+render rounds where the build said clean and the render said
+    FOOTER-ZONE intrusion, three of them refused by the LOOP BREAKER for nudging constants at a
+    fault the fast loop could not see.
+
+    🔴 AND THE TWO INK MODELS DISAGREE, in the direction that hurts. Measured across five strings
+    and sizes: `lint_deck._rbox` reads 0.020-0.040in LOWER than `deckkit._ink_rect`, and the
+    render-time check then adds a further 0.04 pad — so an author who designs to `_ink_rect`,
+    which this skill explicitly tells them to do, lands inside the render-time failure band with
+    room to spare. `FOOTER_BAND_PAD` closes that: this check fires slightly EARLIER than the
+    render-time one, never later, so a build-time pass implies a render-time pass on this class.
+    An estimate that is correct is not the same as one with margin.
+
+    The carves mirror lint_deck's exactly — a declared lower/bleed envelope, a small textless
+    mark, an edge-to-edge motif ground — because a check that fires where its twin stays silent
+    would be a new false positive, not a closed loop.
+    """
+    import json as _json
+    out = []
+    for n, slide in enumerate(prs.slides, 1):
+        sw, sh_in = _slide_size(slide)
+        # 🔴 The limit is NOT the fixed band. lint_deck keys it to where the footer chrome
+        # ACTUALLY sits on THIS slide — `min(footer tops) - 0.08` — so a deck whose footer rides
+        # higher has a higher limit, and a fixed `h - FOOTER_BAND` misses exactly those pages.
+        # Measured: a delivered deck where the render-time check fired on slides 3, 4 and 12 with
+        # limits of 5.10, 5.02 and 5.10; against the fixed band this check found 3 and 12 and let
+        # 4 through, so it was not yet the conservative superset it claims to be.
+        limit = sh_in - FOOTER_BAND
+        # the declared envelope, read the way lint_deck reads it: design_intent() stores the
+        # declaration in the shape NAME, so both linters see the same record
+        env = None
+        for _sh in slide.shapes:
+            _nm = getattr(_sh, "name", "") or ""
+            if _nm.startswith("deckkit-intent:"):
+                try:
+                    env = (_json.loads(_nm.split(":", 1)[1]) or {}).get("envelope")
+                except Exception:
+                    pass
+        if env in ("lower", "bleed"):
+            continue
+        # where the FOOTER CHROME actually sits, the same rule lint_deck uses: short text whose
+        # ink hugs the bottom edge. Those lines ARE the footer; they are not intruding on it.
+        # 🔴 lint_deck's OWN rule, read from its source rather than approximated: a footer is any
+        #    text whose FRAME TOP sits below `sh - 0.6`. Not the ink bottom, and with no height
+        #    limit. Two approximations of it were tried first — an absolute 0.14in from the bottom
+        #    edge and then a 4%-of-canvas version — and both missed the same real intrusion on a
+        #    10x5.62in deck, because they were tuned against a different ink model. Tuning a
+        #    threshold toward a rule you have not read is the loop this repo's LOOP BREAKER exists
+        #    to stop, and it applies to the person writing the checker too.
+        foot_tops = []
+        for _sh in slide.shapes:
+            try:
+                if not getattr(_sh, "has_text_frame", False) or not _sh.text_frame.text.strip():
+                    continue
+                _bb = _bbox_in(_sh)
+                if _bb and _bb[1] > sh_in - 0.6:
+                    foot_tops.append(_bb[1])
+            except Exception:
+                continue
+        if foot_tops:
+            limit = min(limit, min(foot_tops) - 0.08)
+        for sh in slide.shapes:
+            try:
+                if not getattr(sh, "has_text_frame", False) or not sh.text_frame.text.strip():
+                    continue
+                if _is_watermark(sh):
+                    continue
+                bb = _bbox_in(sh)
+                if bb is None:
+                    continue
+                if bb[2] >= sw * 0.92 and bb[3] >= sh_in * 0.92:
+                    continue                      # a full-bleed ground, not a content block
+                r = _ink_rect(sh, bb)
+                if not r:
+                    continue
+                ink_b = r[0][1] + r[0][3]
+                if bb[1] > sh_in - 0.6:
+                    continue                      # this line IS the footer chrome (same rule)
+                if bb[1] < limit - 0.04 and ink_b + FOOTER_BAND_PAD > limit:
+                    txt = " ".join(sh.text_frame.text.split())[:26]
+                    out.append((n, "WARN", "FOOTER BAND",
+                                "text ink reaches %.2fin and the reserved footer band starts at "
+                                "%.2fin (this fires %.2fin early ON PURPOSE — the render-time check "
+                                "measures ~0.06in lower than this one, so clearing it here is what "
+                                "makes the render-time one pass too). Anchor it with "
+                                "content_band()/bottom_callout() rather than a hand-picked y: '%s'"
+                                % (ink_b, limit, FOOTER_BAND_PAD, txt)))
+            except Exception:
+                continue
+    return out
+
+
 def _deck_level_faults(prs):
     """Faults that are invisible one slide at a time — both measured on a real delivered deck.
 
@@ -9760,6 +9896,7 @@ def lint_layout(prs, *, verbose=True, strict=False, overlap_tol=0.05, escape_tol
                     if bb[1]+bb[3] > footer_top+0.02 and bb[1] < footer_top+0.10:
                         findings.append((n, "WARN", "FOOTER",
                             f"a card/panel reaches the footer row (bottom {bb[1]+bb[3]:.2f}in vs footer at {footer_top:.2f}in)"))
+    findings.extend(_footer_band_faults(prs))
     findings.extend(_deck_level_faults(prs))
     findings.extend(_motif_faults(prs))
     findings.extend(_graze_faults(prs))

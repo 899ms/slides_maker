@@ -1270,6 +1270,10 @@ The helper set, by job:
   `icon_ghost` an oversized faint watermark, `icon_card` the upper-left feature-card pattern; vary the
   treatment to fit the deck — see `references/icons.md` "Treatments"). *(These exist so you never
   hardcode a low `y` — the recurring overlap/footer bug.)*
+- **A shape deckkit has no helper for → `dk.adopt(slide.shapes.add_shape(...))`.** python-pptx
+  leaves the theme `<p:style>` on a hand-added shape, so LibreOffice draws a soft drop shadow under
+  it and `lint_layout` reports `INHERITED_EFFECT`; the only cure used to be the PRIVATE `_flat`,
+  which an author finds by reading the source. `adopt` returns the shape, so it composes inline.
 - **Shape primitives:** `box` (a rectangle; `round=True` rounds its corners) and **`disc`** (a
   CIRCLE, or an ellipse with `h=`). 🔴 **`box(round=True)` cannot draw a circle at any radius** —
   it is a rounded rectangle and `r=d/2` is still a rounded rectangle. Measured: a deck whose

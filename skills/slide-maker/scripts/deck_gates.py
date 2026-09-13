@@ -457,6 +457,20 @@ def _cmd_check(a):
     # lives only at the top is a report that will be read truncated. `[4/9]` survives any window.
     n = len(probs)
     print("{} shape problem(s) — ALL of them, so one pass fixes the lot:\n".format(n))
+    # 🔴 A HAND-WRITTEN record gets the FIELD NAMES wrong, and the gate can tell: the template
+    # this same tool writes carries every key, and a record that came from it cannot be missing
+    # one. MEASURED, twice in one session: a run typed the composition block by hand and used
+    # `name` where the contract says `label`, then wrote the `why` clause with abbreviations the
+    # gate rejects for not naming what was compared — two extra round-trips at the most expensive
+    # moment, for a record `init` would have shaped correctly. The skill has said "write the
+    # record with deck_gates.py, not by hand" in prose the whole time; prose is not a check, so
+    # this says it where the mistake surfaces.
+    if _looks_hand_written(_load(a.deck_dir)):
+        print("🔴 This record does not look like it came from `deck_gates.py init` — several keys\n"
+              "   the template always writes are absent. A hand-typed record gets the field NAMES\n"
+              "   wrong (measured: `name` for `label`), which costs a round-trip per key. Either\n"
+              "   run `python3 scripts/deck_gates.py init <deck-dir> --slides N` into a scratch\n"
+              "   path and copy the shapes across, or check each block against it.\n")
     for i, m in enumerate(probs, 1):
         print("  [{}/{}] {}\n".format(i, n, m))
     print("{} shape problem(s) above — fix them in ONE pass, then re-run.".format(n))
@@ -667,6 +681,29 @@ def _cmd_interview(a):
         return 1
     print("all four axes answered")
     return 0
+
+
+# Keys `init` ALWAYS writes. A record missing several of them was not produced by it.
+_INIT_MARKERS = (("design_plan", "composition"), ("design_plan", "material_probe"),
+                 ("design_plan", "signature_proof"), ("content", "audience_brief"),
+                 ("content", "open_ledger"), ("content", "arc"))
+
+
+def _looks_hand_written(rec) -> bool:
+    """True when several blocks `init` always writes are absent.
+
+    Deliberately a COUNT, not a single missing key: a deck may legitimately delete one block (a
+    no-source deck writes no open ledger), and firing on that would make this an obstacle rather
+    than a hint. It is a hint either way — it prints beside the findings and never blocks.
+    """
+    if not rec:
+        return False
+    missing = 0
+    for top, key in _INIT_MARKERS:
+        blk = rec.get(top)
+        if not isinstance(blk, dict) or key not in blk:
+            missing += 1
+    return missing >= 3
 
 
 def main(argv=None):
