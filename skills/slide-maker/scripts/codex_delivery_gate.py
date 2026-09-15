@@ -1501,6 +1501,41 @@ def check_template_profile(evidence: dict[str, Any], deck_path: Path | None,
                       f'Deliberate? record {{"template_profile": {{"waived": "<why>"}}}}.')
 
 
+def check_purpose(evidence: dict[str, Any], deck_path: Path | None,
+                  errors: list[str]) -> None:
+    """The content a deck's GENRE is not finished without, checked against the built file.
+
+    Same module as `render_deck.py --gate-check`. `check_purpose.recorded_purpose` reads BOTH
+    record schemas, so a Codex run that never filled `interview` still binds through
+    `design.purpose` or the audience brief. Waive with
+    `{"purpose": {"waived": "<why this deck genuinely has none>"}}`.
+    """
+    if deck_path is None:
+        return
+    try:
+        checker = load_purpose_checker()
+    except Exception as exc:
+        print(f"  [--] PURPOSE NOT CHECKED — {exc.__class__.__name__}: {exc} (not clean)")
+        return
+    sec = evidence.get("purpose") if isinstance(evidence.get("purpose"), dict) else {}
+    extra = (evidence.get("design") or {}).get("purpose_section_terms") if isinstance(
+        evidence.get("design"), dict) else None
+    try:
+        probs, facts = checker.check(str(deck_path), checker.recorded_purpose(evidence),
+                                     extra_terms=extra, waive=(sec or {}).get("waived"))
+    except Exception as exc:
+        print(f"  [--] purpose NOT CHECKED — {exc} (not clean)")
+        return
+    print(f"  [ok] purpose: bound to {facts['purpose']!r} ({facts['label']})")
+    if facts.get("fidelity"):
+        print(f"       FIDELITY NOTE — {facts['fidelity']}")
+    if facts.get("waived"):
+        print(f"  [--] purpose sections WAIVED — {facts['waived']}")
+        return
+    for code, why in probs:
+        errors.append(f"purpose {facts['purpose']!r}: {code}: {why}")
+
+
 def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,
                         errors: list[str]) -> None:
     """The faces this deck NAMES must resolve on the machine that MEASURED it.
@@ -2158,6 +2193,17 @@ def load_template_profile_checker() -> Any:
     return module
 
 
+def load_purpose_checker() -> Any:
+    # Same one-question-one-implementation rule as load_style_checker() above.
+    path = Path(__file__).with_name("check_purpose.py")
+    spec = importlib.util.spec_from_file_location("slide_maker_check_purpose", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not load check_purpose.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_fonts_checker() -> Any:
     # Same one-question-one-implementation rule as load_style_checker() above.
     path = Path(__file__).with_name("check_fonts_resolve.py")
@@ -2482,6 +2528,7 @@ def evaluate(
         # DECLARED -> RENDERED. The line above reads the SOURCE; this reads the PIXELS, which is
         # the only place a bespoke register (no preset call to grep for) can be verified at all.
         check_template_profile(evidence, deck_path, errors)
+        check_purpose(evidence, deck_path, errors)
         check_fonts_resolve(evidence, deck_path, errors)
         check_register_pixels(evidence, deck_path, errors)
         # DECLARED -> OBEYED. The two lines above read the source and the colour;

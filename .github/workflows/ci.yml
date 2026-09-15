@@ -679,6 +679,17 @@ jobs:
           grep -qE "^[0-9]+ passed, 0 failed" /tmp/renderpar.log || {
             echo "::error::render-equivalence suite did not run to completion"; exit 1; }
 
+      # A deck's GENRE declares content it is not finished without — the formats.py/check_surface
+      # mechanism generalised from SURFACES to GENRES. design-by-purpose.md carried nine purpose
+      # recipes that NOTHING consumed, so every rule in it was advisory by construction.
+      - name: Purpose sections (a genre's required content, both record schemas)
+        run: |
+          set -o pipefail
+          python tests/test_purpose_sections.py | tee /tmp/purp.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/purp.log || {
+            echo "::error::purpose sections suite did not run to completion"; exit 1; }
+          python scripts/check_purpose.py --selftest
+
       # The clinical / evidence-synthesis forms. Each owns a rule that is wrong BY DEFAULT when
       # hand-rolled (a linear axis for ratios, a line instead of a step, a correlation instead of
       # limits of agreement) — and a wrong chart is a well-formed set of shapes, so no geometry

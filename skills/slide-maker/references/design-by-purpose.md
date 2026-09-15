@@ -313,6 +313,74 @@ tabs. Like a conference talk but built for a *shared-screen* medium, not a proje
   `references/animation.md`); explicit "ask in the chat" prompts; a visible agenda so late
   joiners orient. If it's recorded, ensure every slide reads as a still frame.
 
+## Grant proposal / funding pitch
+ERC · NWO · NIH · Horizon. The highest-stakes deck an academic makes, and the one with the most
+rigid conventions — reviewers score against *named* criteria, so a missing section is a lost point
+rather than a stylistic choice. Not a product pitch: the register is sober, and enthusiasm reads as
+a substitute for evidence.
+- **Type:** the academic default; equations only where the method genuinely turns on one.
+- **Palette:** institutional or sober; nothing that looks like a startup deck.
+- **Density:** high but structured — a reviewer is reading against a checklist, not being toured.
+- **Layout/chrome:** the scored sections visible as sections. Numbered aims.
+- **Signature:** the aims page is the deck. One sentence per aim, each falsifiable.
+- 🔴 **Declares (checked): aims · feasibility · risk.** Feasibility means *why this team, why now* —
+  pilot data, track record, access. Risk means named risks with named mitigations; "no significant
+  risks" is read as not having thought about it.
+- 🔴 **Fidelity:** preliminary data is the section most often overstated. A pilot is a pilot — say n,
+  say it is preliminary. A reviewer who catches one inflated claim discounts the rest.
+
+## Progress / guidance committee meeting
+A PhD guidance committee, a thesis advisory board, a stage-gate review. It differs from a lab
+meeting in exactly one way, and it is the way that matters: **the room has to decide something** —
+is this on track, does the thesis hold together, what should be scoped down. A committee deck with
+no ask has silently become a status update, and the meeting's most valuable output is lost.
+- **Type/palette:** the lab or institution's own template, unchanged. Nobody is being impressed.
+- **Density:** moderate-to-high; the deck is also the record of the year, read as well as presented.
+- **Layout/chrome:** status legible at a glance — what is done, what is out for review, what is
+  still on your desk. Bind one hue to each state and keep it deck-wide.
+- **Signature:** the closing slide names the decisions you want them to weigh in on.
+- 🔴 **Declares (checked): progress · plan · ask.**
+- 🔴 **Fidelity:** what is not done must READ as not done. A committee exists to advise on open
+  work, and a hypothesis promoted to a result removes the thing they are there to help with
+  (`content.open_ledger` is the artifact).
+
+## Journal club / presenting someone else's paper
+You are presenting work you did not do. Extremely common, and it carries a fidelity risk the
+universal never-invent rule does not reach: not fabrication but **misattribution** — stating their
+result more strongly than they did, or blurring their claims with your critique until the audience
+cannot tell which is which.
+- **Type/palette:** reuse the paper's own figures; let its visual language show through.
+- **Density:** moderate — the method matters, but the room has (in principle) read it.
+- **Layout/chrome:** a visible separation between *their claim* and *your reading*. A rail, a
+  colour, a consistent slot — anything, as long as it is the same on every slide.
+- **Signature:** your assessment, owned as yours.
+- 🔴 **Declares (checked): attribution · critique.**
+- 🔴 **Fidelity:** attribute on the slide that carries the result, not only on the title slide. An
+  audience that cannot tell which is which will remember your critique as the paper's conclusion.
+
+## Clinical case presentation / tumour board / M&M
+A fixed clinical narrative. The structure is not a style choice: colleagues are being asked to judge
+a decision, and they cannot do that without the information that was available when it was made.
+- **Type/palette:** the institution's template; sober. Never playful — somber veto.
+- **Density:** high on the facts, minimal on chrome. Imaging large.
+- **Layout/chrome:** one section per stage, in order; imaging shown at a size a clinician can read.
+- **Signature:** the learning point, stated plainly.
+- 🔴 **Declares (checked): presentation · investigations · management · outcome.**
+- 🔴 **Fidelity — DE-IDENTIFICATION IS LOAD-BEARING.** This is the genre PRE-FLIGHT 5's burned-in
+  identifier check exists for: name, MRN, accession, date of birth, study date, institution, read on
+  all four edges and in every overlay strip. Get a de-identified export — never crop or blur and
+  ship. Unlike everything else on this page, it is irreversible once the deck is sent.
+
+> 🔴 **These four are CHECKED, not just described.** `scripts/purposes.py` declares the sections each
+> genre is not finished without and `scripts/check_purpose.py` looks for them in the built deck, on
+> both gate paths — the same mechanism `formats.py`/`check_surface.py` already applies to surfaces.
+> The check asks whether the deck NAMES the section, not whether it does it well; judging the latter
+> is the critic's job. Terms are multilingual; extend them with `design_plan.purpose_section_terms`
+> rather than waiving, and waive in writing when a deck genuinely has none.
+>
+> **The other purposes on this page are still prose.** That is a real gap and not a claim of
+> coverage: a genre with no registry entry binds to nothing and reports NOT CHECKED.
+
 ## Preset fit by purpose — a fast sanity map (fit is a default, avoid is a flag, both overridable with a stated reason)
 | Purpose | Natural fits | Flag before using |
 |---|---|---|

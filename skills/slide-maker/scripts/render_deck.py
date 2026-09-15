@@ -1977,6 +1977,49 @@ def _template_profile_gate(pptx, gates):
         + '\n    Deliberate? record {"template_profile": {"waived": "<why this deck differs>"}}')
 
 
+def _purpose_gate(pptx, gates):
+    """A deck's PURPOSE declares content it is not finished without.
+
+    The same mechanism `_surface_gate` applies to surfaces, generalised to genres — and for the
+    same measured reason: the shape of a genre is what an author under time pressure drops. A
+    poster drops methods and limitations; a grant deck drops feasibility and risk; a committee deck
+    drops the ask and quietly becomes a status update.
+
+    `design-by-purpose.md` carried nine purpose recipes and, measured by grep, NOTHING consumed
+    them — so every per-purpose rule in that file was advisory by construction. Binds only when the
+    recorded purpose matches a registry entry; anything else is NOT CHECKED, because firing a
+    clinical case's section list at a product pitch would teach the author to ignore it.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_purpose as cpp
+    except Exception as exc:
+        print(f"  [--] PURPOSE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    sec = _section(gates, "purpose") or {}
+    extra = (_section(gates, "design_plan") or {}).get("purpose_section_terms")
+    try:
+        probs, facts = cpp.check(pptx, cpp.recorded_purpose(gates),
+                                 extra_terms=extra, waive=sec.get("waived"))
+    except Exception as exc:
+        print(f"  [--] purpose: NOT CHECKED — {exc}")
+        return
+    print("[gates] purpose: bound to {!r} ({})".format(facts["purpose"], facts["label"]))
+    if facts.get("fidelity"):
+        print("        FIDELITY NOTE — {}".format(facts["fidelity"]))
+    if facts.get("waived"):
+        print("[gates] purpose sections WAIVED — {}".format(facts["waived"]))
+        return
+    if not probs:
+        print("[gates] purpose: every declared section is named ({})".format(
+            ", ".join(facts["sections"])))
+        return
+    die("this deck's purpose declares content it is not finished without:\n    - "
+        + "\n    - ".join("{}: {}".format(c, m) for c, m in probs)
+        + '\n    Add the section, extend the terms with design_plan.purpose_section_terms, or '
+          'record {"purpose": {"waived": "<why this deck genuinely has none>"}}')
+
+
 def _surface_gate(pptx, gates):
     """A canvas format's contract, checked against the built deck instead of trusted.
 
@@ -3401,6 +3444,10 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
     with _gate_section('template_profile'):
         with _gate_step():
             _template_profile_gate(pptx, gates)
+
+    with _gate_section('purpose'):
+        with _gate_step():
+            _purpose_gate(pptx, gates)
 
     with _gate_section('fonts'):
         with _gate_step():

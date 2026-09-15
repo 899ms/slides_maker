@@ -179,6 +179,24 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   the colour") stay prose and are REPORTED as unchecked. The register is resolved by
   `check_style_applied.declared_preset`, never a substring search: a bespoke deck whose pick read
   "beat blueprint-the-preset" was checked as `blueprint` on the first try.
+- `purposes.py` + `check_purpose.py` — a deck's GENRE declares content it is not finished without,
+  checked against the built file on both gate paths. `references/design-by-purpose.md` carried nine
+  purpose recipes and, measured by grep, NOTHING consumed it — so every per-purpose rule there was
+  advisory by construction — and the four genres with the most rigid conventions were missing from
+  the list entirely: grant proposal (aims · feasibility · risk), progress/guidance committee
+  (progress · plan · ask), journal club (attribution · critique), clinical case
+  (presentation · investigations · management · outcome). Three of those four are among the most
+  common decks an academic makes. 🔴 This is the `formats.py` / `check_surface.py` mechanism
+  generalised from SURFACES to GENRES, for the same measured reason — the shape of a genre is
+  exactly what an author under time pressure drops (a poster loses methods and limitations; a
+  committee deck loses the ask and becomes a status update). Binds by matching the RECORDED purpose
+  (read from both record schemas, including the audience brief) against `binds_on` terms; no match
+  is NOT CHECKED, never a guessed genre, because firing a clinical section list at a product pitch
+  teaches the author to ignore the check. Section terms are multilingual (a 中文 deck names the same
+  section in 中文 and a monolingual list would fire on every one), extendable with
+  `design_plan.purpose_section_terms`, waivable with `{"purpose": {"waived": …}}`. It asks whether
+  the deck NAMES the section, not whether it does it well — judging that stays the critic's. Each
+  purpose also carries one fidelity rule beyond never-invent, printed every run.
 - `check_template_profile.py` — a registered template's `profile.md` must be OBEYED, not merely
   available. The registry is the one artefact in this skill with a MEMORY across decks — layout
   indices, decorative furniture that cannot be deleted from a layout and has to be covered by the

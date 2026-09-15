@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""A deck's GENRE declares content it is not finished without — and that is now checked.
+
+`design-by-purpose.md` carried nine purpose recipes and nothing consumed them: measured by grep,
+every per-purpose rule there was advisory by construction. Four genres with the most rigid
+conventions were absent from the list entirely, and three of those are among the most common decks
+an academic makes.
+
+The mechanism is `formats.py` / `check_surface.py` generalised from SURFACES to GENRES. This suite
+pins the three properties that make it worth having rather than noise:
+
+  1. it fires on the MISSING section and only on that one
+  2. it does not fire in a language it was not written in (a monolingual term list would report
+     every CJK deck as missing every section)
+  3. it binds ONLY on a recorded purpose it recognises — a genre outside the registry is NOT
+     CHECKED, never a guessed section list
+
+Run: python3 tests/test_purpose_sections.py
+"""
+from __future__ import annotations
+
+import os
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+SKILL = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(SKILL, "scripts"))
+
+import check_purpose as cp                                                # noqa: E402
+import deckkit as dk                                                      # noqa: E402
+import purposes                                                           # noqa: E402
+
+OK, BAD = [], []
+TMP = tempfile.mkdtemp(prefix="purpose-")
+
+
+def ck(cond, msg):
+    (OK if cond else BAD).append(msg)
+    print(("  ok   " if cond else "  ✗    ") + msg)
+
+
+def deck(name, lines, notes=None):
+    prs = dk.blank_deck()
+    for i, t in enumerate(lines):
+        s = dk.add_slide(prs)
+        dk.text(s, 0.6, 1.0, 8.8, 1.0, [[(t, 20, dk.DEEP, True, False)]])
+        if notes and i < len(notes) and notes[i]:
+            dk.speaker_notes(s, notes[i])
+    path = os.path.join(TMP, name)
+    prs.save(path)
+    return path
+
+
+def missing(path, purpose, **kw):
+    probs, facts = cp.check(path, purpose, **kw)
+    return facts["missing"]
+
+
+print("— it fires on the MISSING section, and only that one")
+full = deck("c_full.pptx", ["Progress since last year", "Plan for next year",
+                            "Where I want your advice"])
+ck(missing(full, "PhD guidance committee") == [],
+   "a committee deck naming progress, plan and the ask is clean")
+noask = deck("c_noask.pptx", ["Progress since last year", "Plan for next year", "Summary"])
+ck(missing(noask, "PhD guidance committee") == ["ask"],
+   "…and one without the ask reports exactly `ask` — the section whose absence turns a committee "
+   "meeting into a status update")
+thin = deck("g_thin.pptx", ["Specific aims", "Approach", "Timeline"])
+ck(sorted(missing(thin, "ERC Starting Grant")) == ["feasibility", "risk"],
+   "a grant deck with aims but no feasibility or risk reports exactly those two")
+
+print("\n— speaker notes COUNT: the deck carries the section, not necessarily at 28pt")
+innotes = deck("c_notes.pptx", ["Progress since last year", "Plan for next year", "Summary"],
+               notes=[None, None, "I would like the committee's advice on scoping chapter 5."])
+ck(missing(innotes, "PhD guidance committee") == [],
+   "an ask that lives in the speaker notes satisfies the section — excluding notes would fire on "
+   "exactly the decks that moved their sentences where this skill tells them to")
+
+print("\n— it does not fire in a language it was not written in")
+zh = deck("c_zh.pptx", ["去年的进展", "下一步计划", "想请教委员会的三个问题"])
+ck(missing(zh, "年度考核进展汇报") == [],
+   "a 中文 committee deck is clean via the 中文 terms")
+for p in purposes.PURPOSES:
+    for lbl, terms in p.required_sections:
+        ck(any(any(ord(c) > 0x2E80 for c in t) for t in terms),
+           "%s/%s carries a non-Latin synonym" % (p.name, lbl))
+
+print("\n— it binds only where it recognises the genre")
+for text, want in (("PhD guidance committee meeting", "committee"),
+                   ("ERC Starting Grant proposal", "grant"),
+                   ("journal club on a MICCAI paper", "journal_club"),
+                   ("组会读论文", "journal_club"),
+                   ("tumour board case presentation", "clinical_case"),
+                   ("a product pitch to investors", None),
+                   ("teaching a first-year lecture", None),
+                   ("", None)):
+    got = purposes.match(text)
+    ck((got.name if got else None) == want,
+       "%r binds to %s" % (text[:34] or "<empty>", (got.name if got else "NOTHING (not checked)")))
+# 🔴 NEGATIVE bindings, kept permanently. The first draft bound on a bare "committee" and a bare
+# "proposal" — which would have pulled an INVESTMENT committee, an ETHICS committee and a business
+# proposal into academic section lists, firing three or four times at the wrong deck. And because
+# `recorded_purpose` also reads the AUDIENCE BRIEF, a loose term reaches far more decks than a
+# purpose row alone. A check that fires on the wrong genre is how people learn to ignore checks.
+for text in ("investment committee readout", "ethics committee submission",
+             "steering committee update", "a business proposal for a client",
+             "project proposal review", "product pitch to investors",
+             "teaching a first-year lecture"):
+    ck(purposes.match(text) is None,
+       "%r binds to NOTHING — it is not one of these genres" % text[:40])
+
+try:
+    cp.check(full, "a product pitch to investors")
+    ck(False, "an unbound genre must RAISE rather than check nothing silently")
+except RuntimeError as exc:
+    ck("binds to the recorded purpose" in str(exc),
+       "an unbound genre raises and says so — a guessed section list would fire four times at the "
+       "wrong deck and teach the author to ignore it")
+
+print("\n— both record schemas, because a floor read from one runtime stops applying to the other")
+shared = {"interview": {"picks": [{"axis": "purpose", "value": "annual guidance committee"}]}}
+codex = {"design": {"purpose": "tumour board case presentation"}}
+brief = {"content": {"audience_brief": {"who": "the PhD guidance committee, meeting to advise"}}}
+for rec, want, why in ((shared, "committee", "shared .deck-gates.json interview.picks"),
+                       (codex, "clinical_case", "Codex evidence design.purpose"),
+                       (brief, "committee", "the audience brief, when no purpose row was filled")):
+    got = purposes.match(cp.recorded_purpose(rec))
+    ck((got.name if got else None) == want, "%s is read (-> %s)" % (why, want))
+
+print("\n— the escapes are real")
+probs, facts = cp.check(noask, "PhD guidance committee", waive="this meeting is information-only")
+ck(probs == [] and facts.get("waived"),
+   "a written waiver clears it and is carried in the facts, not swallowed")
+ck(missing(noask, "PhD guidance committee",
+           extra_terms={"ask": ["punten ter bespreking"]}) == ["ask"],
+   "an extension term that is NOT in the deck still reports missing")
+nl = deck("c_nl.pptx", ["Voortgang", "Planning", "Punten ter bespreking"])
+ck(missing(nl, "PhD guidance committee",
+           extra_terms={"progress": ["voortgang"], "plan": ["planning"],
+                        "ask": ["punten ter bespreking"]}) == [],
+   "…and a deck in a language the registry does not carry is cleared by extending the TERMS, "
+   "which keeps the check alive, rather than by waiving it away")
+
+print("\n— every registered purpose is reachable and actually checks something")
+for p in purposes.PURPOSES:
+    ck(bool(p.required_sections), "%s declares at least one section" % p.name)
+    ck(bool(p.binds_on), "%s has binding terms, so it can be reached" % p.name)
+    ck(bool(p.fidelity), "%s carries its own fidelity rule beyond never-invent" % p.name)
+
+print("\n— routing: layer 1 carries the trigger, which is what a non-Claude runtime reads")
+skill = open(os.path.join(SKILL, "SKILL.md")).read()
+ck("check_purpose.py" in skill, "SKILL.md names the checker")
+ck("purposes.py" in skill, "…and the registry")
+dbp = open(os.path.join(SKILL, "references/design-by-purpose.md")).read()
+for genre in ("Grant proposal", "guidance committee", "Journal club", "Clinical case"):
+    ck(genre in dbp, "design-by-purpose.md carries the %r recipe" % genre)
+ck("remain prose" in dbp or "still prose" in dbp,
+   "…and says plainly that the OTHER purposes are still unchecked, rather than implying coverage")
+
+print()
+print("%d passed, %d failed" % (len(OK), len(BAD)))
+raise SystemExit(1 if BAD else 0)

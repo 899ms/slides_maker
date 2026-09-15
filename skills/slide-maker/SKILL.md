@@ -274,7 +274,7 @@ every **🔴 CHECKPOINT** is a hard stop.
 | Concern | Owner |
 |---|---|
 | The craft / the "why" (contrast · hierarchy · C.R.A.P. · layout safety) | `references/design-principles.md` |
-| Per-purpose look (defense vs exec vs lecture …) | `references/design-by-purpose.md` |
+| Per-purpose look (defense vs exec vs lecture …) | `references/design-by-purpose.md` — 🔴 four genres (grant · progress/guidance committee · journal club · clinical case) also DECLARE content they are not finished without, checked on both gate paths by `scripts/purposes.py` + `scripts/check_purpose.py` |
 | Per-TOPIC look (domain → apt presets → ANTI-PICK + cliché guard — the topic-adapted pick) | `references/design-by-topic.md` — 🔴 it adapts the LOOK only; a domain that needs its own FORM vocabulary is routed on the two rows below |
 | Bespoke registers invented from a subject's world (verified library to ADAPT + grow) | `references/bespoke-registers.md` |
 | Content — deep read + per-slide message (Step 1) | `agents/content-planner.md` |
@@ -515,6 +515,21 @@ delegation and post the picks as the first FYI (see **the per-deck AUTO WAIVER**
 source-material floor still gets asked);
 when in doubt, keep it. Never assume the **topic/content**, the **style**, or **which
 template** — confirm each.
+
+🔴 **Four purposes DECLARE required content, and the deck is held to it at hand-off.** A grant
+proposal (aims · feasibility · risk), a progress/guidance committee (progress · plan · **ask**), a
+journal club (attribution · critique) and a clinical case (presentation · investigations ·
+management · outcome) each carry sections their audience is asked to judge against — so a deck
+missing one is not a lean deck, it is a deck missing something the room needs. `scripts/purposes.py`
+declares them and `scripts/check_purpose.py` looks for them in the built file (both gate paths, CJK
+terms included, extend with `design_plan.purpose_section_terms`, waive in writing). It binds ONLY
+when the recorded purpose matches a registry entry — anything else is NOT CHECKED, never a guessed
+genre. **This is the `formats.py`/`check_surface.py` mechanism generalised from SURFACES to GENRES**,
+and for the same measured reason: the shape of a genre is exactly what an author under time pressure
+drops. Each also carries one fidelity rule beyond never-invent — a pilot stated as a pilot, open work
+that reads as open, their claim separable from yours, and on a clinical case **de-identification,
+which is the one irreversible item on this page**. The other purposes in `design-by-purpose.md`
+remain prose, and a deck in one of those genres reports NOT CHECKED rather than clean.
 
 **The `review:` question is NOT asked here — it moved to Step 5, after the first clean render.**
 It used to be a Step-0 axis, which forced the user to size a review of a deck nobody had seen;
