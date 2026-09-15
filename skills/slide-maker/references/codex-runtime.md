@@ -212,6 +212,31 @@ be reconstructed post-hoc at the delivery gate.
    device that advisory is the expected result — say so in the plan rather than adding a key you
    do not want.
 
+**The deck's GENRE may declare required content — `check_purpose.py`, on both gate paths.** Four
+genres carry sections their audience is asked to judge against, so a deck missing one is not a lean
+deck: **grant** (aims · feasibility · risk) · **progress/guidance committee** (progress · plan ·
+**ask**) · **journal club** (attribution · critique) · **clinical case** (presentation ·
+investigations · management · outcome). 🔴 **This binds from the RECORD, and the Codex schema has no
+`purpose` key** — so it reads `interview.record` (the user's own answers), the `content.
+audience_brief` `who` + `decisions`, and any `design.purpose` you add. On a SUPERVISED Codex run
+`delegated_picks` records no purpose axis at all, so `interview.record` is frequently the only place
+the genre is written down: **put the user's own words there**. A genre outside the registry binds to
+nothing and reports NOT CHECKED — never a guessed section list. Extend the (multilingual) terms with
+`design.purpose_section_terms`; waive with `{"purpose": {"waived": "<why>"}}`. Each genre also
+carries one fidelity rule beyond never-invent, printed every run — and on a clinical case that rule
+is DE-IDENTIFICATION, the one irreversible item in this runbook.
+
+**Clinical / evidence-synthesis FORMS exist now — do not hand-roll a scatter.**
+`deckkit.consort_flow` (participant flow whose ARITHMETIC IS ENFORCED — the only claim in this skill
+no other gate can check, since a wrong number is a well-formed shape) · `designed_charts.forest_plot`
+(ratios on a LOG axis) · `designed_charts.km_curve` (a STEP from raw times+events, censoring ticks,
+numbers at risk) · `designed_charts.bland_altman` (bias ± 1.96·SD of the DIFFERENCES, never a
+correlation) · `designed_charts.roc_curve` (square + chance diagonal + AUC). A confusion matrix is
+`heat_matrix` with the axes labelled Predicted/Actual. Full rules and the when-each-is-wrong:
+`references/clinical-evidence-figures.md`. 🔴 Only `consort_flow` is in `FORM_GUARANTEE` (it draws on
+a slide); the four chart recipes write a PNG, so `component_audit` cannot see them and the ROUTING is
+their only backstop — which is why they are named here.
+
 **Two gates the TEMPLATE branch adds, both shared with `render_deck.py --gate-check`** (they run on
 every deck, and they are the two that most often fire on a Codex run because they need no recorded
 interview answer at all — each reads the built file itself):

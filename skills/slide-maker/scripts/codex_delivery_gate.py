@@ -1533,7 +1533,12 @@ def check_purpose(evidence: dict[str, Any], deck_path: Path | None,
         print(f"  [--] purpose sections WAIVED — {facts['waived']}")
         return
     for code, why in probs:
-        errors.append(f"purpose {facts['purpose']!r}: {code}: {why}")
+        # A weaker agent stops at the first red light unless the message carries the exact shape
+        # that clears it — the shared path says this in its die(); this one used to stop at `why`.
+        errors.append(
+            f"purpose {facts['purpose']!r}: {code}: {why} "
+            f'Add the section, extend the terms with design.purpose_section_terms, or record '
+            f'{{"purpose": {{"waived": "<why this deck genuinely has none>"}}}} in the evidence file.')
 
 
 def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,

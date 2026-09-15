@@ -122,11 +122,33 @@ print("\n— both record schemas, because a floor read from one runtime stops ap
 shared = {"interview": {"picks": [{"axis": "purpose", "value": "annual guidance committee"}]}}
 codex = {"design": {"purpose": "tumour board case presentation"}}
 brief = {"content": {"audience_brief": {"who": "the PhD guidance committee, meeting to advise"}}}
+# 🔴 The Codex schema has NO `purpose` key — checked against the real scaffold, not assumed — and
+# `delegated_picks` records a purpose axis ONLY on an auto-waiver run. So on a supervised Codex
+# deck `interview.record` (literally "the user's answers") and the audience brief's DECISIONS are
+# often the only places the genre is written down. Without them the gate would be present on that
+# runtime and unable to ever bind: a parity hole check_gate_parity structurally cannot see, because
+# both paths really do call the checker.
+cx_record = {"interview": {"mode": "answered",
+                           "record": "The user asked for an ERC Starting Grant pitch"}}
+cx_decision = {"content": {"audience_brief": {
+    "who": "the review panel", "decisions": [{"decision": "whether to fund this grant proposal"}]}}}
 for rec, want, why in ((shared, "committee", "shared .deck-gates.json interview.picks"),
                        (codex, "clinical_case", "Codex evidence design.purpose"),
-                       (brief, "committee", "the audience brief, when no purpose row was filled")):
+                       (brief, "committee", "the audience brief, when no purpose row was filled"),
+                       (cx_record, "grant", "Codex interview.record — the user's own answers"),
+                       (cx_decision, "grant", "the audience brief's DECISIONS, when `who` is vague")):
     got = purposes.match(cp.recorded_purpose(rec))
     ck((got.name if got else None) == want, "%s is read (-> %s)" % (why, want))
+# …and broadening the read surface must NOT broaden the BINDING
+vague = {"content": {"audience_brief": {"who": "the review panel",
+                                        "decisions": [{"decision": "fund it or not"}]}}}
+ck(purposes.match(cp.recorded_purpose(vague)) is None,
+   "a vague audience brief with no genre word still binds to NOTHING — reading more fields must "
+   "not turn into guessing more genres")
+scaffold_like = {"interview": {"picks": [{"axis": "angle", "value": "<which deck this is>"}]},
+                 "content": {"audience_brief": {"who": "<who is in the room>"}}}
+ck(purposes.match(cp.recorded_purpose(scaffold_like)) is None,
+   "an UNFILLED scaffold binds to nothing rather than to whatever its placeholder text resembles")
 
 print("\n— the escapes are real")
 probs, facts = cp.check(noask, "PhD guidance committee", waive="this meeting is information-only")

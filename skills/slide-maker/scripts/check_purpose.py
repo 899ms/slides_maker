@@ -84,6 +84,15 @@ def recorded_purpose(gates):
         for k in ("goal", "purpose"):
             if iv.get(k):
                 bits.append(str(iv[k]))
+        # 🔴 `interview.record` is literally "the user's answers, or the auto-carved rationale" in
+        # the Codex evidence schema, and on a SUPERVISED Codex run it is often the only place the
+        # genre is written down at all: `delegated_picks` requires a `purpose` axis, but only on a
+        # deck whose checkpoints were delivered as `auto`. Measured on the real scaffold: the Codex
+        # schema has NO `design.purpose` and no `purpose` key anywhere, so without this the gate
+        # would exist on that runtime and never be able to bind — the exact parity failure
+        # check_gate_parity cannot see, because both paths DO call the checker.
+        if iv.get("record"):
+            bits.append(str(iv["record"]))
     dp = gates.get("design_plan") or gates.get("design")
     if isinstance(dp, dict):
         for k in ("purpose", "audience"):
@@ -94,8 +103,14 @@ def recorded_purpose(gates):
             bits.append(str(gates[k]))
     ab = (gates.get("content") or {}).get("audience_brief") if isinstance(
         gates.get("content"), dict) else None
-    if isinstance(ab, dict) and ab.get("who"):
-        bits.append(str(ab["who"]))
+    if isinstance(ab, dict):
+        if ab.get("who"):
+            bits.append(str(ab["who"]))
+        # the DECISIONS name the genre when `who` does not: a grant deck's audience is "a review
+        # panel", which says nothing, while its decisions say "fund it or not".
+        for row in (ab.get("decisions") or []):
+            if isinstance(row, dict) and row.get("decision"):
+                bits.append(str(row["decision"]))
     return " ".join(b for b in bits if b)
 
 
