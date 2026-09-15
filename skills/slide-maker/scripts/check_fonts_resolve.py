@@ -253,9 +253,23 @@ def check(pptx):
             continue
         if not good:
             facts["unresolved"].append(face)
-            findings.append(("block", face,
-                             "is the THEME face every run with no explicit typeface inherits, and "
-                             "it does not resolve here"))
+            # 🔴 The shipped-default rule applies HERE TOO. It was written into the named-faces
+            # loop above and not into this one, so a deck whose THEME names a default the host
+            # lacks blocked unconditionally — and python-pptx's own default template declares
+            # Calibri, which is absent from Linux. Net effect: every deck blocked on Ubuntu,
+            # including this repo's CI fixtures. Three red runs, and it stayed invisible for two
+            # of them because the failing assertion printed no evidence about WHICH face blocked.
+            if face in DEFAULT_FACES:
+                findings.append(("note", face,
+                                 "is the THEME face inherited by runs with no explicit typeface "
+                                 "and does not resolve here — but it is one of deckkit's SHIPPED "
+                                 "DEFAULTS, an environment fact about this host rather than a "
+                                 "choice this deck made. Fix with deckkit.use_platform_fonts(), "
+                                 "or install the face."))
+            else:
+                findings.append(("block", face,
+                                 "is the THEME face every run with no explicit typeface inherits, "
+                                 "and it does not resolve here"))
     return findings, facts
 
 

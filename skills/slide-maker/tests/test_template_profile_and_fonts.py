@@ -189,21 +189,56 @@ with tempfile.TemporaryDirectory() as tmp:
     ck(sev.get("Ghost") == "note",
        "a face carrying one character is reported, not blocked (%r)" % sev.get("Ghost"))
 
-print("\n— fonts: a deck in faces that DO resolve is clean")
+print("\n— fonts: a deck whose faces ALL resolve produces no block")
+# 🔴 The environment was never the thing under test. Earlier versions of this assertion built a
+# deck in "a face that surely exists" — first a hardcoded {darwin: Helvetica, linux: DejaVu Sans},
+# then whatever `an_installed_face()` reported — and BOTH failed on CI for reasons that had
+# nothing to do with the code: the guessed face was absent, and then the discovered one still
+# blocked for a face the assertion did not name, because the message printed no evidence. Three
+# red runs bought one lesson: pin the LOGIC with a deterministic resolver, and let the
+# environment-dependent half be the honest skip below.
 with tempfile.TemporaryDirectory() as tmp:
     deck = os.path.join(tmp, "g.pptx")
-    # ASK the machine which face resolves — hardcoding "DejaVu Sans on Linux" asserts a fact
-    # about someone else's container, and failed on this repo's own Ubuntu CI for a reason
-    # unrelated to the code under test.
-    real = CF.an_installed_face()
-    if real is None:
-        print("  note: no resolvable face on this host — the positive direction is untestable "
-              "here, reported rather than passed over")
-    else:
-        _deck(deck, face=real)
+    _deck(deck, face="Any Face At All")
+    _real = CF._resolver
+    CF._resolver = lambda: (lambda f: True)          # a host where everything resolves
+    try:
         finds, _ = CF.check(deck)
-        ck([f for f in finds if f[0] == "block"] == [],
-           "a deck set in an installed face (%s) produces no blocking finding" % real)
+    finally:
+        CF._resolver = _real
+    ck(finds == [],
+       "when every face resolves, nothing is reported at all (got %r)"
+       % [(s_, f) for s_, f, _ in finds])
+
+# …and the same deck on a host where NOTHING resolves must block exactly the author-set face
+with tempfile.TemporaryDirectory() as tmp:
+    deck = os.path.join(tmp, "h.pptx")
+    _deck(deck, face="Any Face At All")
+    _real = CF._resolver
+    CF._resolver = lambda: (lambda f: False)
+    try:
+        finds, _ = CF.check(deck)
+    finally:
+        CF._resolver = _real
+    blocks = sorted(f for s_, f, _ in finds if s_ == "block")
+    ck(blocks == ["Any Face At All"],
+       "on a font-less host exactly the author-set face blocks; the theme's shipped default is a "
+       "note (blocked: %r)" % blocks)
+
+# the environment-dependent half, reported rather than asserted when the host cannot support it
+_found = CF.an_installed_face()
+if _found is None:
+    print("  note: no resolvable face on this host — the live-environment direction is untestable "
+          "here, reported rather than passed over")
+else:
+    with tempfile.TemporaryDirectory() as tmp:
+        deck = os.path.join(tmp, "live.pptx")
+        _deck(deck, face=_found)
+        finds, _ = CF.check(deck)
+        blocks = [(f, w[:70]) for s_, f, w in finds if s_ == "block"]
+        ck(blocks == [],
+           "a deck set in a face this host reports as installed (%s) produces no block — "
+           "blocked instead: %r" % (_found, blocks))
 
 print("\n— fonts: a SHIPPED DEFAULT that cannot resolve is a NOTE, not a block")
 ck(CF.DEFAULT_FACES and "Calibri" in CF.DEFAULT_FACES,
