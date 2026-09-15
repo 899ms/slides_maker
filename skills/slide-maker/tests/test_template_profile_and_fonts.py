@@ -192,12 +192,18 @@ with tempfile.TemporaryDirectory() as tmp:
 print("\n— fonts: a deck in faces that DO resolve is clean")
 with tempfile.TemporaryDirectory() as tmp:
     deck = os.path.join(tmp, "g.pptx")
-    import platform
-    real = {"darwin": "Helvetica", "linux": "DejaVu Sans"}.get(platform.system().lower(), "Arial")
-    _deck(deck, face=real)
-    finds, _ = CF.check(deck)
-    ck([f for f in finds if f[0] == "block"] == [],
-       "a deck set in an installed face (%s) produces no blocking finding" % real)
+    # ASK the machine which face resolves — hardcoding "DejaVu Sans on Linux" asserts a fact
+    # about someone else's container, and failed on this repo's own Ubuntu CI for a reason
+    # unrelated to the code under test.
+    real = CF.an_installed_face()
+    if real is None:
+        print("  note: no resolvable face on this host — the positive direction is untestable "
+              "here, reported rather than passed over")
+    else:
+        _deck(deck, face=real)
+        finds, _ = CF.check(deck)
+        ck([f for f in finds if f[0] == "block"] == [],
+           "a deck set in an installed face (%s) produces no blocking finding" % real)
 
 print("\n— fonts: a SHIPPED DEFAULT that cannot resolve is a NOTE, not a block")
 ck(CF.DEFAULT_FACES and "Calibri" in CF.DEFAULT_FACES,

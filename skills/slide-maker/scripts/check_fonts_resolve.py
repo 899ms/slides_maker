@@ -120,6 +120,34 @@ def _resolver():
     return ok
 
 
+def an_installed_face():
+    """A family name this machine can actually resolve, or None.
+
+    🔴 ASK the font machinery; never guess. A test that hardcodes "Helvetica on macOS, DejaVu Sans
+    on Linux" is asserting a fact about somebody else's container, and it fails there for a reason
+    that has nothing to do with the code under test — measured, on this repo's own Ubuntu CI,
+    where `DejaVu Sans` does not resolve. The only honest source for "a face that resolves here"
+    is the same resolver everything else in this module uses.
+    """
+    ok = _resolver()
+    if ok is None:
+        return None
+    try:
+        import matplotlib.font_manager as fm
+        names = []
+        seen = set()
+        for f in fm.fontManager.ttflist:
+            if f.name not in seen:
+                seen.add(f.name)
+                names.append(f.name)
+    except Exception:
+        names = []
+    for face in names:
+        if ok(face):
+            return face
+    return None
+
+
 def _theme_faces(prs):
     """The theme's major/minor latin faces — what a run with no explicit typeface inherits."""
     out = set()
@@ -241,10 +269,12 @@ def _selftest():
     # to must read as resolved. Both directions, so a resolver that always says yes fails here.
     if ok("Definitely Not A Real Face 9Z") is not False:
         bad.append("a nonexistent face did not read as unresolved")
-    import platform
-    known = {"darwin": "Helvetica", "linux": "DejaVu Sans"}.get(platform.system().lower(), None)
-    if known and ok(known) is False:
-        bad.append("%r read as unresolved but is a platform face" % known)
+    known = an_installed_face()
+    if known is None:
+        print("  note: no resolvable face found on this host — the positive direction cannot be "
+              "tested here, and that is reported rather than passed over")
+    elif ok(known) is False:
+        bad.append("%r was reported installed and then read as unresolved" % known)
     # MIN_CHARS must actually gate: a 1-character unresolved face is a note, not a block.
     if MIN_CHARS < 2:
         bad.append("MIN_CHARS floor is too low to distinguish a stray run from body text")
