@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import pathlib
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -54,6 +55,40 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # matters, so it is reported and never blocked. Deliberately low: a 12-character heading in the
 # wrong face is exactly the kind of thing that overflows a title band.
 MIN_CHARS = 8
+
+# 🔴 deckkit's SHIPPED DEFAULTS are reported and never blocked, however much text they carry.
+# The condition is identical either way — a substituted measurement — but the RESPONSIBILITY is
+# not, and only one of the two is a decision anybody made:
+#   * a face the author SET is a choice the machine cannot honour -> block, make them decide;
+#   * a face the LIBRARY chose is an environment fact about this host. `FONT='Calibri'` and
+#     `MONO='Consolas'` ship with neither macOS nor Linux, so blocking on them would refuse
+#     delivery of a perfectly correct deck on essentially every stock machine — including this
+#     repo's own Ubuntu CI, which is how the over-reach was caught: a suite that passes on a Mac
+#     with Office fonts installed failed 8 assertions on CI, all of them "a thing that should
+#     pass". A gate that fires on the whole population is not a floor, it is an outage.
+# The fix for this arm is one call (`deckkit.use_platform_fonts()`), and it is named in the note.
+# Read from deckkit's SOURCE, not from the live module: a build script assigns `dk.FONT = ...`
+# before this runs, so the imported globals are the deck's choice, not the library's default —
+# reading them would classify every author-set face as "shipped" and defeat the whole split.
+# The literal set is the documented fallback and a test pins the two against each other.
+_FALLBACK_DEFAULT_FACES = {"Calibri", "Consolas", "Arial", "STIX Two Math", "Cambria Math"}
+
+
+def _shipped_defaults():
+    import re as _re
+    try:
+        src = (pathlib.Path(__file__).with_name("deckkit.py")).read_text(encoding="utf8")
+    except Exception:
+        return set(_FALLBACK_DEFAULT_FACES)
+    out = set()
+    for attr in ("FONT", "MONO", "DISPLAY", "EAFONT", "EADISPLAY", "EQFONT", "EQ_MATHFONT"):
+        m = _re.search(r"^%s\s*=\s*[\"']([^\"']+)[\"']" % attr, src, _re.M)
+        if m:
+            out.add(m.group(1))
+    return out or set(_FALLBACK_DEFAULT_FACES)
+
+
+DEFAULT_FACES = _shipped_defaults()
 
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 _P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
@@ -164,7 +199,16 @@ def check(pptx):
         if good:
             continue
         facts["unresolved"].append(face)
-        sev = "block" if chars >= MIN_CHARS else "note"
+        shipped = face in DEFAULT_FACES
+        sev = "note" if (shipped or chars < MIN_CHARS) else "block"
+        if shipped:
+            findings.append(("note", face,
+                             "carries %d character(s) and does not resolve here, but it is one of "
+                             "deckkit's SHIPPED DEFAULTS rather than a face this deck chose — an "
+                             "environment fact about this host, not a defect in the deck. Every "
+                             "wrap/fit number for it was still measured in a stand-in: fix with "
+                             "deckkit.use_platform_fonts(), or install the face." % chars))
+            continue
         findings.append((sev, face,
                          "carries %d character(s) of this deck's text but does NOT resolve here — "
                          "every wrap, fit and overflow number computed for it was measured in a "

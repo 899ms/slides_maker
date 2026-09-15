@@ -199,6 +199,45 @@ with tempfile.TemporaryDirectory() as tmp:
     ck([f for f in finds if f[0] == "block"] == [],
        "a deck set in an installed face (%s) produces no blocking finding" % real)
 
+print("\n— fonts: a SHIPPED DEFAULT that cannot resolve is a NOTE, not a block")
+ck(CF.DEFAULT_FACES and "Calibri" in CF.DEFAULT_FACES,
+   "the shipped-default set is derived from deckkit's source: %s" % sorted(CF.DEFAULT_FACES))
+_real = CF._resolver
+CF._resolver = lambda: (lambda face: False)          # a host with NO fonts at all — CI's situation
+try:
+    with tempfile.TemporaryDirectory() as tmp:
+        deck = os.path.join(tmp, "nofonts.pptx")
+        _deck(deck, face="Calibri")
+        finds, _ = CF.check(deck)
+        sev = {f: s_ for s_, f, _ in finds}
+        ck(sev.get("Calibri") == "note",
+           "on a font-less host, a deck in deckkit's DEFAULT face is a note (%r) — blocking it "
+           "would refuse delivery on essentially every stock machine" % sev.get("Calibri"))
+        ck([f for f in finds if f[0] == "block"] == [],
+           "…and nothing in that deck blocks")
+        deck2 = os.path.join(tmp, "chosen.pptx")
+        _deck(deck2, face="Some Deliberately Chosen Face")
+        finds2, _ = CF.check(deck2)
+        ck(any(s_ == "block" and f == "Some Deliberately Chosen Face" for s_, f, _ in finds2),
+           "…while a face the author CHOSE still blocks on the same host — the split is "
+           "responsibility, not severity of the condition")
+finally:
+    CF._resolver = _real
+
+print("\n— fonts: the derived default set matches deckkit's live module defaults")
+import importlib, subprocess, json as _json
+_out = subprocess.run([sys.executable, "-c",
+    "import sys;sys.path.insert(0,'scripts');import deckkit,json;"
+    "print(json.dumps([deckkit.FONT, deckkit.MONO, deckkit.EQFONT]))"],
+    capture_output=True, text=True, cwd=os.path.dirname(HERE))
+if _out.returncode == 0:
+    live = set(_json.loads(_out.stdout))
+    ck(live <= CF.DEFAULT_FACES,
+       "every live deckkit default (%s) is in the derived set — if deckkit re-themes, this fails "
+       "rather than silently blocking the new default" % sorted(live))
+else:
+    ck(False, "could not read deckkit's live defaults: %s" % _out.stderr[-120:])
+
 print("\n— fonts: `ea` and `cs` typefaces are counted, not only `latin`")
 ck("ea" in open(os.path.join(os.path.dirname(HERE), "scripts",
                              "check_fonts_resolve.py")).read(),
