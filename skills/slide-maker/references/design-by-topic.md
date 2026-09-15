@@ -71,6 +71,29 @@ low-contrast / high-texture spine under a data-dense deck).
 | Legal / policy / government | `editorial_report` · `swiss` · `consulting` | `synthwave` / `memphis` — undermines authority |
 | Chinese cultural / literary / heritage | `ink_wash` · `eastern_traditional` · `museum_memorial` | `dark_tech` / `glassmorphism` — screen-glossy, off the register 留白 wants |
 
+## 🔴 This table adapts the LOOK. Some domains also need their own FORM vocabulary.
+
+Every row above is an *aesthetic* row — which preset, which anti-pick. That is deliberate and it is
+also a real limit worth naming, because it is easy to read a matched preset as "the deck now fits
+the domain". It does not: a clinical deck dressed in `editorial_paper` is still drawing business
+charts unless someone changes the forms.
+
+Measured before the clinical components existed: `design-by-topic` had listed **Medicine /
+biotech / clinical** as a first-class domain for a long time, while a grep across `references/`,
+`scripts/` and `agents/` returned zero hits for kaplan-meier, forest plot, CONSORT, PRISMA,
+Bland-Altman and ROC. The skill knew how to STYLE a clinical deck and could not DRAW one.
+
+| domain | its own FORM vocabulary lives in |
+|---|---|
+| Medicine / biotech / clinical · any trial, meta-analysis, diagnostic-accuracy or method-comparison deck | `references/clinical-evidence-figures.md` |
+| Physics / chemistry / engineering — mechanisms and apparatus | `references/schematic-diagrams.md` |
+| Everything else | `references/form-selection.md` + `references/data-viz.md` |
+
+**When a domain you are working in has no row here, that is information, not permission.** Say so
+in the design plan rather than reaching for the nearest business chart: a bar of per-subject means
+and a correlation between two measurement methods are both well-formed pictures and both the wrong
+answer, and no gate in this skill can see either.
+
 ## Guardrail VETOES (a style must never fight the content)
 
 - **SOMBER / SENSITIVE** — death, disease, disaster, layoffs, war, safety-critical medicine forbid

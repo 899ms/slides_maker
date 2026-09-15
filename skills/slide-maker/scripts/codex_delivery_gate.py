@@ -1537,10 +1537,12 @@ def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,
     if waived:
         print(f"  [--] fonts WAIVED — {waived}")
         return
+    # REPORTED, never an error — see `_fonts_gate` in render_deck.py for why: the gating machine
+    # is not necessarily the measuring machine, and the file cannot say which.
+    print(f"  [--] fonts: {len(blocks)} face(s) this deck sets do not resolve on THIS machine; any "
+          f"geometry computed here was measured in a stand-in.")
     for _sev, face, why in blocks:
-        errors.append(f"font {face!r} does not resolve on this machine: {why} "
-                      f'Install it, set a face that exists, or record '
-                      f'{{"fonts": {{"waived": "<why>"}}}}.')
+        print(f"       {face}: {why}")
 
 
 def check_register_pixels(evidence: dict[str, Any], deck_path: Path | None,

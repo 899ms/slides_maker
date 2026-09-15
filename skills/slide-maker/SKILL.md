@@ -275,7 +275,7 @@ every **🔴 CHECKPOINT** is a hard stop.
 |---|---|
 | The craft / the "why" (contrast · hierarchy · C.R.A.P. · layout safety) | `references/design-principles.md` |
 | Per-purpose look (defense vs exec vs lecture …) | `references/design-by-purpose.md` |
-| Per-TOPIC look (domain → apt presets → ANTI-PICK + cliché guard — the topic-adapted pick) | `references/design-by-topic.md` |
+| Per-TOPIC look (domain → apt presets → ANTI-PICK + cliché guard — the topic-adapted pick) | `references/design-by-topic.md` — 🔴 it adapts the LOOK only; a domain that needs its own FORM vocabulary is routed on the two rows below |
 | Bespoke registers invented from a subject's world (verified library to ADAPT + grow) | `references/bespoke-registers.md` |
 | Content — deep read + per-slide message (Step 1) | `agents/content-planner.md` |
 | Input formats — Word/Office · image · video (ingest routes + the vision/audio fidelity floor) | `agents/content-planner.md` §1 (Input formats) · `scripts/ingest.py` |
@@ -288,6 +288,7 @@ every **🔴 CHECKPOINT** is a hard stop.
 | Charts (which type · editable-native vs raster) | `references/data-viz.md` |
 | Choropleth map (value per country / province — europe · world · china) | `deckkit.choropleth()` · `scripts/maps.py` · `references/data-viz.md` |
 | Science schematics (force / ray / circuit / apparatus …) | `references/schematic-diagrams.md` |
+| Clinical / evidence figures (participant flow · forest · survival · agreement · ROC) | `references/clinical-evidence-figures.md` |
 | Generated + sourced imagery (when/how · text-free · topical · REFERENT RULE + source tokens) | `references/image-generation.md` |
 | Generated-template branch (hero + shallow bg + frosted blocks) | `references/generated-template.md` |
 | Icons (one family · recolored · treatments) | `references/icons.md` |
@@ -1487,6 +1488,22 @@ The helper set, by job:
   ordinal), `concept_equation` (ZINE=MAGAZINE word-equation), `pull_quote`/`standfirst`, `cta_button`/
   `cta_pair`, `status_stamp`/`corner_tab`, `spec_card`, `year_badge`, `gradient_rule` (2-stop brand rule),
   `catalogue_frame` (double-line specimen frame — museum/eastern presets).
+- **Clinical / evidence-synthesis forms — reach for these before hand-rolling a scatter** (full
+  rules + when each is the wrong answer: `references/clinical-evidence-figures.md`):
+  **`deckkit.consort_flow`** (participant flow whose ARITHMETIC IS ENFORCED — every stage's count
+  minus its documented exclusions must equal the next stage's, or it raises with the sum spelled
+  out; no other gate in this skill can see a wrong number, because a wrong number is a perfectly
+  well-formed shape) · **`designed_charts.forest_plot`** (effect + CI per row against a null line;
+  ratios forced onto a LOG axis with plain-number ticks, since a linear axis draws a symmetric CI
+  lopsided — and it is the general form for *the same comparison measured several times*, so it
+  serves subgroup effects, regression coefficients and per-segment A/B lifts too) ·
+  **`designed_charts.km_curve`** (survival as a STEP from raw `(times, events)`, censoring ticks,
+  numbers-at-risk table) · **`designed_charts.bland_altman`** (method agreement as bias ± 1.96·SD
+  of the DIFFERENCES — two methods can correlate almost perfectly and still disagree by a fatal
+  constant, so a correlation is the classic wrong answer) · **`designed_charts.roc_curve`**
+  (square canvas + chance diagonal + AUC in the legend). A **confusion matrix** needs no new
+  component — it is `heat_matrix`, with the axes labelled *Predicted*/*Actual* and the caption
+  saying whether the cells are counts or row-normalised.
 - **Sample data / overlap:** **`designed_charts.distribution`** (SPREAD, not just the average —
   `groups=[(label,[v,…]),…]`; `kind="auto"` gives a box plot at n≥5, mean ± error at n=3–4, and
   **refuses n<3**; every observation overlaid; `err="sd"|"se"|"ci95"` is printed ON the figure).

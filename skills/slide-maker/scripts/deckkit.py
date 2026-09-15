@@ -7318,6 +7318,91 @@ def step_list(slide, x, y, w, items, *, orientation="vertical", accent=None, ink
     return cy
 
 
+def consort_flow(slide, x, y, w, h, stages, *, accent=None, ink=None, mute=None, fill=None,
+                 excl_fill=None, unit="", font=None, box_w=0.56, size=12, label_size=10):
+    """A PARTICIPANT-FLOW diagram (CONSORT / PRISMA / any funnel with documented losses) whose
+    ARITHMETIC IS ENFORCED.
+
+    ``stages = [(label, n, [(reason, k), ...]), ...]`` — a main box per stage carrying its count,
+    with the exclusions between it and the next stage branching to the right.
+
+    🔴 THE POINT IS THE CHECK, not the boxes. Every stage's count minus its documented exclusions
+    must equal the next stage's count, and this RAISES with the arithmetic spelled out when it
+    does not. A flow diagram whose numbers do not balance is the commonest error in trial and
+    review reporting and the first thing a referee adds up by hand — and it is invisible to every
+    other gate in this skill, because a wrong number is a perfectly well-formed shape. Nothing
+    else here can check a claim of this kind: the lint measures geometry, the critic reads pixels,
+    and both would pass a diagram that loses fourteen patients between two boxes.
+
+    Native shapes, so the counts stay editable when a reviewer asks for one more exclusion.
+    """
+    acc = accent if accent is not None else MAGENTA
+    ic = ink if ink is not None else DEEP
+    mc = mute if mute is not None else MUTE
+    fl = fill if fill is not None else LIGHT
+    ex = excl_fill if excl_fill is not None else TINT
+    if not stages:
+        raise ValueError("consort_flow needs at least one stage")
+
+    norm = []
+    for st in stages:
+        if len(st) < 2:
+            raise ValueError("each stage is (label, n[, [(reason, k), ...]]); got %r" % (st,))
+        label, n = str(st[0]), int(st[1])
+        excl = list(st[2]) if len(st) > 2 and st[2] else []
+        excl = [(str(r), int(k)) for r, k in excl]
+        if n < 0 or any(k < 0 for _r, k in excl):
+            raise ValueError("consort_flow: counts cannot be negative (stage %r)" % label)
+        norm.append((label, n, excl))
+
+    for i in range(len(norm) - 1):
+        label, n, excl = norm[i]
+        nxt_label, nxt_n, _e = norm[i + 1]
+        lost = sum(k for _r, k in excl)
+        if n - lost != nxt_n:
+            detail = " + ".join("%s %d" % (r, k) for r, k in excl) or "no exclusions listed"
+            raise ValueError(
+                "consort_flow: the flow does not balance between %r and %r — %d minus (%s) = %d, "
+                "but the next stage says %d. A participant-flow diagram whose counts do not add up "
+                "is the first thing a referee checks by hand; fix the numbers or document the "
+                "missing %+d."
+                % (label, nxt_label, n, detail, n - lost, nxt_n, nxt_n - (n - lost)))
+
+    nst = len(norm)
+    bw = w * box_w
+    gap = 0.42
+    bh = (h - gap * (nst - 1)) / nst
+    if bh <= 0.28:
+        raise ValueError(
+            "consort_flow: %d stages do not fit in %.2fin — each box would be %.2fin tall. Give it "
+            "more height, or merge stages." % (nst, h, bh))
+    ex_x, ex_w = x + bw + w * 0.07, w - bw - w * 0.07
+
+    for i, (label, n, excl) in enumerate(norm):
+        by = y + i * (bh + gap)
+        box(slide, x, by, bw, bh, fill=fl, line=None, round=True)
+        text(slide, x + 0.16, by, bw - 0.32, bh,
+             [[(label, size, ic, True, False, font or FONT)],
+              [("n = %s%s" % (f"{n:,}", (" " + unit) if unit else ""), size, ic, False, False,
+                font or FONT)]],
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, space_after=1)
+        if i == nst - 1:
+            break
+        ay = by + bh
+        arrow(slide, x + bw / 2 - 0.09, ay + 0.04, 0.18, gap - 0.08, color=mc, direction="down")
+        if excl:
+            lost = sum(k for _r, k in excl)
+            rows = [("Excluded  n = %s" % f"{lost:,}", label_size, acc, True, False, font or FONT)]
+            eh = 0.30 + 0.20 * len(excl)
+            ey = ay + gap / 2 - eh / 2
+            box(slide, ex_x, ey, ex_w, eh, fill=ex, line=None, round=True)
+            paras = [[rows[0]]] + [[("  %s  (%s)" % (r, f"{k:,}"), label_size - 0.5, mc, False,
+                                     False, font or FONT)] for r, k in excl]
+            text(slide, ex_x + 0.14, ey, ex_w - 0.28, eh, paras, space_after=0, line_spacing=1.04)
+            connector(slide, (x + bw / 2, ay + gap / 2), (ex_x, ey + eh / 2), color=mc)
+    return y + h
+
+
 def ghost_numeral(slide, x, y, w, h, text_str, *, color=None, bg=None, opacity=0.12, font=None,
                   align=PP_ALIGN.LEFT):
     """A giant FAINT index/ordinal/year numeral sitting BEHIND content as silent wayfinding +

@@ -126,3 +126,23 @@ gate** then runs against the ledger: if any one format-family exceeds **~40–50
 the plan is **not ready** — rework the weakest into the form its content actually wants. (Taste, not a
 quota: a genuinely card-shaped run is allowed *with a one-clause justification in the ledger* — the gate
 is auditable, never silent.)
+
+
+## Clinical / evidence-synthesis content — pick by the QUESTION
+
+These are routed by `references/clinical-evidence-figures.md`; the short version, because a form
+nobody is pointed at is a form nobody picks:
+
+| the slide's question | form |
+|---|---|
+| who got in, who dropped out, who was analysed | `deckkit.consort_flow` (participant arithmetic ENFORCED) |
+| does the same effect hold across studies / subgroups | `designed_charts.forest_plot` |
+| do these groups differ in time-to-event | `designed_charts.km_curve` |
+| do these two methods MEASURE the same thing | `designed_charts.bland_altman` — never a correlation |
+| how well does this classifier separate | `designed_charts.roc_curve` |
+| which classes does the model confuse | `deckkit.heat_matrix`, axes labelled Predicted / Actual |
+
+🔴 **A hand-rolled scatter is the wrong answer to all six.** Each of these owns a rule that is
+wrong by default when drawn by hand — a linear axis for ratios, a line instead of a step, a
+correlation instead of limits of agreement — and a wrong chart is a perfectly well-formed set of
+shapes, so no geometry lint will ever tell you.

@@ -679,6 +679,17 @@ jobs:
           grep -qE "^[0-9]+ passed, 0 failed" /tmp/renderpar.log || {
             echo "::error::render-equivalence suite did not run to completion"; exit 1; }
 
+      # The clinical / evidence-synthesis forms. Each owns a rule that is wrong BY DEFAULT when
+      # hand-rolled (a linear axis for ratios, a line instead of a step, a correlation instead of
+      # limits of agreement) — and a wrong chart is a well-formed set of shapes, so no geometry
+      # lint can see one. The estimators are checked against hand-computable answers.
+      - name: Clinical / evidence forms (estimators, guards, routing)
+        run: |
+          set -o pipefail
+          python tests/test_clinical_forms.py | tee /tmp/clin.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/clin.log || {
+            echo "::error::clinical forms suite did not run to completion"; exit 1; }
+
       # The template BRANCH — roughly half of what this skill builds — had three holes that every
       # gate reported clean through. All three were found on one real institutional-template deck.
       # Script-style (matching test_lint_regressions.py), so pytest would collect zero: invoke

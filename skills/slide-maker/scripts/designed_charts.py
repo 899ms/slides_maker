@@ -722,3 +722,428 @@ def waterfall(out, items, *, palette=None, dark=False, font=None, total_label="T
         ax.spines[sp].set_visible(False)
     ax.spines["bottom"].set_color(muted); ax.tick_params(axis="x", colors=muted); ax.set_yticks([])
     return _save(fig, out)
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# CLINICAL / EVIDENCE-SYNTHESIS forms.
+#
+# 🔴 WHY THESE EXIST. `design-by-topic.md` lists "Medicine / biotech / clinical" as a first-class
+# domain and tells you which PRESET to dress it in — but every domain row in that table is an
+# aesthetic row, and none of them changes the FORM vocabulary. Measured by grep across
+# references/ + scripts/ + agents/ before this block: zero hits for kaplan-meier, forest plot,
+# CONSORT, PRISMA, Bland-Altman, ROC. The recipes above are a BUSINESS-ANALYTICS vocabulary
+# (waterfall, marimekko, pareto, radar) and `schematic-diagrams.md` is an UNDERGRADUATE-PHYSICS
+# one (free-body, optics, circuits). So the skill knew how to STYLE a clinical deck and could not
+# DRAW one, and the author's only option was a hand-rolled scatter — which is where the geometry
+# rules below get broken silently.
+#
+# Each of these owns a rule that is wrong-by-default when hand-rolled:
+#   forest_plot   ratios live on a LOG axis, or a CI that is symmetric in ratio terms is drawn
+#                 lopsided and the eye reads a bias that is not in the data
+#   km_curve      survival is a STEP function; drawing it as a line interpolates events that did
+#                 not happen between observations
+#   bland_altman  agreement is bias ± 1.96·SD of the DIFFERENCES — not a correlation, and not a
+#                 regression of one method on the other
+#   roc_curve     the chance diagonal and a square aspect are what make an AUC readable at a
+#                 glance; stretched axes flatter every classifier
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+
+def _as_floats(seq, what):
+    try:
+        return [float(v) for v in seq]
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{what} must be a sequence of numbers — {exc}") from exc
+
+
+def forest_plot(out, rows, *, null=1.0, log=None, summary=None, xlabel=None, xlim=None,
+                palette=None, dark=False, font=None, figsize=(7.2, None),
+                value_fmt="{:.2f}"):
+    """A FOREST PLOT — one effect estimate with its confidence interval per row, on a shared axis
+    against a null reference line. The general form for "the same comparison, measured several
+    times": meta-analysis, subgroup effects, regression coefficients, A/B lifts per segment.
+
+    ``rows = [(label, estimate, lo, hi[, weight]), ...]``. ``weight`` (optional) sizes the marker
+    by AREA — the convention that makes a precise study visibly dominate an imprecise one.
+    ``summary=(label, est, lo, hi)`` draws the pooled estimate as a DIAMOND, the shape that says
+    "this is not another study".
+
+    🔴 ``log`` defaults to ``null == 1``. A ratio (OR/RR/HR) is symmetric in LOG space — 0.5 and 2
+    are the same effect in opposite directions — so on a linear axis the left CI is squashed and
+    the right stretched, and the eye reads an asymmetry that is not in the data. Pass
+    ``log=False`` deliberately for a difference scale (``null=0``). Non-positive bounds on a log
+    axis RAISE rather than silently disappearing.
+    """
+    if not rows:
+        raise ValueError("forest_plot needs at least one row")
+    if log is None:
+        log = abs(float(null) - 1.0) < 1e-9
+    parsed = []
+    for r in rows:
+        if len(r) < 4:
+            raise ValueError("each forest row is (label, estimate, lo, hi[, weight]); got %r" % (r,))
+        label, est, lo, hi = r[0], float(r[1]), float(r[2]), float(r[3])
+        wt = float(r[4]) if len(r) > 4 and r[4] is not None else None
+        if not (lo <= est <= hi):
+            raise ValueError(
+                f"forest_plot: row {label!r} has estimate {est:g} outside its interval "
+                f"[{lo:g}, {hi:g}] — a point estimate sits INSIDE its own CI, so one of the three "
+                f"numbers is wrong or the columns are swapped")
+        if log and min(lo, est, hi) <= 0:
+            raise ValueError(
+                f"forest_plot: row {label!r} has a non-positive bound on a LOG axis "
+                f"({lo:g}, {est:g}, {hi:g}). Ratios cannot be <=0; if these are DIFFERENCES pass "
+                f"null=0 (log defaults to False there).")
+        parsed.append((str(label), est, lo, hi, wt))
+
+    plt, ink, grid, muted = _mpl(dark, font)
+    pal = list(palette) if palette else ["#33415C", "#00A6A6", "#D9463B"]
+    n = len(parsed) + (1 if summary else 0)
+    fw, fh = figsize
+    fig, ax = plt.subplots(figsize=(fw, fh if fh else max(2.0, 0.42 * n + 1.1)))
+
+    ys = list(range(len(parsed)))[::-1]                      # first row at the TOP, as read
+    wts = [w for (_l, _e, _lo, _hi, w) in parsed if w is not None]
+    wmax = max(wts) if wts else None
+    for y, (label, est, lo, hi, wt) in zip(ys, parsed):
+        ax.plot([lo, hi], [y, y], color=ink, lw=1.3, solid_capstyle="butt", zorder=2)
+        for b in (lo, hi):                                   # CI caps — the ends must be findable
+            ax.plot([b, b], [y - 0.12, y + 0.12], color=ink, lw=1.3, zorder=2)
+        size = 46.0 if wmax is None else 22.0 + 90.0 * (wt / wmax)   # AREA ∝ weight
+        ax.scatter([est], [y], s=size, color=pal[0], zorder=3, marker="s")
+
+    if summary:
+        slabel, sest, slo, shi = summary[0], float(summary[1]), float(summary[2]), float(summary[3])
+        if not (slo <= sest <= shi):
+            raise ValueError("forest_plot: the summary estimate sits outside its own interval")
+        y = -1
+        ax.fill([slo, sest, shi, sest], [y, y + 0.22, y, y - 0.22],
+                color=pal[1], zorder=3, lw=0)
+        ys = ys + [y]
+        parsed = parsed + [(str(slabel), sest, slo, shi, None)]
+
+    ax.axvline(float(null), color=muted, lw=1.1, ls="--", zorder=1)
+    if log:
+        ax.set_xscale("log")
+        # 🔴 PLAIN numbers, never scientific notation. matplotlib's default log formatter renders
+        # 0.4 as "4x10^-1" and the null as "10^0"; a reader looking for the line at ONE has to
+        # decode an exponent to find it. Ratios in this range are read as 0.5 / 1 / 2, so the
+        # ticks are chosen from a human ladder and formatted literally.
+        from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
+        _lo = min(p[2] for p in parsed)
+        _hi = max(p[3] for p in parsed)
+        if summary:
+            _lo, _hi = min(_lo, float(summary[2])), max(_hi, float(summary[3]))
+        LADDER = [0.05, 0.1, 0.2, 0.25, 0.33, 0.5, 0.67, 0.8, 1, 1.25, 1.5, 2, 3, 4, 5, 10, 20]
+        ticks = [t for t in LADDER if _lo * 0.92 <= t <= _hi * 1.08]
+        if float(null) not in ticks and _lo * 0.92 <= float(null) <= _hi * 1.08:
+            ticks = sorted(ticks + [float(null)])
+        if len(ticks) >= 2:
+            ax.xaxis.set_major_locator(FixedLocator(ticks))
+        ax.xaxis.set_minor_formatter(NullFormatter())
+        ax.xaxis.set_major_formatter(FuncFormatter(
+            lambda v, _p: ("%g" % v) if v >= 0.01 else ("%.3f" % v)))
+    if xlim:
+        ax.set_xlim(*xlim)
+    ax.set_yticks(ys)
+    ax.set_yticklabels([p[0] for p in parsed], fontsize=9.5, color=ink)
+    ax.set_ylim(min(ys) - 0.7, max(ys) + 0.7)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(grid)
+    ax.tick_params(axis="x", colors=muted, labelsize=9)
+    ax.tick_params(axis="y", length=0)
+    if xlabel:
+        ax.set_xlabel(xlabel, fontsize=9.5, color=muted)
+
+    # the numeric column — a forest plot is READ as numbers as often as it is scanned as a picture
+    xr = ax.get_xlim()
+    tx = xr[1] * (1.06 if log else 1.0) if log else xr[1] + 0.04 * (xr[1] - xr[0])
+    for y, (label, est, lo, hi, _w) in zip(ys, parsed):
+        txt = f"{value_fmt.format(est)} ({value_fmt.format(lo)}–{value_fmt.format(hi)})"
+        ax.text(tx, y, txt, fontsize=9, color=ink, va="center", ha="left", clip_on=False)
+    return _save(fig, out)
+
+
+def km_curve(out, groups, *, xlabel="Time", ylabel="Survival probability", risk_table=True,
+             palette=None, dark=False, font=None, figsize=(6.8, 4.4), censor_marks=True,
+             percent=False, xlim=None):
+    """A KAPLAN–MEIER survival curve — the step-down estimator, computed here from RAW data so the
+    caller never has to hand-roll it.
+
+    ``groups = [(label, times, events), ...]`` where ``events`` is 1 for an event and 0 for a
+    censored observation, aligned with ``times``. (A precomputed curve is also accepted:
+    ``(label, times, surv, "precomputed")``.)
+
+    🔴 Survival is a STEP function, drawn ``steps-post``: the estimate only changes AT an observed
+    event, and a straight line between two observations asserts deaths on days nobody was seen.
+    Censored observations get a tick, which is what separates "we stopped watching" from "nothing
+    happened", and the NUMBERS AT RISK table under the axis is the part reviewers ask for first —
+    a curve whose right tail rests on two patients looks identical to one resting on two hundred.
+    """
+    if not groups:
+        raise ValueError("km_curve needs at least one group")
+    plt, ink, grid, muted = _mpl(dark, font)
+    pal = list(palette) if palette else ["#33415C", "#00A6A6", "#D9463B", "#F2A03D", "#5B4BE0"]
+
+    curves = []
+    for gi, g in enumerate(groups):
+        label = str(g[0])
+        if len(g) > 3 and g[3] == "precomputed":
+            ts, sv = _as_floats(g[1], "times"), _as_floats(g[2], "survival")
+            if len(ts) != len(sv):
+                raise ValueError(f"km_curve: {label!r} has {len(ts)} times and {len(sv)} survival "
+                                 f"values — they must be aligned")
+            if any(b > a + 1e-9 for a, b in zip(sv, sv[1:])):
+                raise ValueError(f"km_curve: {label!r} has survival that INCREASES; a "
+                                 f"Kaplan–Meier estimate is non-increasing by construction")
+            if any(v < -1e-9 or v > 1 + 1e-9 for v in sv):
+                raise ValueError(f"km_curve: {label!r} has survival outside [0, 1]")
+            cens, n0 = [], None
+            obs = list(zip(ts, [1] * len(ts)))
+        else:
+            ts, ev = _as_floats(g[1], "times"), [int(e) for e in g[2]]
+            if len(ts) != len(ev):
+                raise ValueError(f"km_curve: {label!r} has {len(ts)} times and {len(ev)} event "
+                                 f"flags — they must be aligned")
+            if not ts:
+                raise ValueError(f"km_curve: {label!r} has no observations")
+            if any(e not in (0, 1) for e in ev):
+                raise ValueError(f"km_curve: {label!r} has an event flag that is not 0 or 1 — "
+                                 f"1 means the event happened, 0 means censored")
+            obs = sorted(zip(ts, ev))
+            n0 = len(obs)
+            # the estimator: S(t) = prod over event times t_i<=t of (1 - d_i / n_i)
+            ts_out, sv_out, s, at_risk = [0.0], [1.0], 1.0, n0
+            cens = []
+            i = 0
+            while i < len(obs):
+                t = obs[i][0]
+                d = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 1)
+                c = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 0)
+                if d:
+                    s *= (1.0 - d / at_risk)
+                    ts_out.append(t); sv_out.append(s)
+                if c:
+                    cens.append((t, s))
+                at_risk -= (d + c)
+                i += d + c
+            ts, sv = ts_out, sv_out
+        curves.append((label, ts, sv, cens, n0, obs))
+
+    if risk_table:
+        fig, (ax, axr) = plt.subplots(
+            2, 1, figsize=figsize, sharex=True,
+            gridspec_kw={"height_ratios": [1.0, 0.10 + 0.075 * len(curves)], "hspace": 0.12})
+    else:
+        fig, ax = plt.subplots(figsize=figsize)
+        axr = None
+
+    scale = 100.0 if percent else 1.0
+    tmax = max(max(c[1]) for c in curves) or 1.0
+    for gi, (label, ts, sv, cens, n0, obs) in enumerate(curves):
+        col = pal[gi % len(pal)]
+        ax.step(ts, [v * scale for v in sv], where="post", color=col, lw=1.9, label=label, zorder=3)
+        if censor_marks and cens:
+            ax.plot([t for t, _s in cens], [s * scale for _t, s in cens], linestyle="none",
+                    marker="|", markersize=7, markeredgewidth=1.4, color=col, zorder=4)
+    ax.set_ylim(0, 1.02 * scale)
+    ax.set_xlim(*(xlim if xlim else (0, tmax * 1.02)))
+    ax.set_ylabel(ylabel + (" (%)" if percent else ""), fontsize=10, color=ink)
+    ax.grid(axis="y", color=grid, lw=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(grid)
+    ax.tick_params(colors=muted, labelsize=9)
+    if len(curves) > 1:
+        leg = ax.legend(frameon=False, fontsize=9.5, loc="lower left")
+        for t in leg.get_texts():
+            t.set_color(ink)
+
+    if axr is not None:
+        ticks = ax.get_xticks()
+        ticks = [t for t in ticks if ax.get_xlim()[0] <= t <= ax.get_xlim()[1]]
+        axr.set_xlim(*ax.get_xlim())
+        axr.set_ylim(-0.5, len(curves) - 0.5)
+        axr.invert_yaxis()
+        _widest = 1
+        for (_l, _t, _s, _c, _n0, _obs) in curves:
+            for t in ticks:
+                if _n0 is not None:
+                    _widest = max(_widest, len(str(sum(1 for (tt, _e) in _obs if tt >= t - 1e-12))))
+        _lab_gap = 0.012 + 0.011 * _widest        # half the widest number, plus a real gap
+        for gi, (label, ts, sv, cens, n0, obs) in enumerate(curves):
+            for t in ticks:
+                n_at = (sum(1 for (tt, _e) in obs if tt >= t - 1e-12)
+                        if n0 is not None else None)
+                axr.text(t, gi, "—" if n_at is None else str(n_at), ha="center", va="center",
+                         fontsize=8.5, color=ink)
+            # 🔴 The row label lives in the FIGURE's left margin, not just left of the axes. At a
+            # small negative offset it lands on top of the first tick's number, because the first
+            # tick of a survival curve sits at x=0 on the spine itself — rendered as "Control20".
+            # The margin is reserved below from the longest label, so the column cannot collide.
+            # The first tick sits ON the spine at x=0 and its number is CENTRED there, so it
+            # extends LEFT of the axes by half its own width — "Surgery alone" + "10" rendered
+            # joined at a small offset. Clear the widest number, not a guessed gap.
+            axr.text(-_lab_gap, gi, label, ha="right", va="center", fontsize=8.5, color=muted,
+                     transform=axr.get_yaxis_transform(), clip_on=False)
+        axr.set_yticks([]); axr.set_xticks(ticks)
+        axr.tick_params(axis="x", colors=muted, labelsize=9, length=0)
+        for side in ("top", "right", "left"):
+            axr.spines[side].set_visible(False)
+        axr.spines["bottom"].set_visible(False)
+        axr.set_title("Number at risk", fontsize=8.5, color=muted, loc="left", pad=4)
+        axr.set_xlabel(xlabel, fontsize=10, color=ink)
+        # reserve the label column from the longest label actually present, so the numbers start
+        # clear of it on any group naming — a fixed margin is wrong the moment a label is long
+        _lab_chars = max((len(str(c[0])) for c in curves), default=0)
+        fig.subplots_adjust(left=min(0.40, 0.10 + 0.0135 * _lab_chars + _lab_gap))
+    else:
+        ax.set_xlabel(xlabel, fontsize=10, color=ink)
+    return _save(fig, out)
+
+
+def bland_altman(out, method_a, method_b, *, names=("A", "B"), xlabel=None, ylabel=None,
+                 palette=None, dark=False, font=None, figsize=(6.4, 4.2), percent=False):
+    """A BLAND–ALTMAN agreement plot — the difference between two measurement methods against
+    their mean, with the bias and the 95% limits of agreement drawn and LABELLED.
+
+    🔴 This is the right form for "do these two methods agree?", and a correlation or a regression
+    of one on the other is the classic wrong answer: two methods can correlate almost perfectly
+    and still disagree by a clinically fatal constant. The limits are ``bias ± 1.96·SD of the
+    DIFFERENCES`` — they describe where 95% of individual disagreements fall, which is the number
+    a reader has to judge against what the application can tolerate.
+
+    ``percent=True`` plots the difference as a percentage of the mean — the right choice when the
+    disagreement grows with magnitude (a funnel in the raw plot is the tell).
+    """
+    a, b = _as_floats(method_a, "method_a"), _as_floats(method_b, "method_b")
+    if len(a) != len(b):
+        raise ValueError(f"bland_altman: {len(a)} values for {names[0]!r} and {len(b)} for "
+                         f"{names[1]!r} — an agreement plot pairs each subject with itself, so "
+                         f"the two sequences must be the same length and in the same order")
+    if len(a) < 3:
+        raise ValueError("bland_altman needs at least 3 paired observations to estimate an SD")
+    import math
+    means = [(x + y) / 2.0 for x, y in zip(a, b)]
+    if percent and any(abs(m) < 1e-12 for m in means):
+        raise ValueError("bland_altman(percent=True) divides by the pair mean, and one pair means "
+                         "zero — use the absolute scale for data that crosses zero")
+    diffs = ([(x - y) / m * 100.0 for x, y, m in zip(a, b, means)] if percent
+             else [x - y for x, y in zip(a, b)])
+    n = len(diffs)
+    bias = sum(diffs) / n
+    sd = math.sqrt(sum((d - bias) ** 2 for d in diffs) / (n - 1))
+    lo, hi = bias - 1.96 * sd, bias + 1.96 * sd
+
+    plt, ink, grid, muted = _mpl(dark, font)
+    pal = list(palette) if palette else ["#33415C", "#D9463B", "#00A6A6"]
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.scatter(means, diffs, s=28, color=pal[0], alpha=0.75, zorder=3, edgecolors="none")
+    span = (max(means) - min(means)) or 1.0
+    xr = (min(means) - 0.06 * span, max(means) + 0.18 * span)
+    for val, col, style, name in ((bias, pal[1], "-", "bias"),
+                                  (hi, pal[2], "--", "+1.96 SD"),
+                                  (lo, pal[2], "--", "−1.96 SD")):
+        ax.axhline(val, color=col, lw=1.3, ls=style, zorder=2)
+        ax.text(xr[1], val, f"  {name} {val:+.3g}", fontsize=8.5, color=col,
+                va="center", ha="left", clip_on=False)
+    ax.set_xlim(*xr)
+    ax.set_xlabel(xlabel or f"Mean of {names[0]} and {names[1]}", fontsize=10, color=ink)
+    ax.set_ylabel(ylabel or (f"Difference ({names[0]} − {names[1]})"
+                             + (" %" if percent else "")), fontsize=10, color=ink)
+    ax.grid(axis="y", color=grid, lw=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(grid)
+    ax.tick_params(colors=muted, labelsize=9)
+    if n < 10:
+        # not fatal — small agreement studies are real — but the limits are wide and unstable,
+        # and a reader cannot see n from the picture.
+        ax.set_title(f"n = {n} — limits of agreement are unstable at this sample size",
+                     fontsize=8.5, color=muted, loc="left", pad=6)
+    return _save(fig, out)
+
+
+def roc_curve(out, curves, *, palette=None, dark=False, font=None, figsize=(4.8, 4.8),
+              chance_line=True, xlabel="False positive rate", ylabel="True positive rate"):
+    """An ROC CURVE — one or more classifiers against the chance diagonal, on a SQUARE canvas.
+
+    ``curves = [(label, y_true, y_score), ...]`` with ``y_true`` in {0, 1} — the ROC and its AUC
+    are computed here. A precomputed curve is also accepted as
+    ``(label, fpr, tpr, "precomputed"[, auc])``.
+
+    🔴 The square aspect and the chance diagonal are the form, not decoration: on a stretched axis
+    every classifier looks better than it is, and without the diagonal there is no visual anchor
+    for "no better than guessing". AUC is printed in the legend because the curve alone does not
+    let a reader rank two models that cross.
+    """
+    if not curves:
+        raise ValueError("roc_curve needs at least one curve")
+    plt, ink, grid, muted = _mpl(dark, font)
+    pal = list(palette) if palette else ["#33415C", "#00A6A6", "#D9463B", "#F2A03D", "#5B4BE0"]
+    fig, ax = plt.subplots(figsize=figsize)
+
+    for ci, c in enumerate(curves):
+        label = str(c[0])
+        if len(c) > 3 and c[3] == "precomputed":
+            fpr, tpr = _as_floats(c[1], "fpr"), _as_floats(c[2], "tpr")
+            if len(fpr) != len(tpr):
+                raise ValueError(f"roc_curve: {label!r} has {len(fpr)} fpr and {len(tpr)} tpr "
+                                 f"points — they must be aligned")
+            if any(v < -1e-9 or v > 1 + 1e-9 for v in fpr + tpr):
+                raise ValueError(f"roc_curve: {label!r} has a rate outside [0, 1]")
+            auc = float(c[4]) if len(c) > 4 and c[4] is not None else None
+        else:
+            y_true = [int(v) for v in c[1]]
+            y_score = _as_floats(c[2], "y_score")
+            if len(y_true) != len(y_score):
+                raise ValueError(f"roc_curve: {label!r} has {len(y_true)} labels and "
+                                 f"{len(y_score)} scores — they must be aligned")
+            if any(v not in (0, 1) for v in y_true):
+                raise ValueError(f"roc_curve: {label!r} has a label that is not 0 or 1 — ROC is "
+                                 f"defined for a BINARY outcome")
+            P, N = sum(y_true), len(y_true) - sum(y_true)
+            if not P or not N:
+                raise ValueError(f"roc_curve: {label!r} has only one class present (P={P}, N={N}) "
+                                 f"— an ROC curve is undefined without both")
+            order = sorted(range(len(y_score)), key=lambda i: -y_score[i])
+            tp = fp = 0
+            fpr, tpr = [0.0], [0.0]
+            prev = None
+            for i in order:
+                if prev is not None and y_score[i] != prev:
+                    fpr.append(fp / N); tpr.append(tp / P)
+                if y_true[i] == 1:
+                    tp += 1
+                else:
+                    fp += 1
+                prev = y_score[i]
+            fpr.append(fp / N); tpr.append(tp / P)
+            auc = 0.0
+            for (x0, y0), (x1, y1) in zip(zip(fpr, tpr), zip(fpr[1:], tpr[1:])):
+                auc += (x1 - x0) * (y0 + y1) / 2.0
+        name = label if auc is None else f"{label}  (AUC {auc:.3f})"
+        ax.step(fpr, tpr, where="post", color=pal[ci % len(pal)], lw=1.9, label=name, zorder=3)
+
+    if chance_line:
+        ax.plot([0, 1], [0, 1], color=muted, lw=1.1, ls="--", zorder=1)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    ax.set_aspect("equal", adjustable="box")          # a stretched ROC flatters every model
+    ax.set_xlabel(xlabel, fontsize=10, color=ink)
+    ax.set_ylabel(ylabel, fontsize=10, color=ink)
+    ax.grid(color=grid, lw=0.8)
+    ax.set_axisbelow(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    for side in ("left", "bottom"):
+        ax.spines[side].set_color(grid)
+    ax.tick_params(colors=muted, labelsize=9)
+    leg = ax.legend(frameon=False, fontsize=9, loc="lower right")
+    for t in leg.get_texts():
+        t.set_color(ink)
+    return _save(fig, out)

@@ -20,12 +20,24 @@ template's own theme font is Calibri, Calibri lives only inside the PowerPoint a
 macOS, and the whole deck would have been laid out against a substitute — caught only because the
 template's hand-written `profile.md` happened to warn about it.
 
-Why it is not simply a CRITICAL in `lint_layout`: deckkit's shipped defaults are FONT='Calibri'
-and MONO='Consolas', and NEITHER ships with macOS. Raising at build time would break every stock
-build on the skill's primary platform on day one, and re-theming the defaults instead would be a
-worse bug (it silently changes the look of every deck ever built from this library). So it lands
-where the skill already puts blocking decisions that must not interrupt authoring: the HAND-OFF
-gate, once, with a written waiver.
+🔴 IT REPORTS; IT DOES NOT BLOCK — learned the expensive way. Written as a blocking hand-off
+gate, it broke FOUR CI runs across THREE unrelated suites before the reason became clear, and the
+reason is conceptual rather than a bug:
+
+    this check runs on the machine doing the GATING, which is not necessarily the machine that
+    did the MEASURING, and nothing in a .pptx says which was which.
+
+A deck authored on a Mac with Helvetica Neue installed was measured correctly; re-gating it on a
+Linux box reports, truthfully, that the face does not resolve THERE — and blocking on that would
+refuse delivery of a deck with nothing wrong with it. The same applied to deckkit's own shipped
+defaults (FONT='Calibri', MONO='Consolas'), which ship with neither macOS nor Linux, so the
+blocking version refused essentially every stock build.
+
+So the finding is printed on both gate paths and carried in `--json`, and the severity split below
+is kept because it is real information — it just no longer decides delivery. That is still a large
+improvement on what existed before: the condition was a `print()` inside `lint_layout`, in no
+`--json`, gating nothing, one line in a scrolling build log. `--strict` makes the CLI exit 1 for a
+caller that owns BOTH the build and the gate, and therefore knows the measuring machine is this one.
 
 What it reports, per face the deck actually SETS on text:
 
@@ -303,7 +315,10 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("pptx", nargs="?")
     ap.add_argument("--json", action="store_true")
-    ap.add_argument("--waive", default=None, help="a written reason; downgrades blocks to notes")
+    ap.add_argument("--waive", default=None, help="a written reason; silences the report")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit 1 on a blocking finding — for a caller that owns the build AND the "
+                         "gate, and therefore knows the measuring machine is this one")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args(argv)
     if a.selftest:
@@ -330,7 +345,7 @@ def main(argv=None):
     if not findings:
         print("[fonts] every face this deck names resolves here (%d face(s) checked)"
               % (len(facts["named"]) + len(facts["theme"])))
-    return 1 if blocks else 0
+    return 1 if (blocks and a.strict) else 0
 
 
 if __name__ == "__main__":

@@ -248,3 +248,21 @@ dk.takeaway_rail(s, band[0]+band[2]*0.66, band[1]+0.3, band[2]*0.34,
 Short status updates, qualitative talks, or a slide with a single obvious number (use a hero stat /
 `scorecard`, not a chart). Reserve the richer roster for data/report/market/strategy decks that have
 many distinct quantitative relationships to show.
+
+## Clinical / evidence-synthesis charts
+
+Routed in full by `references/clinical-evidence-figures.md`. They are NOT in the roster above
+because that roster is a business-analytics vocabulary (waterfall, marimekko, pareto, radar) —
+which is the whole reason the clinical file exists.
+
+- `designed_charts.forest_plot` — effect + CI per row against a null line. Ratios on a LOG axis.
+- `designed_charts.km_curve` — survival as a STEP, censoring ticks, numbers at risk.
+- `designed_charts.bland_altman` — method agreement: bias ± 1.96·SD of the DIFFERENCES.
+- `designed_charts.roc_curve` — square canvas, chance diagonal, AUC in the legend.
+- `deckkit.consort_flow` — participant flow whose arithmetic is enforced.
+- a confusion matrix is `deckkit.heat_matrix`, axes labelled Predicted / Actual.
+
+🔴 **The chart anti-patterns above apply here unchanged**, and one of them bites hardest in this
+family: a bar chart of per-subject MEANS hides n, the spread and the outliers. If the value is a
+mean of measurements — per-subject Dice, per-run latency, per-rater score — the form is
+`designed_charts.distribution`, not a bar.

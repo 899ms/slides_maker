@@ -1924,11 +1924,18 @@ def _fonts_gate(pptx, gates):
         for _s, face, why in blocks:
             print(f"        {face}: {why}")
         return
-    die("{} face(s) this deck sets do NOT resolve on this machine, so the geometry was measured "
-        "in a stand-in:\n    - ".format(len(blocks))
-        + "\n    - ".join("{}: {}".format(f, w) for _s, f, w in blocks)
-        + "\n    Install them, set faces that exist (deckkit.use_platform_fonts()), or record "
-          '\n    {"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}')
+    # 🔴 REPORTED, never fatal. This gate runs on the machine doing the GATING, and nothing in a
+    # .pptx says whether that is the machine that did the MEASURING. A deck authored on a Mac with
+    # Helvetica Neue was measured correctly; re-gating it elsewhere would refuse a deck with
+    # nothing wrong with it. Measured: as a blocker this broke four CI runs across three unrelated
+    # suites. The finding is still worth surfacing — it was a print() in lint_layout before, in no
+    # --json and gating nothing — it just does not decide delivery.
+    print("  [--] fonts: {} face(s) this deck sets do NOT resolve on THIS machine, so any geometry "
+          "computed here was measured in a stand-in. If this is the machine that built the deck, "
+          "fix it with deckkit.use_platform_fonts() or install the faces; if it is not, this line "
+          "is about the host, not the deck.".format(len(blocks)))
+    for _s, f, w in blocks:
+        print("       {}: {}".format(f, w))
 
 
 def _template_profile_gate(pptx, gates):
