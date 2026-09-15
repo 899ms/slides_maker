@@ -27,8 +27,13 @@ OUT = pathlib.Path.cwd()          # write beside the caller, not beside this fil
 # Helvetica Neue at the same size), so the PASS deck's margins shift under the assertions.
 # Pick the first face that genuinely resolves here, and say which one, so a platform-specific
 # failure is readable instead of mysterious.
+# 🔴 `_font_file` is the WRONG predicate here and this line used to use it: it FALLS BACK to a
+# stand-in rather than returning None, so it is truthy for a face the host does not have, and on
+# Linux this picked "Helvetica Neue" and then measured in DejaVu — exactly the substitution the
+# comment above says it is avoiding. `_font_substituted` is the real question. Caught by
+# check_fonts_resolve, which blocked this fixture on CI for naming a face that does not resolve.
 dk.FONT = next((f for f in ("Helvetica Neue", "Helvetica", "Arial", "Liberation Sans",
-                            "DejaVu Sans") if dk._font_file(f, False)), "DejaVu Sans")
+                            "DejaVu Sans") if not dk._font_substituted(f)), "DejaVu Sans")
 print("fixture font: %s" % dk.FONT)
 
 
