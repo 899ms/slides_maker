@@ -47,6 +47,49 @@ section headings the checker does not know extends it with `design_plan.surface_
     inspect it, then build on it so the talk matches the venue's required look and
     aspect ratio.
 
+### The profile's machine-checkable contract — how a template's memory becomes a gate
+
+A `profile.md` is prose, and prose is what makes it useful to the next human. But measured by
+grep it was read by `registry.py` and `deckkit.py` — both producers — and by NO check, so a build
+could ignore every line of it and nothing downstream would know. `scripts/check_template_profile.py`
+closes that, on both gate paths, and a profile opts in with ONE fenced block:
+
+```markdown
+## Machine-checkable contract
+```json
+{
+  "match":       {"layout_names": ["1_Title and Content with Logo"], "slide_size_in": [10.0, 5.625]},
+  "layouts":     {"title": "Title Slide", "content": "1_Title and Content with Logo"},
+  "fonts":       {"FONT": "Calibri"},
+  "title_color": "FFFFFF",
+  "must_cover":  [{"layout": "Title Slide", "rect": [7.14, 2.50, 2.54, 2.54],
+                   "why": "a bare grey accent rectangle that lives on the layout"}]
+}
+```
+```
+
+- **One file, not two.** The contract sits inside `profile.md` so the prose and the enforced part
+  cannot drift into separate truths — the commonest way a template note goes stale is that
+  somebody updates one copy.
+- **`match` is how a deck BINDS**, and it is the deck's own fingerprint (layout names + canvas
+  size), not a recorded template name. That is deliberate: it keeps working on a runtime that
+  compressed the interview away and never wrote down which template it used.
+- **Every other key is optional.** A profile declaring only `match` + `fonts` is checked on fonts
+  alone, and the gate prints which keys it was able to check.
+- **`must_cover` is the one worth reaching for first.** It encodes the class of trap that is
+  invisible until it renders: furniture that lives on a LAYOUT, cannot be deleted from a slide,
+  and therefore has to be covered by the build. The LKEB/LUMC template's grey accent rectangle is
+  the worked example.
+- 🔴 **No contract block means NOT CHECKED, and the gate says so.** "There was nothing to check"
+  and "everything checked out" are different sentences; this never prints the second for the
+  first reason.
+- Deviating is normal design — a deck may legitimately want a different font this time. Record it:
+  `{"template_profile": {"waived": "<why this deck differs>"}}`.
+
+**When you learn something new about a template, write it in the prose AND ask whether a machine
+could have decided it.** If yes, it belongs in the contract too; that is the difference between a
+note the next run might read and a rule the next run cannot miss.
+
 ## No-template branch — designing the look yourself
 
 - **No-template branch:** `deckkit.blank_deck()` + `deckkit.add_slide()`, and give

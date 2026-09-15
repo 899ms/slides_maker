@@ -218,6 +218,17 @@ def _slide_bg_box(slide, sw, sh):
         solid = bg.find(".//" + qn("a:solidFill"))
         srgb = None if solid is None else solid.find(qn("a:srgbClr"))
         fill = srgb.get("val").upper() if srgb is not None else None
+        if fill is None and solid is not None:
+            # A THEME-coloured page background is the same blindness one level up: without this
+            # it falls through to the `inherited and fill is None` branch, no blip/grad/patt fill
+            # is found, None is returned, and the contrast check assumes WHITE over a canvas the
+            # template painted (potentially dark). Transformed slots stay unresolved on purpose.
+            sch = solid.find(qn("a:schemeClr"))
+            if sch is not None and not any(sch.find(qn(x)) is not None for x in _CLR_XFORMS):
+                try:
+                    fill = _theme_resolver(slide.slide_layout.slide_master)(sch.get("val"))
+                except Exception:
+                    fill = None
         if inherited and fill is None:
             # An INHERITED background we cannot resolve teaches nothing, and claiming one is not
             # free. python-pptx's own default master carries `<p:bgRef idx="1001"><a:schemeClr/>`
@@ -229,7 +240,27 @@ def _slide_bg_box(slide, sw, sh):
             # its colour is a gradient, and it keeps its `unk` record. Theme-colour resolution
             # (bgRef -> bgFillStyleLst -> clrMap -> clrScheme) is deliberately not attempted:
             # several chained lookups to reach a value that only ever downgrades to "skip" anyway.
-            return None
+            #
+            # 🔴 …but "we could not resolve it" and "there is nothing there" are DIFFERENT claims,
+            # and only the second one licenses the `back = "FFFFFF"` assumption downstream. An
+            # inherited <p:bg> carrying a real blip/gradient/pattern fill is POSITIVE EVIDENCE
+            # that the page is painted — the colour is merely unknowable from the XML. Returning
+            # None there made the contrast check fall through to its "confident light canvas"
+            # branch and assert WHITE over a picture, which is the wrong-and-confident failure
+            # this function is careful to avoid two branches up.
+            # MEASURED, on an institutional template (LUMC/LKEB) whose master paints the brand
+            # artwork as a full-canvas <a:blipFill>: every white-on-blue title scored
+            # "INVISIBLE TEXT … #FFFFFF on #FFFFFF, 1.00:1" — 6 findings per run on a deck whose
+            # real measured contrast is 4.52:1, and deck_cycle's LOOP BREAKER then refused the
+            # 4th run for "the same fault surviving 3 rounds". Keeping the `unk` record does two
+            # things at once: the XML check now SKIPS (it cannot know), and the RENDER-pixel
+            # check — which gates on `back is None and unk_plate` — now RUNS, so the honest
+            # question ("can a reader actually see this title?") is asked of the only artifact
+            # that can answer it. A wrong check is replaced by a right one, not merely silenced.
+            painted = any(bg.find(".//" + qn(t)) is not None
+                          for t in ("a:blipFill", "a:gradFill", "a:pattFill"))
+            if not painted:
+                return None
     except Exception:
         return None
     return {"l": 0.0, "t": 0.0, "w": sw, "h": sh, "r": sw, "b": sh, "zi": -1,
@@ -1078,12 +1109,208 @@ def _icon_ink(blob):
     return "%02X%02X%02X" % best, purity, len(op) / len(px)
 
 
-def _backing_fill(bx, ti, own=True):
+# 🔴 DELIBERATELY UNCACHED. Both of these were memoised on `id(element)`, which is not a sound
+# identity for an lxml node: the proxy objects are transient and CPython recycles an address the
+# moment one is freed, so deck B's layout can land on deck A's address and silently inherit deck
+# A's answer. Caught by a test that builds several one-slide decks in a row — a lumMod-tinted band
+# came back with the UNtinted deck's colour, i.e. a wrong-and-confident backing, which is the exact
+# failure class these functions exist to remove. Holding a strong reference to the proxy does not
+# fix it either, because the proxy is not the node.
+# MEASURED before removing them: chrome resolution costs 2.4 ms for a 7-slide deck, ~14 ms for a
+# 40-slide one, against a lint run of ~1.4 s. That is the entire saving the bug was buying.
+# a <a:schemeClr> carrying any of these is a TRANSFORMED colour; resolving the base slot would
+# report a confident wrong value, so it stays UNKNOWN and the pixel check takes over.
+_CLR_XFORMS = ("a:lumMod", "a:lumOff", "a:shade", "a:tint", "a:alpha", "a:satMod", "a:hueMod")
+
+
+def _theme_resolver(master):
+    """`schemeClr val` -> "RRGGBB", for the theme THIS master maps to. None when unresolvable.
+
+    Two lookups that both matter and are both easy to assume wrong:
+      * `<p:clrMap>` on the master is frequently NOT the identity — measured on the LKEB/LUMC
+        template it reads bg1->dk2, tx1->lt1, bg2->dk1, tx2->lt2, i.e. the light/dark slots are
+        swapped. Skipping the map and reading `<a:bg1>` straight out of the scheme would return
+        the wrong end of the palette on exactly the decks this is for.
+      * the scheme lives in the THEME part related to the master, not in the master.
+    """
+    scheme, cmap = {}, {}
+    try:
+        cm = master._element.find(qn("p:clrMap"))
+        if cm is not None:
+            cmap = {k: v for k, v in cm.attrib.items()}
+    except Exception:
+        cmap = {}
+    try:
+        for rel in master.part.rels.values():
+            if not rel.reltype.endswith("/theme"):
+                continue
+            from lxml import etree
+            root = etree.fromstring(rel.target_part.blob)
+            cs = root.find(".//" + qn("a:clrScheme"))
+            if cs is None:
+                continue
+            for slot in cs:
+                name = etree.QName(slot).localname
+                srgb = slot.find(qn("a:srgbClr"))
+                if srgb is not None and srgb.get("val"):
+                    scheme[name] = srgb.get("val").upper()
+                    continue
+                sysc = slot.find(qn("a:sysClr"))
+                if sysc is not None and sysc.get("lastClr"):
+                    scheme[name] = sysc.get("lastClr").upper()
+            break
+    except Exception:
+        scheme = {}
+
+    def resolve(val):
+        if not val or not scheme:
+            return None
+        # `phClr` is a placeholder colour supplied by the style that references it — there is no
+        # value to read here, and guessing one is exactly what this function refuses to do.
+        if val == "phClr":
+            return None
+        return scheme.get(cmap.get(val, val))
+
+    return resolve
+
+
+def _sp_direct_fill(sp, resolve=None):
+    """The fill a shape DECLARES on its own `spPr`, as hex / "UNKNOWN" / None (no fill).
+
+    🔴 Direct children only — never `.//`. A PowerPoint-authored placeholder routinely carries
+    `<a:noFill/>` in spPr and a `<a14:hiddenFill><a:solidFill>` inside `spPr/a:extLst`: that
+    hidden fill is what the shape would be IF it were filled, i.e. explicitly not painted. A
+    descendant search finds it and reports a confident, wrong colour — measured on the LKEB
+    title placeholder, whose hidden fill is `accent1` while the shape paints nothing.
+    """
+    try:
+        spPr = sp.find(qn("p:spPr"))
+        if spPr is None:
+            return None
+        for child in spPr:
+            tag = child.tag
+            if tag == qn("a:noFill"):
+                return None
+            if tag in (qn("a:blipFill"), qn("a:gradFill"), qn("a:pattFill")):
+                return "UNKNOWN"          # painted, colour unknowable from the XML
+            if tag == qn("a:solidFill"):
+                srgb = child.find(qn("a:srgbClr"))
+                if srgb is not None and srgb.get("val"):
+                    return srgb.get("val").upper()
+                sch = child.find(qn("a:schemeClr"))
+                if sch is not None and resolve is not None:
+                    if any(sch.find(qn(x)) is not None for x in _CLR_XFORMS):
+                        return "UNKNOWN"                 # tinted/shaded: base slot would be wrong
+                    got = resolve(sch.get("val"))
+                    if got:
+                        return got
+                return "UNKNOWN"                         # painted, colour unresolved -> never a guess
+    except Exception:
+        return None
+    return None
+
+
+def _layout_chrome(slide, sw, sh):
+    """Filled rects the LAYOUT and MASTER paint under the slide's own shapes, in paint order.
+
+    OOXML paints master -> layout -> slide, so a template's brand furniture (a title band, a
+    coloured sidebar, a footer strip) sits UNDER everything the build draws and is the true
+    backing for any text placed over it. `_backing_fill` walked only `slide.shapes`, so that
+    furniture was invisible to it and the text resolved to the page background instead.
+
+    MEASURED, on the LKEB/LUMC institutional template: the cover's blue title band is
+    `Rechthoek 28` on the LAYOUT, and every white title over it scored "INVISIBLE TEXT …
+    #FFFFFF on #FFFFFF, 1.00:1". The same class the other way round is worse and is what this
+    really buys: dark text on a template's dark band currently passes SILENTLY, because the
+    check resolves the white page background and finds a comfortable ratio.
+
+    These rects are deliberately NOT added to `bx`. Every coverage, count, overlap, duplicate
+    text and sameness check iterates `bx` and filters only `not s["bg"]`; injecting six
+    inherited rects per slide would change all of them at once. They are consulted by the
+    backing resolvers alone, which is the one question they can answer.
+    """
+    try:
+        layout = slide.slide_layout
+    except Exception:
+        return ()
+    out = []
+    parts, resolve = [], None
+    try:
+        master = layout.slide_master
+        parts.append(master)
+        resolve = _theme_resolver(master)
+    except Exception:
+        resolve = None
+    parts.append(layout)
+    for part in parts:                                   # master first, then layout
+        # 🔴 Walk the XML, NOT `part.shapes`. python-pptx's shape sequence raises on any element
+        # it cannot class (SmartArt, OLE objects, a chart, or a hand-inserted node), and one such
+        # shape would take the WHOLE part down through the except below — silently disabling
+        # chrome resolution for every slide on that layout, which is precisely the "a check that
+        # stopped looking" failure this function was written to remove. Caught by a test that
+        # inserted a plain lxml node. The XML is also all this needs: a rect and a fill.
+        try:
+            tree = part._element.find(qn("p:cSld")).find(qn("p:spTree"))
+        except Exception:
+            continue
+        if tree is None:
+            continue
+        for sp in tree:
+            if sp.tag != qn("p:sp"):
+                continue                                 # pictures/graphicFrames: geometry only,
+                                                         # and their colour is unknowable anyway
+            try:
+                tx = sp.find(qn("p:txBody"))
+                if tx is not None and any((t.text or "").strip()
+                                          for t in tx.iter(qn("a:t"))):
+                    continue                             # a prompt with words is not chrome
+                fill = _sp_direct_fill(sp, resolve)
+                if fill is None:
+                    continue
+                xfrm = sp.find(qn("p:spPr")).find(qn("a:xfrm"))
+                if xfrm is None:
+                    continue                             # inherits its rect: geometry unknowable
+                off, ext = xfrm.find(qn("a:off")), xfrm.find(qn("a:ext"))
+                l, t = int(off.get("x")) / EMU, int(off.get("y")) / EMU
+                w, h = int(ext.get("cx")) / EMU, int(ext.get("cy")) / EMU
+            except Exception:
+                continue                                 # one odd shape, not the whole part
+            if not w or not h or w <= 0 or h <= 0:
+                continue
+            out.append({"l": l, "t": t, "r": l + w, "b": t + h, "w": w, "h": h,
+                        "fill": None if fill == "UNKNOWN" else fill,
+                        "unk": fill == "UNKNOWN"})
+    return tuple(out)
+
+
+def _chrome_under(chrome, t):
+    """Topmost inherited chrome fill under text box `t` — hex / "UNKNOWN" / None. Same
+    containment rule as :func:`_backing_fill` (centre inside + >=50% of the text box covered),
+    so a band that merely grazes the text is not mistaken for its backing."""
+    cx, cy = (t["l"] + t["r"]) / 2, (t["t"] + t["b"]) / 2
+    ta = max(t["w"] * t["h"], 1e-6)
+    best = None
+    for c in chrome:                                     # paint order: later wins
+        if not (c["l"] <= cx <= c["r"] and c["t"] <= cy <= c["b"]):
+            continue
+        ix = max(0.0, min(c["r"], t["r"]) - max(c["l"], t["l"]))
+        iy = max(0.0, min(c["b"], t["b"]) - max(c["t"], t["t"]))
+        if ix * iy < 0.5 * ta:
+            continue
+        best = "UNKNOWN" if c["unk"] else c["fill"]
+    return best
+
+
+def _backing_fill(bx, ti, own=True, chrome=()):
     """The topmost solid fill under text shape bx[ti]: the shape's OWN fill if solid, else the
     highest lower-z shape whose box covers the text (center inside + >=50% overlap). A picture,
     gradient, or theme fill in between returns "UNKNOWN" (backing colour unknowable — the caller
     must skip, never assume white). Slide bg unknown -> None. own=False skips the shape's OWN
-    fill — the backdrop BEHIND a filled shape (the non-text-contrast check's question)."""
+    fill — the backdrop BEHIND a filled shape (the non-text-contrast check's question).
+
+    `chrome` = :func:`_layout_chrome` for this slide. It ranks BELOW every shape the slide draws
+    and ABOVE the page background, which is exactly where OOXML paints it. Omitting it is safe
+    (the old behaviour) but resolves a template's own brand furniture to the page colour."""
     t = bx[ti]
     if own:
         if t["fill"]:
@@ -1092,7 +1319,7 @@ def _backing_fill(bx, ti, own=True):
             return "UNKNOWN"
     cx, cy = (t["l"] + t["r"]) / 2, (t["t"] + t["b"]) / 2
     ta = max(t["w"] * t["h"], 1e-6)
-    best = None
+    best, best_is_bg = None, False
     for k in range(ti):                                  # shapes before ti are below in z-order
         s = bx[k]
         if not (s["l"] <= cx <= s["r"] and s["t"] <= cy <= s["b"]):
@@ -1101,9 +1328,14 @@ def _backing_fill(bx, ti, own=True):
         if ix * iy < 0.5 * ta:
             continue
         if s["pic"] or s.get("unk"):
-            best = "UNKNOWN"                             # image/gradient behind the text: can't judge
+            best, best_is_bg = "UNKNOWN", bool(s.get("bg"))
         elif s["fill"]:
-            best = s["fill"]
+            best, best_is_bg = s["fill"], bool(s.get("bg"))
+    # inherited chrome sits between the page background and the slide's own shapes
+    if chrome and (best is None or best_is_bg):
+        ch = _chrome_under(chrome, t)
+        if ch is not None:
+            best = ch
     return best
 
 
@@ -2823,6 +3055,7 @@ def lint(path, mode="presented", json_out=None, renders_dir=None, static_ok=Fals
                     pass
                 break
         bx = _boxes(slide, sw, sh, slide_no=si + 1)
+        chrome = _layout_chrome(slide, sw, sh)   # layout/master brand furniture under the build
         try:
             stats_rows.append(_slide_stats(slide, bx, sw, sh))
         except Exception as exc:
@@ -2941,7 +3174,7 @@ def lint(path, mode="presented", json_out=None, renders_dir=None, static_ok=Fals
                                 f"end of the block above it, or draw it before the text")
                             break
                         b0 = None
-            back = _backing_fill(bx, ti)
+            back = _backing_fill(bx, ti, chrome=chrome)
             if back == "UNKNOWN":
                 continue                                 # picture/gradient backing → unknowable, skip
             _resolved_back = bool(back)
@@ -2987,7 +3220,7 @@ def lint(path, mode="presented", json_out=None, renders_dir=None, static_ok=Fals
             for ti, s in enumerate(bx):
                 if not s["text"] or not s["runs"] or s["size"] < 8:
                     continue
-                back = _backing_fill(bx, ti)
+                back = _backing_fill(bx, ti, chrome=chrome)
                 if not (back == "UNKNOWN" or (back is None and unk_plate)):
                     continue                             # solid/resolvable backing → 1b's territory
                 if im_r is None:
@@ -3389,7 +3622,7 @@ def lint(path, mode="presented", json_out=None, renders_dir=None, static_ok=Fals
             if any(t2["text"] and t2["l"] - 0.05 <= cx <= t2["r"] + 0.05
                    and t2["t"] - 0.05 <= cy <= t2["b"] + 0.05 for t2 in bx):
                 continue                                 # a text chip — its label is what's judged
-            back = _backing_fill(bx, i, own=False)
+            back = _backing_fill(bx, i, own=False, chrome=chrome)
             if not back or back == "UNKNOWN":
                 continue
             ratio = _contrast(s["fill"], back)
@@ -3406,7 +3639,7 @@ def lint(path, mode="presented", json_out=None, renders_dir=None, static_ok=Fals
             if not s.get("icon"):
                 continue
             ink_hex, _pur, _frac = s["icon"]
-            back = _backing_fill(bx, i, own=False)
+            back = _backing_fill(bx, i, own=False, chrome=chrome)
             if not back or back == "UNKNOWN":
                 continue
             ratio = _contrast(ink_hex, back)

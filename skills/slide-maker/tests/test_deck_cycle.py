@@ -173,12 +173,37 @@ else:
     bad.append("a contact sheet was made for a single slide")
 
 # ---------------------------------------------------------------- nothing else was rerouted
-rd = (SCRIPTS / "render_deck.py").read_text()
-if "deck_cycle" not in rd and "deck_cycle" not in (SCRIPTS / "lint_deck.py").read_text():
+# 🔴 Asks the AST, not the bytes. This was a substring search for "deck_cycle" over the whole
+# file, which cannot tell a CODE dependency from a sentence: it fired the moment a comment in
+# lint_deck.py explained why deck_cycle's LOOP BREAKER had escalated on a false positive. A guard
+# that fires on prose teaches authors to route around the guard, which is the failure this whole
+# file is about. The property worth protecting is "no code path reaches deck_cycle" — an import,
+# an attribute access, or a subprocess invoking the script — and that is exactly what an AST walk
+# can decide while comments and docstrings are invisible to it.
+def _code_depends_on_deck_cycle(path):
+    tree = ast.parse(path.read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(a.name.split(".")[0] == "deck_cycle" for a in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if (node.module or "").split(".")[0] == "deck_cycle":
+                return True
+        elif isinstance(node, ast.Name) and node.id == "deck_cycle":
+            return True
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            if node.value.strip().endswith("deck_cycle.py"):   # a path handed to subprocess
+                return True
+    return False
+
+
+_dep = [n for n in ("render_deck.py", "lint_deck.py")
+        if _code_depends_on_deck_cycle(SCRIPTS / n)]
+if not _dep:
     ok.append("neither render_deck.py nor lint_deck.py routes through deck_cycle — it is an "
               "alternative entry point, so no stage can be dropped by editing one file")
 else:
-    bad.append("an existing entry point now depends on deck_cycle.py")
+    bad.append("an existing entry point now depends on deck_cycle.py in CODE: " + ", ".join(_dep))
 
 rr = (SCRIPTS / "roundtrip_report.py").read_text()
 if "MUST NEVER BECOME A GATE" in rr:

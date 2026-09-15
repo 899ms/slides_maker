@@ -179,6 +179,38 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   the colour") stay prose and are REPORTED as unchecked. The register is resolved by
   `check_style_applied.declared_preset`, never a substring search: a bespoke deck whose pick read
   "beat blueprint-the-preset" was checked as `blueprint` on the first try.
+- `check_template_profile.py` — a registered template's `profile.md` must be OBEYED, not merely
+  available. The registry is the one artefact in this skill with a MEMORY across decks — layout
+  indices, decorative furniture that cannot be deleted from a layout and has to be covered by the
+  build, the font decision someone already made and the trap they already hit. Measured by grep,
+  `profile.md` was read by `registry.py` and `deckkit.py` (both producers) and by NO check, so a
+  build could ignore every line of it and nothing downstream would know. Same claim as
+  `check_direction_applied.py` one level down: a look that was CHOSEN must be verified against the
+  deck that SHIPS. A profile opts in with ONE fenced `## Machine-checkable contract` json block
+  (prose and contract in one file, so they cannot drift into two truths) declaring any of
+  `match` / `layouts` / `fonts` / `title_color` / `must_cover`; it reports `LAYOUT OFF PROFILE`,
+  `FONT OFF PROFILE`, `TITLE COLOUR OFF PROFILE` and `UNCOVERED TEMPLATE FURNITURE`. 🔴 Binding is
+  by FINGERPRINT — the deck's own layout names + canvas size — not by a recorded template name, so
+  a runtime that compressed the interview away is still checked. A profile with no contract block
+  reports NOT CHECKED and exits 2; "there was nothing to check" and "everything checked out" are
+  different sentences and it never prints the second for the first reason. Run by both gate paths;
+  waive with `{"template_profile": {"waived": "<why this deck differs>"}}`.
+- `check_fonts_resolve.py` — do the faces this deck NAMES resolve on the machine that MEASURED it?
+  Not the portability question ("will the presenter have Calibri?" is unknowable from the file and
+  is correctly advisory at PRE-FLIGHT 10) but the measurement one: every fit / wrap / overflow /
+  footer-clearance guard sits on `deckkit._measure_lines`, which measures whichever face it can
+  RESOLVE, so a named-but-absent face makes the build and the lint compute from the same wrong
+  number and AGREE WITH EACH OTHER while the render disagrees with both. `deckkit.font_health()`
+  has always been able to see this and `lint_layout` only `print`s it — in no `--json`, gating
+  nothing, one line in a scrolling build log. It is NOT a build-time CRITICAL because deckkit's
+  shipped defaults are `FONT='Calibri'` / `MONO='Consolas'` and neither ships with macOS: raising
+  there would break every stock build on this skill's primary platform, and re-theming the
+  defaults would silently change the look of every deck ever built from the library. So it blocks
+  once, at hand-off, on both gate paths. Reads `latin`/`ea`/`cs` typefaces from the XML (the CJK
+  and complex-script faces carry the text on exactly the decks where substitution hurts most) plus
+  the theme's major/minor latin that an unstyled run inherits; a face carrying fewer than
+  `MIN_CHARS` characters is reported, never blocked. Waive with
+  `{"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}`.
 - `check_register_pixels.py` — the register a deck DECLARES must reach its RENDERED PIXELS, and
   must not be a previous deck's. The half `check_style_applied.py` structurally cannot reach: a
   BESPOKE register has no `presets.apply()` call to find, and a build that calls it and then

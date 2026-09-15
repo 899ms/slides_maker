@@ -1465,6 +1465,84 @@ def note_register_kept(evidence: dict[str, Any], deck_path: Path | None) -> None
         print(f"  [--] register keep-note NOT RUN — {exc.__class__.__name__}: {exc}")
 
 
+def check_template_profile(evidence: dict[str, Any], deck_path: Path | None,
+                           errors: list[str]) -> None:
+    """A registered template's `profile.md` contract, checked against the built deck.
+
+    Binds by the deck's OWN fingerprint (layout names + canvas size) rather than by a recorded
+    template name, which is what makes it work on a runtime that compressed the interview away.
+    Same module as `render_deck.py --gate-check`. Waive with
+    `{"template_profile": {"waived": "<why this deck differs>"}}`.
+    """
+    if deck_path is None:
+        return
+    try:
+        checker = load_template_profile_checker()
+    except Exception as exc:
+        print(f"  [--] TEMPLATE PROFILE NOT CHECKED — {exc.__class__.__name__}: {exc} "
+              f"(not the same as clean)")
+        return
+    try:
+        finds, facts = checker.check(str(deck_path))
+    except Exception as exc:
+        print(f"  [--] template profile NOT CHECKED — {exc} (not the same as clean)")
+        return
+    if not finds:
+        print(f"  [ok] template profile {facts['template']!r} honoured — "
+              f"checked: {', '.join(facts['checked'])}")
+        return
+    waived = (evidence.get("template_profile") or {}).get("waived") if isinstance(
+        evidence.get("template_profile"), dict) else None
+    if waived:
+        print(f"  [--] template profile WAIVED — {waived}")
+        return
+    for code, why in finds:
+        errors.append(f"template profile {facts['template']!r}: {code}: {why} "
+                      f'Deliberate? record {{"template_profile": {{"waived": "<why>"}}}}.')
+
+
+def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,
+                        errors: list[str]) -> None:
+    """The faces this deck NAMES must resolve on the machine that MEASURED it.
+
+    Not the portability question — the measurement one. Every fit/wrap/overflow guard sits on
+    `deckkit._measure_lines`, which measures whichever face it can resolve, so a named-but-absent
+    face makes the build and the lint compute from the same wrong number and agree with each
+    other while the render disagrees with both. `lint_layout` can see this and only PRINTS it.
+
+    Same module as `render_deck.py --gate-check`. Waive with
+    `{"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}`.
+    """
+    if deck_path is None:
+        return
+    try:
+        checker = load_fonts_checker()
+    except Exception as exc:                       # never fail the gate on the checker itself
+        print(f"  [--] FONTS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        return
+    try:
+        findings, facts = checker.check(str(deck_path))
+    except Exception as exc:
+        print(f"  [--] FONTS NOT CHECKED — {exc} (not the same as clean: the faces this deck "
+              f"names were never tested)")
+        return
+    for sev, face, why in findings:
+        if sev != "block":
+            print(f"  [--] fonts: {face}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    waived = (evidence.get("fonts") or {}).get("waived") if isinstance(
+        evidence.get("fonts"), dict) else None
+    if waived:
+        print(f"  [--] fonts WAIVED — {waived}")
+        return
+    for _sev, face, why in blocks:
+        errors.append(f"font {face!r} does not resolve on this machine: {why} "
+                      f'Install it, set a face that exists, or record '
+                      f'{{"fonts": {{"waived": "<why>"}}}}.')
+
+
 def check_register_pixels(evidence: dict[str, Any], deck_path: Path | None,
                          errors: list[str]) -> None:
     """The register the evidence DECLARES must reach the deck's RENDERED PIXELS.
@@ -2067,6 +2145,28 @@ def load_surface_checker() -> Any:
     return module
 
 
+def load_template_profile_checker() -> Any:
+    # Same one-question-one-implementation rule as load_style_checker() above.
+    path = Path(__file__).with_name("check_template_profile.py")
+    spec = importlib.util.spec_from_file_location("slide_maker_check_template_profile", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not load check_template_profile.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_fonts_checker() -> Any:
+    # Same one-question-one-implementation rule as load_style_checker() above.
+    path = Path(__file__).with_name("check_fonts_resolve.py")
+    spec = importlib.util.spec_from_file_location("slide_maker_check_fonts_resolve", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("could not load check_fonts_resolve.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_register_pixels_checker() -> Any:
     # Same one-question-one-implementation rule as load_style_checker() above.
     path = Path(__file__).with_name("check_register_pixels.py")
@@ -2379,6 +2479,8 @@ def evaluate(
             check_style_applied(evidence, build_script, errors)
         # DECLARED -> RENDERED. The line above reads the SOURCE; this reads the PIXELS, which is
         # the only place a bespoke register (no preset call to grep for) can be verified at all.
+        check_template_profile(evidence, deck_path, errors)
+        check_fonts_resolve(evidence, deck_path, errors)
         check_register_pixels(evidence, deck_path, errors)
         # DECLARED -> OBEYED. The two lines above read the source and the colour;
         # this reads whether the register's own prohibitions were respected.

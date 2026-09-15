@@ -316,11 +316,25 @@ if _b == "UNKNOWN" and any(x["bg"] for x in bx3):
 else:
     bad.append(f"a slide-declared gradient lost its record: backing={_b!r}")
 
-_b, _ = _at("master", GRAD)
-if _b is None:
-    ok.append("an INHERITED gradient stays None — inheritance only ever adds resolved colour")
+# 🔴 CONTRACT REFINED. This used to assert that an inherited gradient stays None, on the rule
+# "inheritance only ever adds resolved colour". That rule conflated two different claims — "we
+# could not resolve it" and "there is nothing there" — and only the second licenses the
+# `back = "FFFFFF"` fallback the contrast check applies downstream. An inherited <p:bg> carrying a
+# real gradFill/blipFill/pattFill is POSITIVE EVIDENCE that the page is painted; asserting white
+# over it is the wrong-and-confident failure `_slide_bg_box` is careful to avoid elsewhere.
+# MEASURED on an institutional template whose master paints a full-canvas <a:blipFill>: every
+# white-on-brand title scored "INVISIBLE TEXT #FFFFFF on #FFFFFF, 1.00:1" — 6 per lint run on a
+# deck measuring 4.52:1 in reality. Recording `unk` instead makes the XML check skip (it cannot
+# know) and hands the question to the render-pixel check, which can.
+# The protection the original assertion actually existed for is UNCHANGED and still tested above:
+# a bare <p:bgRef> theme reference invents no record, so `unk_plate` does not become true on every
+# deck ever built.
+_b, bx4 = _at("master", GRAD)
+if _b == "UNKNOWN" and any(x["bg"] for x in bx4):
+    ok.append("an INHERITED gradient is recorded as painted-but-unresolvable (UNKNOWN), so the "
+              "contrast check skips instead of assuming white over it")
 else:
-    bad.append(f"an inherited gradient produced {_b!r} instead of staying unknown")
+    bad.append(f"an inherited gradient produced {_b!r}; expected UNKNOWN with a bg record")
 
 # the colour must come from inside <a:solidFill>, not the first srgbClr anywhere under <p:bg>:
 # a legal <a:effectLst> declared first would otherwise be read as the page colour

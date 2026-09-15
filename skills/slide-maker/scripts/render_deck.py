@@ -1883,6 +1883,93 @@ def _register_pixels_gate(pptx):
         + "\n    Re-run alone: python3 scripts/check_register_pixels.py {}".format(deck_dir))
 
 
+def _fonts_gate(pptx, gates):
+    """The faces this deck NAMES must resolve on the machine that measured it.
+
+    Not the portability question (unknowable, and correctly advisory at PRE-FLIGHT 10) — the
+    measurement one. Every fit/wrap/overflow guard sits on `deckkit._measure_lines`, which
+    measures the face it can RESOLVE, so a named-but-absent face makes the build and the lint
+    compute from the same wrong number and agree with each other while the render disagrees with
+    both. `deckkit.font_health()` has always seen this and `lint_layout` only PRINTS it: no
+    `--json`, no gate, one line in a scrolling log.
+
+    It lands here rather than as a build-time CRITICAL because deckkit's shipped defaults are
+    FONT='Calibri' / MONO='Consolas' and neither ships with macOS — raising at build time would
+    break every stock build on this skill's primary platform, and re-theming the defaults would
+    silently change the look of every deck ever built from the library.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_fonts_resolve as cfr
+    except Exception as exc:
+        print(f"  [--] FONTS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    waived = (_section(gates, "fonts") or {}).get("waived")
+    try:
+        findings, facts = cfr.check(pptx)
+    except Exception as exc:
+        print(f"  [--] FONTS: NOT CHECKED — {exc}. NOT the same as clean: the faces this deck "
+              f"names were never tested.")
+        return
+    blocks = [f for f in findings if f[0] == "block"]
+    for sev, face, why in findings:
+        if sev != "block":
+            print(f"  [--] fonts: {face}: {why}")
+    if not blocks:
+        print("[gates] fonts: every face this deck names resolves here ({} checked)".format(
+            len(facts.get("named") or {}) + len(facts.get("theme") or [])))
+        return
+    if waived:
+        print("[gates] fonts WAIVED — {}".format(waived))
+        for _s, face, why in blocks:
+            print(f"        {face}: {why}")
+        return
+    die("{} face(s) this deck sets do NOT resolve on this machine, so the geometry was measured "
+        "in a stand-in:\n    - ".format(len(blocks))
+        + "\n    - ".join("{}: {}".format(f, w) for _s, f, w in blocks)
+        + "\n    Install them, set faces that exist (deckkit.use_platform_fonts()), or record "
+          '\n    {"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}')
+
+
+def _template_profile_gate(pptx, gates):
+    """A registered template's profile.md must be OBEYED, not merely available.
+
+    The registry is the one artefact here with a MEMORY — layout indices, furniture that cannot be
+    deleted and must be covered, the font decision someone already made and the trap they already
+    hit. Measured by grep, `profile.md` was read by two producers and by no check, so a build could
+    ignore every line of it silently. `check_direction_applied.py` exists for the same reason one
+    level down: a look that was CHOSEN must be verified against the deck that SHIPS.
+
+    Binds by FINGERPRINT (the deck's own layout names + canvas size), so a runtime that never
+    records which template it used is still checked. No contract block -> NOT CHECKED, never clean.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_template_profile as ctp
+    except Exception as exc:
+        print(f"  [--] TEMPLATE PROFILE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    try:
+        finds, facts = ctp.check(pptx)
+    except Exception as exc:
+        print(f"  [--] template profile: NOT CHECKED — {exc}")
+        return
+    if not finds:
+        print("[gates] template profile {!r} honoured — checked: {}".format(
+            facts["template"], ", ".join(facts["checked"])))
+        return
+    waived = (_section(gates, "template_profile") or {}).get("waived")
+    if waived:
+        print("[gates] template profile WAIVED — {}".format(waived))
+        for c, m in finds:
+            print(f"        {c}: {m}")
+        return
+    die("the deck departs from its registered template profile ({!r}):\n    - ".format(
+        facts["template"])
+        + "\n    - ".join("{}: {}".format(c, m) for c, m in finds)
+        + '\n    Deliberate? record {"template_profile": {"waived": "<why this deck differs>"}}')
+
+
 def _surface_gate(pptx, gates):
     """A canvas format's contract, checked against the built deck instead of trusted.
 
@@ -3303,6 +3390,14 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
 
     with _gate_section('surface'):
         _surface_gate(pptx, gates)
+
+    with _gate_section('template_profile'):
+        with _gate_step():
+            _template_profile_gate(pptx, gates)
+
+    with _gate_section('fonts'):
+        with _gate_step():
+            _fonts_gate(pptx, gates)
 
     with _gate_section('register_pixels'):
         with _gate_step():

@@ -211,6 +211,26 @@ be reconstructed post-hoc at the delivery gate.
    without one anywhere the lint reports `MOTIF_UNEXPLAINED`, and on a deliberately FIGURATIVE
    device that advisory is the expected result — say so in the plan rather than adding a key you
    do not want.
+
+**Two gates the TEMPLATE branch adds, both shared with `render_deck.py --gate-check`** (they run on
+every deck, and they are the two that most often fire on a Codex run because they need no recorded
+interview answer at all — each reads the built file itself):
+
+- **`check_template_profile.py`** — a registered template's `profile.md` must be OBEYED. It binds
+  by the DECK's own fingerprint (layout names + canvas size), not by a recorded template name, so a
+  run that compressed the interview away is still held to the template's accumulated rules:
+  `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
+  `UNCOVERED TEMPLATE FURNITURE`. Deviating is legitimate design; record it as
+  `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
+- **`check_fonts_resolve.py`** — the faces the deck NAMES must resolve on the machine that MEASURED
+  it. Not portability (unknowable) but measurement: every wrap/fit guard sits on
+  `deckkit._measure_lines`, so a named-but-absent face makes the build and the lint agree with each
+  other and both disagree with the render. Record
+  `{"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}` only when a
+  substituted measurement genuinely is acceptable — the usual fix is
+  `deckkit.use_platform_fonts()` or installing the face.
+
+
 3. **Treat categories as a visual-system decision.** In the per-slide design ledger, mark every slide
    as categorical or not. If the deck names roles, input types, product pillars, tools, or stages,
    choose one icon family and use it where it clarifies those categories. For each categorical slide,

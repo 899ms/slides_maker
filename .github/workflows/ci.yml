@@ -679,6 +679,22 @@ jobs:
           grep -qE "^[0-9]+ passed, 0 failed" /tmp/renderpar.log || {
             echo "::error::render-equivalence suite did not run to completion"; exit 1; }
 
+      # The template BRANCH — roughly half of what this skill builds — had three holes that every
+      # gate reported clean through. All three were found on one real institutional-template deck.
+      # Script-style (matching test_lint_regressions.py), so pytest would collect zero: invoke
+      # directly, and fail loudly if a suite exits 0 without having asserted anything.
+      - name: Template-branch gates (backing fill, template profile, font resolution)
+        run: |
+          set -o pipefail
+          python tests/test_template_branch_gates.py | tee /tmp/tb.log
+          grep -qE "^[0-9]+ passed" /tmp/tb.log || {
+            echo "::error::template-branch suite exited 0 without asserting"; exit 1; }
+          python tests/test_template_profile_and_fonts.py | tee /tmp/tpf.log
+          grep -qE "^[0-9]+ passed" /tmp/tpf.log || {
+            echo "::error::template-profile/fonts suite exited 0 without asserting"; exit 1; }
+          python scripts/check_fonts_resolve.py --selftest
+          python scripts/check_template_profile.py --selftest
+
       # The Codex delivery gate is the strictest thing in the skill -- it is what stops a Codex
       # run from calling a deck delivered without two schema-valid critic reviews. It shipped
       # with 437 lines of tests wired to nothing. Script-style on purpose (matching

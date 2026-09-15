@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Do the faces this deck NAMES actually resolve on the machine that measured it?
+
+This is not the portability question. "Will the presenter have Calibri?" is unknowable from the
+file and is correctly an advisory (PRE-FLIGHT 10). The question here is decidable and much more
+consequential:
+
+    every fit, wrap, overflow, footer-clearance and grid guard in this library sits on
+    `deckkit._measure_lines`, which measures with the face it can RESOLVE. When the named face is
+    absent, a metric-incompatible stand-in is measured instead, so the build and the lint are
+    computed from the same wrong number and AGREE WITH EACH OTHER while the render disagrees with
+    both.
+
+`deckkit.font_health()` has always been able to see this, and `lint_layout` prints it — as a
+`print`, not a finding. It is therefore in no `--json`, gates nothing, and is one line in a
+scrolling build log. MEASURED, in this repo's own history: an install command that fit its panel
+by 10% under substituted metrics still broke across three lines in the render and was copied back
+as a repo path that 404s. MEASURED again on the LKEB/LUMC deck this check was written for: the
+template's own theme font is Calibri, Calibri lives only inside the PowerPoint app bundle on
+macOS, and the whole deck would have been laid out against a substitute — caught only because the
+template's hand-written `profile.md` happened to warn about it.
+
+Why it is not simply a CRITICAL in `lint_layout`: deckkit's shipped defaults are FONT='Calibri'
+and MONO='Consolas', and NEITHER ships with macOS. Raising at build time would break every stock
+build on the skill's primary platform on day one, and re-theming the defaults instead would be a
+worse bug (it silently changes the look of every deck ever built from this library). So it lands
+where the skill already puts blocking decisions that must not interrupt authoring: the HAND-OFF
+gate, once, with a written waiver.
+
+What it reports, per face the deck actually SETS on text:
+
+  UNRESOLVED BODY FACE    a face carrying real text does not resolve here -> every geometry number
+                          computed for that text is the wrong face's. Blocks.
+  UNRESOLVED THEME FACE   the theme's major/minor latin face (which every run with no explicit
+                          typeface inherits) does not resolve. Blocks.
+  trace-only              a face carrying < `MIN_CHARS` characters is REPORTED, never blocked —
+                          a stray run in a decorative face cannot move a layout.
+
+    python3 scripts/check_fonts_resolve.py <deck.pptx> [--json] [--waive "<why>"]
+    python3 scripts/check_fonts_resolve.py --selftest
+
+Exit 0 clean · 1 findings · 2 could not run (NOT the same as clean, and it says so).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# A face carrying fewer characters than this cannot plausibly drive a wrap/fit decision that
+# matters, so it is reported and never blocked. Deliberately low: a 12-character heading in the
+# wrong face is exactly the kind of thing that overflows a title band.
+MIN_CHARS = 8
+
+_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+_P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+
+
+def _resolver():
+    """`face -> bool` (does it resolve here), from deckkit, or None when deckkit is unavailable."""
+    try:
+        import deckkit
+    except Exception:
+        return None
+    ff = getattr(deckkit, "_font_file", None)
+    if not callable(ff):
+        return None
+
+    def ok(face):
+        try:
+            path = ff(face)
+        except Exception:
+            return None                              # cannot tell -> never claim either way
+        if not path:
+            return False
+        # `_font_file` falls back to a stand-in rather than returning None, so a resolved PATH is
+        # not by itself evidence the NAMED face was found. deckkit exposes the real predicate.
+        try:
+            return not deckkit._font_substituted(face)
+        except Exception:
+            return bool(path)
+    return ok
+
+
+def _theme_faces(prs):
+    """The theme's major/minor latin faces — what a run with no explicit typeface inherits."""
+    out = set()
+    try:
+        for master in prs.slide_masters:
+            for rel in master.part.rels.values():
+                if not rel.reltype.endswith("/theme"):
+                    continue
+                from lxml import etree
+                root = etree.fromstring(rel.target_part.blob)
+                for slot in ("majorFont", "minorFont"):
+                    el = root.find(".//" + _A + slot)
+                    if el is None:
+                        continue
+                    latin = el.find(_A + "latin")
+                    if latin is not None and latin.get("typeface"):
+                        out.add(latin.get("typeface"))
+    except Exception:
+        pass
+    return {f for f in out if f and not f.startswith("+")}
+
+
+def _named_faces(prs):
+    """{face: characters set in it} across every slide's runs.
+
+    Reads the XML rather than python-pptx's `run.font.name` so that `ea` and `cs` typefaces — the
+    CJK and complex-script faces, which carry the text on exactly the decks where substitution
+    hurts most — are counted too.
+    """
+    counts = {}
+    for slide in prs.slides:
+        try:
+            root = slide._element
+        except Exception:
+            continue
+        for r in root.iter(_A + "r"):
+            t = r.find(_A + "t")
+            n = len(t.text or "") if t is not None else 0
+            if not n:
+                continue
+            rPr = r.find(_A + "rPr")
+            if rPr is None:
+                continue
+            for slot in ("latin", "ea", "cs"):
+                el = rPr.find(_A + slot)
+                face = el.get("typeface") if el is not None else None
+                if not face or face.startswith("+"):
+                    continue                          # "+mj-lt"/"+mn-lt" -> the theme face
+                counts[face] = counts.get(face, 0) + n
+    return counts
+
+
+def check(pptx):
+    """(findings, facts). findings = list of (severity, face, message). severity: 'block'|'note'."""
+    try:
+        from pptx import Presentation
+        prs = Presentation(pptx)
+    except Exception as exc:                          # unreadable deck -> exit 2, never "clean"
+        raise RuntimeError("could not open %s: %s" % (pptx, exc))
+
+    ok = _resolver()
+    if ok is None:
+        raise RuntimeError("deckkit is not importable, so font resolution cannot be tested here")
+
+    named = _named_faces(prs)
+    theme = _theme_faces(prs)
+    findings, facts = [], {"named": named, "theme": sorted(theme), "unresolved": [],
+                           "undecidable": []}
+
+    for face, chars in sorted(named.items(), key=lambda kv: -kv[1]):
+        good = ok(face)
+        if good is None:
+            facts["undecidable"].append(face)
+            findings.append(("note", face,
+                             "could not be tested on this machine — reported, not assumed fine"))
+            continue
+        if good:
+            continue
+        facts["unresolved"].append(face)
+        sev = "block" if chars >= MIN_CHARS else "note"
+        findings.append((sev, face,
+                         "carries %d character(s) of this deck's text but does NOT resolve here — "
+                         "every wrap, fit and overflow number computed for it was measured in a "
+                         "metric-incompatible stand-in%s"
+                         % (chars, "" if sev == "block" else " (under the %d-character floor, so "
+                            "reported only)" % MIN_CHARS)))
+
+    for face in sorted(theme):
+        if face in named:
+            continue                                  # already judged above
+        good = ok(face)
+        if good is None:
+            facts["undecidable"].append(face)
+            continue
+        if not good:
+            facts["unresolved"].append(face)
+            findings.append(("block", face,
+                             "is the THEME face every run with no explicit typeface inherits, and "
+                             "it does not resolve here"))
+    return findings, facts
+
+
+def _selftest():
+    bad = []
+    ok = _resolver()
+    if ok is None:
+        print("[fonts] selftest SKIPPED — deckkit not importable")
+        return 0
+    # A face that certainly does not exist must read as unresolved; one deckkit itself falls back
+    # to must read as resolved. Both directions, so a resolver that always says yes fails here.
+    if ok("Definitely Not A Real Face 9Z") is not False:
+        bad.append("a nonexistent face did not read as unresolved")
+    import platform
+    known = {"darwin": "Helvetica", "linux": "DejaVu Sans"}.get(platform.system().lower(), None)
+    if known and ok(known) is False:
+        bad.append("%r read as unresolved but is a platform face" % known)
+    # MIN_CHARS must actually gate: a 1-character unresolved face is a note, not a block.
+    if MIN_CHARS < 2:
+        bad.append("MIN_CHARS floor is too low to distinguish a stray run from body text")
+    for b in bad:
+        print("  ✗", b)
+    print("[fonts] selftest %s" % ("FAILED" if bad else "ok"))
+    return 1 if bad else 0
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("pptx", nargs="?")
+    ap.add_argument("--json", action="store_true")
+    ap.add_argument("--waive", default=None, help="a written reason; downgrades blocks to notes")
+    ap.add_argument("--selftest", action="store_true")
+    a = ap.parse_args(argv)
+    if a.selftest:
+        return _selftest()
+    if not a.pptx:
+        ap.error("a deck path is required")
+    try:
+        findings, facts = check(a.pptx)
+    except Exception as exc:
+        print("[fonts] NOT CHECKED — %s" % exc)
+        print("        NOT the same as clean: the faces this deck names were never tested.")
+        return 2
+    if a.json:
+        print(json.dumps({"findings": [{"severity": s, "face": f, "why": m}
+                                       for s, f, m in findings], "facts": facts}, indent=1))
+    blocks = [f for f in findings if f[0] == "block"]
+    if a.waive and blocks:
+        print("[fonts] WAIVED — %s" % a.waive)
+        for _s, f, m in findings:
+            print("        %s: %s" % (f, m))
+        return 0
+    for s, f, m in findings:
+        print("[fonts] %s %s: %s" % ("✗" if s == "block" else "•", f, m))
+    if not findings:
+        print("[fonts] every face this deck names resolves here (%d face(s) checked)"
+              % (len(facts["named"]) + len(facts["theme"])))
+    return 1 if blocks else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
