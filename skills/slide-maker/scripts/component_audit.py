@@ -85,17 +85,16 @@ FORM_GUARANTEE = {
     "iso_bars": "a FAITHFUL 2.5D bar chart — height linear in the value, zero-based",
     "iso_stack": "an isometric layered stack with labels aligned to each slab",
     "iso_prism": "one extruded isometric block with fixed one-light-source face shading",
-    # clinical / evidence-synthesis forms — each owns a rule that is wrong-by-default hand-rolled
+    # 🔴 This dict is deckkit SLIDE-DRAWING forms only — the `designed_charts` recipes (waterfall,
+    # distribution, marimekko, radar, and the clinical forest/KM/Bland-Altman/ROC) are deliberately
+    # NOT here. They write a PNG rather than drawing on a slide, so there is nothing for the
+    # cluster detector to match them against, and every entry here owes a runnable scaffold in
+    # `sigs.EXAMPLES` that executes against a slide (enforced by smoke_deckkit). Their backstop is
+    # the ROUTING — form-selection.md, data-viz.md and clinical-evidence-figures.md — which is the
+    # same backstop the older chart recipes have always had.
     "consort_flow": ("the participant arithmetic is ENFORCED: every stage's count minus its "
                      "documented exclusions must equal the next stage's, and it raises with the "
                      "sum spelled out when it does not"),
-    "forest_plot": ("ratios are put on a LOG axis with plain-number ticks, so a CI that is "
-                    "symmetric in ratio terms is not drawn lopsided"),
-    "km_curve": ("survival drawn as a STEP from the raw (time, event) data, with censoring ticks "
-                 "and a numbers-at-risk table aligned to the x ticks"),
-    "bland_altman": ("bias +/- 1.96 SD of the DIFFERENCES, computed and labelled — not a "
-                     "correlation, which two disagreeing methods can pass"),
-    "roc_curve": "a square canvas and the chance diagonal, so the AUC is readable rather than flattered",
 }
 
 

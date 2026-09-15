@@ -153,6 +153,15 @@ EXAMPLES = {
                 '            contact="you@lab.nl", image="qr.png")',
     "timeline": 'dk.timeline(s, 0.7, 2.0, 8.6, [("1979", "first"), ("2026", "now", "caption")],\n'
                 '            highlight=1)',
+    # the counts must BALANCE: 250 - (40 + 12) = 198, and 198 - (9 + 5) = 184. Change one number
+    # and it raises with the sum — that refusal is the component, not the boxes.
+    "consort_flow": 'dk.consort_flow(s, 0.6, 1.1, 8.8, 3.9, [\n'
+                    '    ("Assessed for eligibility", 250,\n'
+                    '     [("Did not meet criteria", 40), ("Declined", 12)]),\n'
+                    '    ("Randomised", 198,\n'
+                    '     [("Lost to follow-up", 9), ("Withdrew consent", 5)]),\n'
+                    '    ("Analysed", 184, []),\n'
+                    '])',
     "stat_row": 'dk.stat_row(s, 0.7, 2.0, 8.6, [("8", "x", "faster"), ("99", "%", "coverage")])',
     "step_list": 'dk.step_list(s, 0.8, 1.0, 8.0, [("Collect", "gather the inputs"),\n'
                  '                                ("Train", "fit the model")])',

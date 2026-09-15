@@ -164,9 +164,16 @@ raises(lambda: dc.roc_curve(out("x.png"), [("m", [0, 1], [1.4, 0.2], "precompute
 
 print("\n— routing: a form nobody is pointed at is a form nobody picks")
 import component_audit as ca                                              # noqa: E402
-for name in ("consort_flow", "forest_plot", "km_curve", "bland_altman", "roc_curve"):
-    ck(name in ca.FORM_GUARANTEE,
-       "component_audit can name a guarantee for %s — so a hand-rolled one is reportable" % name)
+ck("consort_flow" in ca.FORM_GUARANTEE,
+   "component_audit names a guarantee for consort_flow — it draws on a slide, so a hand-rolled "
+   "one is reportable")
+import sigs as _sigs                                                      # noqa: E402
+ck("consort_flow" in _sigs.EXAMPLES,
+   "…and it carries the runnable scaffold every FORM_GUARANTEE entry owes (smoke_deckkit enforces "
+   "FORM_GUARANTEE ⊆ EXAMPLES, and executes each scaffold against a real slide)")
+ck(not ({"forest_plot", "km_curve", "bland_altman", "roc_curve"} & set(ca.FORM_GUARANTEE)),
+   "the four PNG recipes are NOT in FORM_GUARANTEE — they write a file rather than drawing on a "
+   "slide, exactly like waterfall/distribution/marimekko, so their backstop is the routing")
 skill = open(os.path.join(SKILL, "SKILL.md")).read()
 ck("clinical-evidence-figures.md" in skill,
    "SKILL.md routes to the clinical reference — layer 1 carries the trigger, which is what a "
