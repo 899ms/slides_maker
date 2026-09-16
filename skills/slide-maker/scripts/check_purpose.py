@@ -209,7 +209,7 @@ def _selftest():
             bad.append("%s declares no required sections — it would always pass" % p.name)
         if not p.binds_on:
             bad.append("%s has no binding terms — it could never be reached" % p.name)
-    # a term list of one English word is a check that fires on every 中文 deck
+    # a term list of one English word is a check that fires on every Chinese deck
     for p in purposes.PURPOSES:
         for lbl, terms in p.required_sections:
             if not any(any(ord(ch) > 0x2E80 for ch in t) for t in terms):

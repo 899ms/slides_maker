@@ -275,7 +275,7 @@ def main():
         def _bespoke_register_is_first_class():
             """A bespoke register invented for the content (not one of the 18 presets) must render its
             OWN real DNA in the preview — a first-class peer of a preset, not a motif-less colourway —
-            so the preset-driven gate never demotes agent-invented bold design (的大胆设计能力)."""
+            so the preset-driven gate never demotes agent-invented bold design."""
             sys.path.insert(0, HERE)
             import importlib, archetypes_html as ah
             importlib.reload(ah)

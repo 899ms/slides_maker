@@ -158,7 +158,7 @@ def _prose_motif(d):
         if _DRAWS.search(html) or _STYLED_BOX.search(html):
             continue
         # CJK-aware on purpose. `.split()` counts a 40-character Chinese description as ONE word,
-        # so a motif field written in 中文 slipped through entirely — the same blindness as
+        # so a motif field written in Chinese slipped through entirely — the same blindness as
         # measuring Chinese glyph widths with Latin metrics, and it would have made this check fire
         # only for the authors already writing in English.
         text = re.sub(r"<[^>]+>", " ", html)

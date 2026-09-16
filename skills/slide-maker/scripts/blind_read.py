@@ -103,7 +103,7 @@ def _w(text) -> int:
     """Width, not codepoints — the same bar in Chinese as in English.
 
     🔴 `len()` counts CODEPOINTS, so a CJK reason clears a floor at half the information an
-    English one needs: 「敢不敢把求职材料交给它」 is 11 codepoints and was rejected by a floor of
+    English one needs: an 11-codepoint Chinese brief is and was rejected by a floor of
     12, while a 12-letter English phrase carrying a third as much passed. Measured on a real
     Chinese deck built with this skill. ONE definition, imported — see written_reason.py.
     """

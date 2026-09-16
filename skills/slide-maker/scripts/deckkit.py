@@ -846,7 +846,7 @@ def set_font(run, size, color, bold=False, italic=False, font=None, ea=None):
 CJK_LS = 1.12             # default line_spacing (OOXML spcPct — a multiple of SINGLE spacing,
                           # which renders at ≈1.2× font size) for CJK-bearing paragraphs when the
                           # caller doesn't force one. 1.12 × 1.2 ≈ **1.34× font size** — inside the
-                          # professional CJK slide band (≈1.3–1.45× font size; mixed EN/中文 ≈1.35×).
+                          # professional CJK slide band (≈1.3–1.45× font size; mixed EN/Chinese ≈1.35×).
                           # ⚠ UNITS: python-pptx line_spacing floats are spcPct, NOT em-multiples —
                           # "1.35 line height" in design terms is line_spacing ≈ 1.12, not 1.35.
                           # Latin-only paragraphs keep 1.0 (single). Pass an explicit line_spacing
@@ -1020,7 +1020,7 @@ def text(slide, x, y, w, h, runs, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP,
             r = p.add_run(); r.text = txt
             # rest = [latin_face, ea_face] — the SEVENTH slot is the East-Asian face, and it
             # exists because the sixth one cannot do that job. A run tuple's font goes to
-            # <a:latin>, and CJK glyphs render from <a:ea>, so on a 中文 deck a display face
+            # <a:latin>, and CJK glyphs render from <a:ea>, so on a Chinese deck a display face
             # named in slot 6 reached only the Latin characters. Measured by pixels: swapping
             # EAFONT changed 25,570 px of a rendered CJK title while swapping the run tuple's
             # font changed none of the CJK glyphs at all. Omitting it (the default) keeps the
@@ -4931,7 +4931,7 @@ def _theme_chart(ch, series, *, palette, dark, font, highlight, legend, value_fm
 def native_dual_axis(slide, x, y, w, h, categories, left, right, *, left_name="A", right_name="B",
                      palette=None, dark=False, font=None):
     """An **editable** two-scale line chart (real PowerPoint combo chart): `left` values on the left
-    axis, `right` values on a SECONDARY right axis — the 'A↑ vs B↓' story (e.g. 占比% vs 成本指数).
+    axis, `right` values on a SECONDARY right axis — the 'A↑ vs B↓' story (e.g. share % vs cost index).
     Click-to-edit and **any-language-safe**: non-Latin labels (CJK · Cyrillic · Greek · …) render via
     PowerPoint's fonts, no tofu (pass ``font=`` your deck's text font). The editable, non-rasterised
     replacement for ``designed_charts.dual_axis`` — especially for non-Latin labels."""
@@ -7910,7 +7910,7 @@ def corner_tab(slide, card_x, card_y, card_w, label, *, fill=None, tcolor=None, 
 
 def concentric_rings(slide, cx, cy, layers, *, accent=None, ink=None, r0=1.6, ring=0.62):
     """A nested-containment / synthesis diagram (core → ring → ring) with leader labels — for a
-    qualitative framework (e.g. CMT 色彩·材质·纹理). layers = [outer…inner] labels."""
+    qualitative framework (e.g. CMT — colour, material, texture). layers = [outer…inner] labels."""
     acc = accent if accent is not None else GOLD
     ic = ink if ink is not None else DEEP
     n = len(layers)
@@ -8454,7 +8454,7 @@ def _measuring_face(run):
     """The face a run's glyphs will ACTUALLY be set in — which is not always `run.font.name`.
 
     python-pptx's `font.name` reads `<a:latin>`. CJK glyphs render from `<a:ea>`, which is where
-    `_apply_ea`/`set_font` put the East-Asian face. So on a 中文 deck every geometry check measured
+    `_apply_ea`/`set_font` put the East-Asian face. So on a Chinese deck every geometry check measured
     Chinese text with the deck's LATIN metrics, and Latin metrics are roughly half as wide as a
     full-width glyph:
 
@@ -8641,7 +8641,7 @@ def _cjk_face_faults(prs):
     """A CJK face named where it cannot reach a single CJK glyph.
 
     A run tuple carries ONE font slot in position 6, and it writes `<a:latin>`. CJK glyphs render
-    from `<a:ea>`, which takes EAFONT unless a run says otherwise. So on a 中文 deck an author who
+    from `<a:ea>`, which takes EAFONT unless a run says otherwise. So on a Chinese deck an author who
     writes `(title, 40, INK, True, False, "Songti SC")` has set the Latin face of a run whose Latin
     content is a stray acronym, and every Chinese character in it still renders in EAFONT. Measured
     by pixels on a real build: swapping EAFONT changed 25,570 px of a rendered CJK title while

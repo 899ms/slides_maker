@@ -100,7 +100,7 @@ legibility rules).
   `hub_spokes(hub, spokes)` (or `edge_point(rect, toward)` for one end) so no arrow ever emerges from
   a block's centre across its own label; the `CONNECTOR_IN_BOX` lint enforces it. On a dark deck
   host the diagram in a bright `diagram_island` ("Figure N"). `concentric_rings` for nested frameworks
-  (CMT 色彩·材质·纹理); `hub_spoke`/`quadrant`/`timeline` for those specific shapes.
+  (CMT — colour · material · texture); `hub_spoke`/`quadrant`/`timeline` for those specific shapes.
 - **Layered-card vocabulary (modern-SaaS polish):** `kpi_card` (hairline card = tinted `icon_chip`
   + label + DELTA pill top-right + big value + muted sub + optional `conclusion_strip`) ·
   *(tie-breaker vs `scorecard`: reach for **`scorecard`** for a plain metric tile in a row of peers;

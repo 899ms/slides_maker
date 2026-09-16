@@ -203,8 +203,8 @@ Three ways to put a chart on a slide; choose by what the deck needs:
   your deck's text font for the script (your `EAFONT` for CJK; a Cyrillic/Greek deck's `FONT` already
   covers those). **Covers nearly the whole roster:** `native_chart` (`line`/`line_markers`/`column`/
   `bar` + the **composition** kinds `column_stacked`/`…_stacked_100`/`bar_stacked`/`…_stacked_100`/
-  `area`/`area_stacked`/`…_stacked_100`, and **slope** = a 2-point line), `native_dual_axis` (two-scale 'A↑ vs B↓', e.g. 占比% vs
-  成本指数), `native_donut` (part-to-whole + a KPI in the hole), `native_pareto` (columns + cumulative-%
+  `area`/`area_stacked`/`…_stacked_100`, and **slope** = a 2-point line), `native_dual_axis` (two-scale 'A↑ vs B↓', e.g. share % vs
+  cost index), `native_donut` (part-to-whole + a KPI in the hole), `native_pareto` (columns + cumulative-%
   line on a secondary axis), `native_bubble` (x·y·size). Themed (`palette`, `dark`, `font`,
   `highlight`). **Data from a spreadsheet?** `deckkit.series_from_csv(path, x_col, y_cols)` → `(categories,
   series)` feeds `native_chart`/`native_dual_axis` directly (stdlib csv — no pandas; auto-sniffs the

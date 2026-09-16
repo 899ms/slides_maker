@@ -10,7 +10,7 @@ description: >-
   and tell me what's weak", "make a slide about X", "help me present this work". Works
   with or without a template (matches theirs, else designs a clean one) and with or
   without source material (mines provided code/docs/figures, else web-researches and
-  fact-checks), in any language (e.g. English or 中文). Interviews first, then runs an
+  fact-checks), in any language (e.g. English or Chinese). Interviews first, then runs an
   actor–critic loop until an independent critic consents. Trigger even without the words
   "skill", "deck", or "pptx".
 ---
@@ -195,7 +195,7 @@ everything downstream — **audience · purpose · template** — also carry an 
 else was plausible and why it lost, which is the same one-sentence mechanism behind the direction
 gate, the arc competition and the composition competition. 🔴 **`angle` may never be `delegated`:**
 delegation covers preferences, never information only the user has, and never WHICH DECK THIS IS —
-measured, a run read 「你自行决定」 as licence to pick the angle and shipped a thesis on 19th-century
+measured, a run read a Chinese "you decide the rest" directive as licence to pick the angle and shipped a thesis on 19th-century
 building regulation, passing every gate. Enforced by `scripts/delegated_picks.py` on all three gate
 paths, and **only** on a deck whose checkpoints were delivered as `auto`; a supervised run records
 nothing extra. Repeat the delegated rows in the hand-off note: a pick the user never sees is a
@@ -215,7 +215,7 @@ resume — never finish the pass on a pick the user already rejected. It does NO
 cannot supply yourself — e.g. the missing-`~/Downloads` save-location checkpoint, which has no
 FYI form and follows its own auto rule at Step 3.
 
-**→ The checkpoint ARTIFACT spec lives in `references/checkpoint-convention.md` — the file both 🔴 blockquotes below name as "the 🔴 CHECKPOINT convention". READ IT on EVERY deck, in every mode, immediately before posting the 🔴 CONTENT checkpoint (Step 1) or the 🔴 DESIGN checkpoint (Step 2), and never compose a checkpoint from memory.** It owns the required columns and lines — the `# | 角色 | 记忆句 | 承载证据 | units` table and its SOURCE-TRACE rule, the digests, the `boldness:` / `signature move:` / `logo plan:` / `density:` lines, the required `direction gate:` (branch c) / `style gate:` (branch d) line and the rule that a branch-(c)/(d) design checkpoint with no gate line is NOT READY, the ~25-line budget, and the rule that plan files are never written into the deliverable folder. **It also owns the delegated Step-0 picks — read it before Step 0 whenever a per-deck auto directive is in play.**
+**→ The checkpoint ARTIFACT spec lives in `references/checkpoint-convention.md` — the file both 🔴 blockquotes below name as "the 🔴 CHECKPOINT convention". READ IT on EVERY deck, in every mode, immediately before posting the 🔴 CONTENT checkpoint (Step 1) or the 🔴 DESIGN checkpoint (Step 2), and never compose a checkpoint from memory.** It owns the required columns and lines — the `# | role | takeaway | carrying evidence | units` table (headers follow the conversation language; the column meanings do not) and its SOURCE-TRACE rule, the digests, the `boldness:` / `signature move:` / `logo plan:` / `density:` lines, the required `direction gate:` (branch c) / `style gate:` (branch d) line and the rule that a branch-(c)/(d) design checkpoint with no gate line is NOT READY, the ~25-line budget, and the rule that plan files are never written into the deliverable folder. **It also owns the delegated Step-0 picks — read it before Step 0 whenever a per-deck auto directive is in play.**
 
 **Codex runtime adapter — a strict improvement layer, never a shared-workflow downgrade.** When the
 host is local Codex or an OpenAI GPT runtime with a declared execution bridge, read
@@ -299,7 +299,7 @@ every **🔴 CHECKPOINT** is a hard stop.
 | Cross-deck user taste — registry-root `taste.md` schema · read/write · dial promotion | `references/user-taste.md` |
 | Large / sectioned decks · collaborative gates | `references/large-deck-orchestration.md` · `references/collaborative-mode.md` |
 | East-Asian / ink looks | `references/east-asian-aesthetic.md` |
-| Canvas formats (16:9 default · 4:3 · 1:1 · 小红书 3:4 · story 9:16 · A4) | `scripts/formats.py` (registry) · `references/canvas-formats.md` (per-surface layout DNA) |
+| Canvas formats (16:9 default · 4:3 · 1:1 · rednote 3:4 · story 9:16 · A4) | `scripts/formats.py` (registry) · `references/canvas-formats.md` (per-surface layout DNA) |
 | The build helpers (source of truth) | `scripts/deckkit.py` (docstrings) |
 | Geometry lint — build-time · render-time | `deckkit.lint_layout(prs, strict=True)` (Step 4, pre-render) · `scripts/lint_deck.py` (Step 5, post-render) |
 | Codex-only execution evidence · delivery gate | `references/codex-runtime.md` · `scripts/codex_delivery_gate.py` |
@@ -466,7 +466,7 @@ Collect all the answers in **one cheap interview turn**. Match the host UI:
   first (measured: decks arriving at ONE page), then delivery mode. Ask all
   five numbered lines below; a host without widgets is not a host with a shorter interview.
   🔴 **Ask in the USER's language.** The fallback block is written in English because this file is;
-  a user writing 中文 gets the same five questions in 中文. Translating the questions is not
+  a user writing Chinese gets the same five questions in Chinese. Translating the questions is not
   personalisation, it is the baseline — and it costs one pass over a block you are already typing.
 
 Direct-question fallback:
@@ -477,13 +477,13 @@ Before I build, please give me:
 3. Source material: paper, deck, doc, figures, repo, or none? — When material IS provided, one follow-up: condense freely, preserve key phrasing verbatim, or hybrid (verbatim for claims/numbers, condense elsewhere)? Record the answer; it governs every rewrite downstream.
 4. HOW MANY SLIDES: a spoken deck takes it from the time budget (~1 slide/minute); a self-read one
    needs it said — short ~5-8, medium ~9-15, long 16+. Never assume, and never take silence as ONE.
-5. Style/language: density (≈a phrase / one sentence / 2–3 sentences per point?), tone (minimal/corporate/academic/playful), and language (中文/English/etc.)?
+5. Style/language: density (≈a phrase / one sentence / 2–3 sentences per point?), tone (minimal/corporate/academic/playful), and language (Chinese/English/etc.)?
 ```
 
 *(No review question here — it is asked at Step 5, AFTER the first clean render, with the deck in
 front of the user. Asking it blind at Step 0 forced a cost decision about a deck nobody had seen.)*
 
-🔴 **On a host with NO choice UI — the norm, not the exception — one command carries the axes for you.** `python3 scripts/deck_gates.py interview <deck-dir> --lang en|zh` prints the four questions in the USER's language (this file's fallback block is English because this file is; the command carries 中文 too, so "ask in their language" stops being an instruction whose only example contradicts it), and `… interview <deck-dir> --set language=… --set density=… --set length=… --set goal=…` records them. With no `--set` it lists what is still unanswered and exits 1, so it is also the pre-flight. A plain-chat runtime has nothing carrying these axes — a widget carries them for a host that has one — which is why this is a command and not a paragraph.
+🔴 **On a host with NO choice UI — the norm, not the exception — one command carries the axes for you.** `python3 scripts/deck_gates.py interview <deck-dir> --lang en|zh` prints the four questions in the USER's language (this file's fallback block is English because this file is; the command carries Chinese too, so "ask in their language" stops being an instruction whose only example contradicts it), and `… interview <deck-dir> --set language=… --set density=… --set length=… --set goal=…` records them. With no `--set` it lists what is still unanswered and exits 1, so it is also the pre-flight. A plain-chat runtime has nothing carrying these axes — a widget carries them for a host that has one — which is why this is a command and not a paragraph.
 
 🔴 **A choice UI takes FOUR questions per call and this interview has FIVE lines — so "one batched
 call" silently truncates the last one, which is the line LANGUAGE lives on.** Measured in this
@@ -581,7 +581,7 @@ throughout** — default to the language the *user* writes in. **When the source
 material is in a different language than the user** (e.g. an English-speaking user with
 a Chinese codebase/paper), or it's otherwise ambiguous, **ask which language the slides
 should be in** — don't assume the source's. **When you ask the language, also offer
-bilingual as an option** (e.g. "English only, 中文 only, or bilingual EN+中文?") so a user
+bilingual as an option** (e.g. "English only, Chinese only, or bilingual EN+ZH?") so a user
 who'd benefit doesn't have to volunteer it. Then translate the content into that language
 and keep every slide consistent. Established technical terms, proper nouns, acronyms,
 units, and code may stay in their original form (that's not "mixing"). Build a
@@ -679,7 +679,7 @@ REPLACES the comprehension brief**: there is nothing to comprehend, so a brief w
 summary of the SUBJECT, and a subject brief ships a deck *about* the topic where one *for* the
 audience was asked for.
 
-> **Measured, twice, and the second time the rule already existed.** (1) 「介绍巴黎的 PPT」 →
+> **Measured, twice, and the second time the rule already existed.** (1) a Chinese request reading "a PPT introducing Paris" →
 > a deck that correctly refused the Eiffel-tower motif and then also deleted the landmarks, the
 > districts and the food, delivering an argument about 19th-century building regulation. (2) A
 > Melbourne deck built from the recorded answers `audience = people planning a trip` and
@@ -736,7 +736,7 @@ at *today's* date**: a paper's "state-of-the-art", an adoption number, a "first/
 latest" superlative may be stale by presentation day. Re-verifying a source claim is not
 inventing — it's fidelity to what's *true now*.
 
-- **No content — and any web fact-check on any deck:** draft the outline from your own expertise, then ground *and verify* every falsifiable claim against a **primary** source, and ground the deck to *today*. **Read `references/content-plan-spec.md` §Web verification & no-source decks before running any search or putting a falsifiable/time-bound claim on a slide** — it owns the PROVENANCE CONTRACT, the re-verify-on-every-build list, the dated-event tense rule, and the no-web-tool fallback. 🔴 **A web pass ships on three floors (`content-planner.md` §2(e)): 全面 COMPREHENSIVE** (map the domain, sweep breadth-first, + a proactive **LIFECYCLE sweep** — every featured product/version/entity checked live-vs-discontinued as of today, so a dead/renamed thing is never headlined), **充实 SUBSTANTIAL** (every load-bearing slide carries a concrete number/date/price/named result, not adjectives), **准确 ACCURATE** (each fact corroborated ≥2 *independent* credible sources — content-farm blogs corroborate nothing; confidence-tagged; MED facts ship only when labelled "per public reporting"). The content checkpoint MUST then carry the `coverage:` · `lifecycle:` · `provenance:` lines, or it is NOT READY (the content-planner §1 web-research gate + `checkpoint-convention.md`). Measured: a no-source deck shipped thin and headlined two discontinued products because none of this was enforced.
+- **No content — and any web fact-check on any deck:** draft the outline from your own expertise, then ground *and verify* every falsifiable claim against a **primary** source, and ground the deck to *today*. **Read `references/content-plan-spec.md` §Web verification & no-source decks before running any search or putting a falsifiable/time-bound claim on a slide** — it owns the PROVENANCE CONTRACT, the re-verify-on-every-build list, the dated-event tense rule, and the no-web-tool fallback. 🔴 **A web pass ships on three floors (`content-planner.md` §2(e)): COMPREHENSIVE** (map the domain, sweep breadth-first, + a proactive **LIFECYCLE sweep** — every featured product/version/entity checked live-vs-discontinued as of today, so a dead/renamed thing is never headlined), **SUBSTANTIAL** (every load-bearing slide carries a concrete number/date/price/named result, not adjectives), **ACCURATE** (each fact corroborated ≥2 *independent* credible sources — content-farm blogs corroborate nothing; confidence-tagged; MED facts ship only when labelled "per public reporting"). The content checkpoint MUST then carry the `coverage:` · `lifecycle:` · `provenance:` lines, or it is NOT READY (the content-planner §1 web-research gate + `checkpoint-convention.md`). Measured: a no-source deck shipped thin and headlined two discontinued products because none of this was enforced.
 
 - **A long source (a book / very long PDF / large corpus / multi-volume set)** is NOT read front-to-back — a faked linear read either overflows or, worse, *fits* and goes shallow. **The moment a source might exceed ~40–50 pp or not fit one pass, read `references/content-plan-spec.md` §Long-source mode** — deterministic size classification (`extract_pdf.py map`, CJK counting, multi-file sum), structure map, triage, the verbatim ~20% deep-read with page-traced claims, **page-scoped figure locators (never whole-document `autofig`)**, the Source-coverage map, the TWO-PHASE dispatch that posts the selection FYI *before* the deep-read, and the scanned/DRM no-text case.
 
@@ -829,13 +829,13 @@ user's edits to the story, then move to design (Step 2).
 > MATERIAL not at all. On that deck the concept was genuinely right (a config row, derived from the
 > product's own `cordis.yml`, correctly rejecting the plug-socket stereotype every plugin deck
 > reaches for) and it passed every one of those checks. **What shipped was six grey rectangles.**
-> The user's verdict was 设计能力变弱了. The repair changed only the material — the same rows became
+> The user's verdict was that the design had got WEAKER. The repair changed only the material — the same rows became
 > a real config with keys, values and a `-`/`+` diff — and nothing about the concept moved. **No step
 > between "concept approved" and "deck delivered" had asked what the device is MADE of.**
 >
 > The cause is an order-of-work failure, not a missing rule: the design turn had ~20 required
 > declarations and zero required artifacts, so the effort went into sentences that pass instead of
-> a thing that works. `signature move: 封面自己演示论点` is a good sentence and it was true of
+> a thing that works. `signature move: the cover demonstrates the argument itself` is a good sentence and it was true of
 > nothing on the page. **Pixels cannot be faked this way** — a grey-bars register renders as grey
 > bars — which is the whole reason this probe comes first.
 >
@@ -906,7 +906,7 @@ winner with no rungs is a picture that arrived, not one that was derived. Full l
 domain-neutral §3 dictionary it resolves through: `agents/slide-design.md` §1.
 🔴 **This rule governs the MOTIF, never the CONTENT.** Rejecting the obvious PICTURE is the job;
 dropping the obvious SUBJECT is a different act and it is almost always wrong. Measured: asked for
-「介绍巴黎的 PPT」, a run correctly refused the Eiffel-tower silhouette as a governing image — and
+a Chinese request reading "a PPT introducing Paris", a run correctly refused the Eiffel-tower silhouette as a governing image — and
 then also deleted the landmarks, the neighbourhoods and the food from the CONTENT, delivering an
 argument about 19th-century building regulation to an audience that came for a city introduction.
 A deck may carry Notre-Dame, the Louvre and Montmartre while its visual language owes nothing to a
@@ -995,7 +995,7 @@ register — FT/Economist — icons would cheapen into corporate), `tiny-deck` (
 `template-locked` (a provided template that carries its own marks) — recorded as
 🔴 **A FIFTH category exists: `user-declined` — the user asked for no icons.** The four above each
 make a claim about the DECK, and none of them can say *the user decided*, so a deck whose user said
-「不需要icon」 had to be filed `template-locked` — a different claim, and one the Codex gate VERIFIES
+a Chinese "no icons needed" instruction had to be filed `template-locked` — a different claim, and one the Codex gate VERIFIES
 against the built file, so the forced label can also fail for the wrong reason. It is their deck; a
 gate has no standing to second-guess that, only to record it. `icon_none_checked` still names every
 flagged slide.
@@ -1123,7 +1123,7 @@ don't silently dump into `/tmp`. You'll remind them to open it in step 6.
 > *(Serial by default was never a decision anyone made — the pipeline simply read top-to-bottom.
 > Measured cost of leaving it serial: the full generation batch, dead, before authoring starts.)*
 
-**Canvas format.** The default deck is 16:9 via `deckkit.blank_deck()` — untouched, and everything below assumes it. **If the interview confirmed any non-16:9 surface (4:3 venue · 小红书 3:4 · square 1:1 · story 9:16 · A4 print · **A0/A1 conference poster, portrait or landscape**) — or the design plan carries a `format:` line that isn't `wide` — read `references/deck-setup.md` §Canvas format BEFORE creating the presentation object**; it carries the `scripts/formats.py` contract (`band` safe rect · `chrome` · `columns_ok` · `display_scale` · `lint_flags`) and the rule that the design plan records a `format:` line whenever it isn't `wide`. 🔴 The registry is no longer advisory: `scripts/check_surface.py` recovers the format from the built canvas and enforces the contract at hand-off (`--gate-check` section `surface`, and the codex gate) — platform-UI safe zones, the `columns_ok` rule, deck chrome on social surfaces, and for a PRINTED board the absolute three-distance type floors and fill range. **A poster is not a big slide**: it is read at ~5m / ~2m / ~1m, so A0 declares display ≥90pt · section ≥36pt · body ≥24pt as ABSOLUTE points (deckkit's cover caps titles at 46pt, right on a 10in slide and unreadable across a hall on a 33in board), a fill range of 55–90% of the board covered, and **methods + limitations as required content** — the billboard style that draws people in is the style that drops the two things a passer-by cannot reconstruct. Waive either in writing (`design_plan.surface_sections_waived`). It also holds a **`PROPORTION`** floor — the poster literature converges on ~20–25% text / 40–50% graphics because a board is read standing by someone deciding in seconds, and a panel drawn *behind* text counts as a container, not a graphic — a **`TEXT BLOCK`** ceiling at ~50 words, and `deckkit.qr_panel()` for the code, its caption and the plain-text URL a photographed poster still needs — it sizes both from the CANVAS (so they clear the printed floors), takes its scan distance from the surface, and refuses a placement that would run off the board. 🔴 **A printed board must not go dark**: `check_register_pixels.py` reports `DARK GROUND ON A PRINTED BOARD`, and the freshness rule below changes its advice on a printed surface (vary the paper and the accent hue, never the value).
+**Canvas format.** The default deck is 16:9 via `deckkit.blank_deck()` — untouched, and everything below assumes it. **If the interview confirmed any non-16:9 surface (4:3 venue · rednote 3:4 · square 1:1 · story 9:16 · A4 print · **A0/A1 conference poster, portrait or landscape**) — or the design plan carries a `format:` line that isn't `wide` — read `references/deck-setup.md` §Canvas format BEFORE creating the presentation object**; it carries the `scripts/formats.py` contract (`band` safe rect · `chrome` · `columns_ok` · `display_scale` · `lint_flags`) and the rule that the design plan records a `format:` line whenever it isn't `wide`. 🔴 The registry is no longer advisory: `scripts/check_surface.py` recovers the format from the built canvas and enforces the contract at hand-off (`--gate-check` section `surface`, and the codex gate) — platform-UI safe zones, the `columns_ok` rule, deck chrome on social surfaces, and for a PRINTED board the absolute three-distance type floors and fill range. **A poster is not a big slide**: it is read at ~5m / ~2m / ~1m, so A0 declares display ≥90pt · section ≥36pt · body ≥24pt as ABSOLUTE points (deckkit's cover caps titles at 46pt, right on a 10in slide and unreadable across a hall on a 33in board), a fill range of 55–90% of the board covered, and **methods + limitations as required content** — the billboard style that draws people in is the style that drops the two things a passer-by cannot reconstruct. Waive either in writing (`design_plan.surface_sections_waived`). It also holds a **`PROPORTION`** floor — the poster literature converges on ~20–25% text / 40–50% graphics because a board is read standing by someone deciding in seconds, and a panel drawn *behind* text counts as a container, not a graphic — a **`TEXT BLOCK`** ceiling at ~50 words, and `deckkit.qr_panel()` for the code, its caption and the plain-text URL a photographed poster still needs — it sizes both from the CANVAS (so they clear the printed floors), takes its scan distance from the surface, and refuses a placement that would run off the board. 🔴 **A printed board must not go dark**: `check_register_pixels.py` reports `DARK GROUND ON A PRINTED BOARD`, and the freshness rule below changes its advice on a printed surface (vary the paper and the accent hue, never the value).
 
 **Keep the per-deck build script (`build_<deck>.py`) in that same folder, beside the
 `.pptx`.** The build script — not the rendered file — is the *source of truth* for the
@@ -1154,7 +1154,7 @@ than the current working directory, so `python /path/to/build_<deck>.py` works f
 
 - **Accessibility is a FLOOR, not a nicety.** `lint_deck.A11Y_CODES` — missing alt-text, untitled or duplicate-titled slides, reading order, non-text contrast — is held by `--gate-check`'s `a11y` section and by the codex gate from **one shared list**, because a floor kept in two places is how one runtime quietly stops enforcing it. 🔴 **Decodability is now MEASURED, not asserted.** Three checks, each turning a rule this skill already stated into something countable, all added after a first human reader asked three questions of a deck that had passed every gate: **`MOTIF_UNEXPLAINED_AT_FIRST_USE`** — the stranger test is about FIRST appearance, and the old check cleared on a legend *anywhere*, which is the deferred reading SKILL.md calls "a FAILED test written as a passing sentence"; **`UNNAMED_REPEATED_MARK`** — four or more identical marks with no text within reach are reported, because unlabelled repetition reads as texture whatever you meant by it, and such a group is invisible to every other check (not text, not tagged, trivially clears contrast); and the **icon waiver's category is verified against the built file** — `motif-dominant` needs a real loud motif, `tiny-deck` a real tiny deck, `template-locked` a real template, and the waiver must name EVERY flagged slide, not a subset. Only the **unambiguous** subset blocks (`lint_deck.A11Y_BLOCKING`): a shape either carries a description or it does not, two slides either share a title or they do not, a ratio either clears 3:1 or it does not. **`NO SLIDE TITLE` stays advisory on purpose** — lint's own message calls an off-canvas title "a sanctioned trick for statement slides", so the skill EXPECTS slides that look untitled, and measured on an ordinary well-built 11-slide deck it fired once, on the closing slide. A gate that fires on a deck built exactly to spec is not a floor; it is training for the waiver reflex. Waive in writing (`{"a11y": {"waived": "<who reads this deck, and how>", "waived_category": "…"}}`) and say so in the hand-off note. `scripts/palette_audit.py` now also simulates deuteranopia/protanopia/tritanopia and names any pair that stops being two colours — `dk.OKABE_ITO` was recommended for years with nothing checking it.
 
-**Fonts (every deck, both branches).** A `.pptx` stores font *names*, not the fonts — before setting `deckkit.FONT`/`MONO`/`EAFONT`/`EQ_MATHFONT`, read `references/deck-setup.md` → "Fonts" (CJK `EAFONT` is required for any 中文/日本語/한국어 deck; portability, the `EQ_MATHFONT` / STIX / Cambria Math dependency to flag at hand-off, and tofu recovery live there) and flag any font dependency at hand-off.
+**Fonts (every deck, both branches).** A `.pptx` stores font *names*, not the fonts — before setting `deckkit.FONT`/`MONO`/`EAFONT`/`EQ_MATHFONT`, read `references/deck-setup.md` → "Fonts" (CJK `EAFONT` is required for any Chinese / Japanese / Korean deck; portability, the `EQ_MATHFONT` / STIX / Cambria Math dependency to flag at hand-off, and tofu recovery live there) and flag any font dependency at hand-off.
 🔴 **A face the deck NAMES but the machine cannot RESOLVE is a measurement fault, not a portability note.** Every fit/wrap/overflow/footer guard sits on `deckkit._measure_lines`, which measures whichever face it can resolve — so a named-but-absent face makes the build and the lint compute from the same wrong number and **agree with each other while the render disagrees with both**. "Will the presenter have it?" stays advisory (unknowable from the file); "does it resolve HERE?" is decidable and now blocks at hand-off on both gate paths via `scripts/check_fonts_resolve.py` (waive with `{"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}`). Two consequences worth knowing before you set a face: deckkit's shipped defaults are `FONT='Calibri'` / `MONO='Consolas'` and **neither ships with macOS**, so a stock macOS build measures everything in a stand-in until you call `deckkit.use_platform_fonts()` or install them; and a font that lives only inside an application bundle (macOS keeps Calibri and Cambria inside PowerPoint) is invisible to the renderer, so copy it into `~/Library/Fonts` first — ask before copying, it is the user's machine.
 
 ## Step 4 — Build with deckkit
@@ -1197,7 +1197,7 @@ than the current working directory, so `python /path/to/build_<deck>.py` works f
 > | anchor | the page | what it proves | the failure it catches |
 > |---|---|---|---|
 > | **`signature`** | the slide `signature move:` names | the aesthetic risk survived the build | the move got sanded back to the safe catalogue |
-> | **`complex`** | the densest page in the content plan | the design HOLDS the content | 好看但装不下内容 — a look approved on a spacious page |
+> | **`complex`** | the densest page in the content plan | the design HOLDS the content | looks good but cannot hold the content — a look approved on a spacious page |
 > | **`data`** | the most critical data/conclusion page | the charts speak the same visual language | palette + type were chosen against text, and the first native chart obeys none of them |
 >
 > *(Why not the cover, the obvious third? It already has two gates — branch (c) renders four full
@@ -1483,7 +1483,7 @@ The helper set, by job:
 - **Publication & math:** `cover`/`colophon` (bookend the deck), `sources_page`, `specimen_card`;
   **`equation_native`** (EDITABLE LaTeX-subset math — real text runs, renders everywhere; the default) /
   `equation_png` (rasterised LaTeX, for 2-D math: fractions/matrices) / `eq_par` (inline runs).
-- **East-Asian (CJK) accents:** `seal` (vermilion chop/印章 stamp — the one red accent on an ink deck),
+- **East-Asian (CJK) accents:** `seal` (vermilion chop stamp — the one red accent on an ink deck),
   `cjk_numeral` (壹·贰·叁 section markers vs Latin "01"). See `references/east-asian-aesthetic.md`.
 - **Diagram kit (general flowcharts):** `node` + `connector` / `flow_chain` (straight links between adjacent nodes) + `elbow_connector` /
   `loop_path` (elbow / U-shaped paths for a feedback/repeat loop, a return, or a link between NON-adjacent
@@ -1660,7 +1660,7 @@ A few rules that matter (see `references/design-principles.md`):
     `bottom_callout()` returns its TOP y; the recurring mistake is to hardcode tall panels/cards
     (e.g. `y=1.7, h=2.5`) and *then* drop a callout on top, so the bar overlaps the cards' bottom
     edge. Call the callout FIRST, then size content to end **a full `GUTTER` above** its returned
-    top: `top = dk.bottom_callout(s, 0.6, W-1.2, "要点", "…"); card_h = top - GUTTER - card_y`. A
+    top: `top = dk.bottom_callout(s, 0.6, W-1.2, "KEY POINT", "…"); card_h = top - GUTTER - card_y`. A
     *near-zero* overlap is not harmless — the bar draws on top and **clips the cards' rounded
     corners** — so require a visible gap, not just non-collision. (The build-time lint now warns
     **`SLIVER_GAP`** on panel-on-panel grazing — a 0.005–0.10in seam between panels or a panel and
@@ -1930,7 +1930,7 @@ those here; read its report instead).
 4. **Charts native**: every chart is editable-native unless a matplotlib look was deliberately chosen; legends sit off the data. Same bar for math: every 1-D equation is `equation_native`; raster `equation_png` only for genuinely 2-D layout (fractions/matrices), named as such.
 5. **Evidence real**: every domain image/figure is the real computed/source artifact — no plausible stand-in; PDF crops checked on all four edges; every SOURCED photo comes from a sanctioned origin (Commons / Openverse / press kit / user file), its subject verified against caption/geotag/category, it is **watermark-free** (a watermark is an unlicensed-preview tell → reject the file; never crop/blur/inpaint the mark away), its license recorded (credit placed where required), it is **aesthetically vetted** (an ugly / under-construction / blurry / unrepresentative shot is rejected even when the subject is correct → re-source, or generate a declared-stylized illustration via the `searched, found but low-quality → generated, flagged illustrative` rung), and it is palette-treated so mixed sources read as one deck; no generated CONTENT image claims photographic reality for a real-and-specific subject (REFERENT RULE, `references/image-generation.md` — generated-template identity plates and declared stylized illustrations are exempt; a real subject with no findable photo uses a recorded `searched, none found → …` rung). **CLINICAL imagery carries one more check, before anything else:** no burned-in patient identifier (name, MRN/ID, accession, date of birth, study date, institution), read on all four edges and in any overlay/header strip rather than the middle — highest risk on a user-supplied scan or PACS screenshot, and a published figure is usually de-identified already but is still read. **If one is there, get a de-identified export — do NOT crop or blur it out and ship:** a crop can miss a second identifier in another corner and a blur is not a guarantee. Unlike every other item here this one is irreversible once the deck is sent. Any **text over a hero/photo/plate** is verified legible against the pixels — no image linework crosses the glyphs (a scrim only dims a bright line; cover it with a near-opaque panel), eyebrow/kicker included, with a clear title↔subtitle gap (render self-check "Text over an image").
 6. **Colour keyed**: the semantic-colour ledger's meanings are taught on-slide (key at first use) and no accent appears outside its bound meaning; chrome stays quiet — the **loud** signature motif ≤3 appearances (a *quiet register signature* — faint grid/scanline, corner numeral, edge rule, small seal — MAY repeat on every slide; that is SYSTEM, not stamping) — AND the chosen preset's `guard` constraints hold on every slide (quote the guard line in the tick).
-6b. **Register carries all pages (的风格要走所有页)**: the quiet register signature reaches ordinary interior slides, not just the cover/dividers — the `interior register:` contract cue is present on interiors, or a `none (flat by register — <reason>)` carve is recorded. A style dressed only on the bookends fails.
+6b. **Register carries all pages**: the quiet register signature reaches ordinary interior slides, not just the cover/dividers — the `interior register:` contract cue is present on interiors, or a `none (flat by register — <reason>)` carve is recorded. A style dressed only on the bookends fails.
 7. **Claims current**: every time-bound ledger row re-verified with as-of = TODAY; the deck carries its "as of" date.
 8. **Language & hygiene**: one language throughout; zero meta-annotations ("placeholder"/"TODO"/"AI-generated"); voice pass done on every line.
 9. **Eye path & anchoring**: squint each slide — first look lands on the named hero, 3–4 hierarchy levels survive the blur. Then, un-squinted, **name the anchor of every label** — caption, tag, unit, legend key, axis note: which edge does it share with the thing it names (its subject's left / centre / right, or the same grid column)? **List the slides that carry labels and the anchor each uses.** A label whose x is a constant nobody can justify is the defect; `CAPTION NOT ALIGNED` only backstops the captions-under-panels case, and **`TEXT_GRAZES_SHAPE`** backstops the *collision* half (a label's ink running INTO the bar/chip/node beside it — invisible to `TEXT_OVERLAP`, which measures text against TEXT). Neither sees a label that merely floats near the wrong thing, so the anchoring judgement is still yours. 🔴 **When `TEXT_GRAZES_SHAPE` fires, the fix is the label COLUMN'S EDGE, derived from how far the mark can actually reach — not the string.** Measured: the first repair shortened the text and the label still grazed, because a right-aligned column that clears the *axis* does not clear a bar that grows *past* it (`_name_r = ZERO − max(|negative value|)·SCALE − pad`).
@@ -2038,7 +2038,7 @@ is its render-time complement** — it re-checks geometry on the FINAL file and 
 the rendered/parsed deck reveals (which `lint_layout` deliberately leaves to it). A cheap, deterministic
 check, it flags **invisible/low-contrast text against its backing fill (an uncoloured run defaults to black and vanishes on a dark card), off-slide overflow, text overflowing the card behind it, uneven card heights in a
 row, two solid blocks/images overlapping (neither contained), footer collisions, orphaned punctuation
-/ widow (a lone 。/，or single glyph on the last line — 避头尾), CJK text with no EA font (the kinsoku
+/ widow (a lone 。/，or single glyph on the last line — kinsoku), CJK text with no EA font (the kinsoku
 root cause), whole-page-image (editability), and orphan/empty slides**: exactly the failures the eye
 misses (a callout tucked under a panel; a 2-line body hanging below a card; a 。 stranded on its own row). Fix every finding, re-render, and re-lint
 to clean before handing to the critic. It also prints soft **`[warn]`s** (advisory, non-blocking) for
@@ -2117,7 +2117,7 @@ never in where the ink sits; whether a breakout is genuinely *innovative* stays 
 distinctiveness call. Advisory, and — like `WEIGHT MONOCULTURE` — deliberately kept OUT of the blocking
 timidity composite until seen on real decks; sound restraint is never nudged (`boldness: conservative`
 silences it)), and on CJK decks **`CJK TIGHT LEADING`** (multi-line
-CJK at ≤ single spacing → use the script-aware default) and **`CJK-LATIN SPACING`** (both 盘古之白
+CJK at ≤ single spacing → use the script-aware default) and **`CJK-LATIN SPACING`** (both pangu spacing
 conventions mixed → pick one deck-wide). Treat each `[stats]` warning as the NAMED design rule
 having failed measurably: fix it or write one clause of why this deck is the exception, and **paste
 the stats block into the critic's input** so the judges score numbers, not impressions. It's a safety
@@ -2323,7 +2323,7 @@ critic round — full rationale in `references/design-principles.md`):
 - **Diagrams** — arrows point the way the flow moves (down/up between stacked boxes); adjacent
   blocks have a visible gap (never touching); a lone glyph/icon optically centred (ASCII, not
   full-width, for a centred mark on a CJK deck). **A connector / loop label (e.g. a feedback-loop's
-  「修订」/「retry」) sits in the OPEN GAP next to the line — offset above a horizontal segment, or beside a
+  "revise"/"retry") sits in the OPEN GAP next to the line — offset above a horizontal segment, or beside a
   vertical one, with clearance — NOT inside an opaque chip that STANDS OUT over the line.** A chip that
   contrasts with the slide reads as a band-aid; route the label into clear space so the line and text
   simply don't collide. (On a PLAIN background a label that knocks the line OUT in the background colour —
@@ -2750,7 +2750,7 @@ out explicitly here so they can confirm it.
 > applies only to a deck that is ≥8 CONTENT slides (cover, closer and any declared
 > `design_intent(role="appendix")` run excluded), landscape, and not `--surface` — calibrated by
 > building and linting decks in the registers this skill itself prescribes, where a 6-slide status
-> update, a 小红书 carousel and an appendix-heavy defense deck all trip 3+ signals *legitimately*.
+> update, a rednote carousel and an appendix-heavy defense deck all trip 3+ signals *legitimately*.
 > **Repetition alone does not block; four independent kinds of it do.** Type drama (`TIMID COVER` /
 > `FLAT TYPE`) is deliberately NOT counted — it is one fact twice, and the skill's own
 > must-stay-clean fixture emits both.
@@ -2782,7 +2782,7 @@ out explicitly here so they can confirm it.
 > the type scale collapsed for `SIZE SPRAWL`. Each of those advisories names the ambitious repair
 > FIRST ("enrich with a second column of substance", "repeat the treatment as a divider family");
 > subtraction is merely the cheaper way to make the number disappear, and **with feedback on one
-> side only, the cheap way always wins.** The user's verdict was *设计能力变弱了* and nothing in the
+> side only, the cheap way always wins.** The user's verdict was that *the design had got weaker* and nothing in the
 > pipeline had said so. So: `TIMID COVER` · `FLAT TYPE` · **`TEXT-ONLY DECK`** (most content slides
 > carry no chart, no figure, no drawn form — every page's protagonist is a sentence) ·
 > **`MONOTONE INK`** (the rendered pages are effectively greyscale), blocking at **≥2 with ≥1

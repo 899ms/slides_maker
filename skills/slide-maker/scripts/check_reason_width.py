@@ -7,7 +7,7 @@ English and "12 characters" — about 24 letters' worth — in Chinese. The bar 
 for exactly the users least able to see why their reason was rejected.
 
 MEASURED, on this repo, on a real Chinese deck: `audience_brief` rejected
-「敢不敢把求职材料交给它」 (11 codepoints, width 22) against `MIN_TEXT = 12`, while a 12-letter
+an 11-codepoint Chinese brief (display width 22) against `MIN_TEXT = 12`, while a 12-letter
 English phrase carrying a third as much information passed. `written_reason.reason_width` was
 written for precisely this and shipped months earlier — four modules simply never reached for it,
 including two written the same day as a module that used it correctly. That is what makes this a

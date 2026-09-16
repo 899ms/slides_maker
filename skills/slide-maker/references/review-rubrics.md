@@ -297,7 +297,7 @@ Score each dimension; cite specific slides.
    a faint grid/scanline, a corner numeral, a thin edge rule or small seal that repeats on every slide
    is legitimate SYSTEM repetition (it makes the style run through all pages), and a deck whose style
    **stops at the cover** — dressed bookends, bare-default interiors — is a `register_interiors` finding
-   (the contract card's `interior register:` cue names it, or a `none — <reason>` carve clears it: 的风格要走所有页);
+   (the contract card's `interior register:` cue names it, or a `none — <reason>` carve clears it: the register reaches every page);
    distinguish the two by loudness/meaning — the quiet register carries no standalone meaning and never
    competes with content, so "never stamp" bites only the loud motif; **opaque motif (fails the STRANGER TEST)** — the deck's
    signature device encodes a meaning (pillars, phases, engines) that a first-time viewer could not

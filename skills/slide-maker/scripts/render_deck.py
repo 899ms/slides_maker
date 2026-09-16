@@ -478,7 +478,7 @@ def _report_file_observations(pptx_path):
 #   user-declined     the USER asked for no icons. It is their deck; this is not a taste
 #                     claim the gate can second-guess, and forcing an author to file it
 #                     under one of the other four produces a FALSE record — measured: a
-#                     deck whose user said 不需要icon was filed `template-locked`, which
+#                     deck whose user said "no icons needed" was filed `template-locked`, which
 #                     is a different claim, and the Codex gate VERIFIES that claim against
 #                     the file, so a forced label can also fail for the wrong reason.
 _ICON_NONE_CATEGORIES = ("motif-dominant", "editorial-register", "tiny-deck",
@@ -704,7 +704,7 @@ def _report_icon_waiver(pptx_path, fam, gates=None, delivery=None):
             _tot = sum(c for c in _sig.values() if c <= max(2, 0.5 * _n_sl))
         except Exception:
             _tot = 0
-        # The SAME floors sameness and timidity carry, for the same reason: a 小红书 carousel, a
+        # The SAME floors sameness and timidity carry, for the same reason: a rednote carousel, a
         # poster, or a five-slide ask is not a deck that owes an icon family. Without these the
         # block fired on a 3-slide portrait fixture — caught by the suite, which is what it is for.
         try:
@@ -2610,7 +2610,7 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             # ── THE MATERIAL PROBE (Step 2's opening block) ──────────────────────────────────
             # The one required declaration on the design plan that cannot be written without
             # having MADE something. Every other field is a sentence, and a deck shipped six grey
-            # rectangles under the sentence `signature move: 封面自己演示论点` — true of nothing on
+            # rectangles under the sentence `signature move: the cover demonstrates the argument itself` — true of nothing on
             # the page. The concept gates all passed; no step ever asked what the device is made of.
             probe = design.get("material_probe")
             # 🔴 THE CARVE SKILL.md DOCUMENTS, finally expressible. Step 2 says the probe is
@@ -3585,7 +3585,7 @@ def _check_sameness(pptx, delivery, gates):
     Scope and threshold are calibrated against 11 decks BUILT AND LINTED in the registers this
     skill itself prescribes, not against intuition. The raw signal count is a bad gate: a 6-slide
     template-locked status update with ZERO hard findings already reaches 3 families, a 9-card
-    小红书 carousel built exactly to canvas-formats.md's DNA reaches 7, and an appendix-heavy
+    rednote carousel built exactly to canvas-formats.md's DNA reaches 7, and an appendix-heavy
     defense deck reaches 5. Each of those is a deck the skill tells you to build.
 
     So the scope is three DETERMINISTIC properties of the deck rather than a taxonomy of registers

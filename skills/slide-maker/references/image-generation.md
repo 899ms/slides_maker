@@ -86,7 +86,7 @@ And when the slide's title or source language is **figurative** (a metaphor, an 
 image), the default is to **resolve it to the UNDERLYING concept first** — this resolution happens
 BEFORE the referent classification below, and the resolved concept gets a *native* visualization of
 the idea (an image only if the resolved concept is generic-concrete per the referent table) — a
-"电锯切西瓜"-style phrase gets a visualization of the disproportionate-tool-for-the-task idea, not a
+a "chainsaw to cut a watermelon"-style phrase gets a visualization of the disproportionate-tool-for-the-task idea, not a
 chainsaw and a watermelon. A literal rendering of the metaphor is legitimate only as a recorded
 named deviation or an explicit user request (a visual-pun/comic register). The referent rule's
 stylized escape applies to real subjects the slide is ABOUT, not to metaphor vehicles.

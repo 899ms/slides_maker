@@ -129,7 +129,7 @@ def _deck_text(pptx_path):
 
 def _weight(s):
     """How much a string can DISCRIMINATE, script-aware. A CJK glyph is a whole word's worth of
-    signal, so counting characters is a Latin-centric measure: 张伟 is a full personal name at two
+    signal, so counting characters is a Latin-centric measure: a two-character Chinese name is a full personal name at two
     characters and would fail a `len >= 4` gate that "John" passes, which is how an attribution
     check ends up reporting MISSING CREDIT on a correctly credited Chinese deck (measured). CJK,
     kana and Hangul count double, everything else once — the same reasoning deckkit's own width

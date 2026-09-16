@@ -300,7 +300,7 @@ four template choices:
      distinct visual language WITH its own matched chrome (the `style.py` you derive per pick — palette,
      type, motif, component geometry), TOPIC-ADAPTED and novel — the same anti-mediocrity bar the
      "design a clean one" branch enforces mechanically (`directions_diversity.py`). Three generated
-     images of the same subject in one look, or three that share a chrome, are the 生图 analogue of the
+     images of the same subject in one look, or three that share a chrome, are the image-generation analogue of the
      "just different colours" failure — reject them.** **GENERATE 1 real template image per candidate
      style (2 for the
      front-runner) on this topic, and show them in ONE HTML gallery — the "style gate"** (one `file://`

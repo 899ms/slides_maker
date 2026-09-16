@@ -10,7 +10,7 @@ by the author reading the prose or not at all.
 
 Nothing measured the difference. `check_register_pixels.py` says so in its own docstring: it
 judges COLOUR IDENTITY only. So "declare brutalist, ship its palette on rounded pastel cards"
-cleared every gate — the 「只是一些颜色的搭配就说使用了这个模板」 failure, verifiable and
+cleared every gate — the "you just matched a few colours and called it using the template" failure, verifiable and
 unverified.
 
 This checks the SHAPE-LEVEL prohibitions, from `presets.FORBIDS`:

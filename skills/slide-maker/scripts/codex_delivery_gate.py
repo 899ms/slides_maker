@@ -142,10 +142,10 @@ TEMPLATE = {
         # WEB-RESEARCHED decks (source_mode == "web") MUST also fill these three — the floors from
         # content-planner.md §2(e), mirrored in the shared content checkpoint. Omit for a 'provided'
         # or 'none' deck.
-        #   "coverage":  "<domain areas enumerated · covered · consciously cut (why)>",   # 全面
+        #   "coverage":  "<domain areas enumerated · covered · consciously cut (why)>",   # coverage
         #   "lifecycle": "<every featured product/version/entity confirmed live as of today · "
         #                "anything found discontinued/renamed + how the deck handles it>",  # (proactive)
-        #   "provenance": {"summary": "checked N · confirmed N · fixed N · cut N",           # 准确
+        #   "provenance": {"summary": "checked N · confirmed N · fixed N · cut N",           # accuracy
         #                  "method": "corroborated >=2 independent credible sources; MED labelled 'per public reporting'"},
         # and every claim_ledger row carries a "confidence": "HIGH"|"MED"|"LOW".
         # ONE ROW PER SLIDE — this list must cover every slide in the deck, and the gate
@@ -814,7 +814,7 @@ def check_lint(lint: dict[str, Any], delivery: str, evidence: dict[str, Any], er
         # THE SAMENESS COMPOSITE, ported from the shared gate as a COMPOSITE — not as seven more
         # STRICT_STATS rows. That distinction is the whole calibration: `lint_deck` counts DISTINCT
         # monotony signals and blocks at >=4 with >=1 structural, precisely because any one of them
-        # is legitimate on its own (a 小红书 carousel and a short status update each trip three
+        # is legitimate on its own (a rednote carousel and a short status update each trip three
         # honestly). Adding them here per-warning would make this gate refuse decks the shared path
         # correctly ships — stricter, but wrong, which is worse than drifted.
         #
@@ -1219,9 +1219,8 @@ def check_content(
                 errors.append(f"{label}.verified must be true")
 
     # A WEB-RESEARCHED deck ships on three floors (content-planner.md §2(e), mirrored in the shared
-    # content checkpoint's coverage:/lifecycle:/provenance: lines): 全面 COMPREHENSIVE (a coverage map
-    # + a proactive LIFECYCLE sweep so a discontinued/renamed product is never headlined), 充实
-    # SUBSTANTIAL (concrete specifics), 准确 ACCURATE (each fact confidence-tagged + corroborated).
+    # content checkpoint's coverage:/lifecycle:/provenance: lines): COMPREHENSIVE (a coverage map
+    # + a proactive LIFECYCLE sweep so a discontinued/renamed product is never headlined), SUBSTANTIAL (concrete specifics), ACCURATE (each fact confidence-tagged + corroborated).
     # The Codex evidence carries them as structured fields so this gate checks what the shared
     # checkpoint states. Scoped to source_mode == "web": a 'provided' deck traces to its material and
     # 'none' is a stub. This closes the same gap the shared path had — a no-source deck that shipped

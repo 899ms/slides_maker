@@ -1032,7 +1032,7 @@ NOT a blanket per-slide quota):
   naming the origins tried — is filled by the main loop's search AFTER you emit the plan and is
   checked by the coordinator at the design-gate precondition, never a silent swap. (You cannot fill
   origins you haven't searched; declaring the intent is your half of the contract.)
-- **(q) the register carries through EVERY slide, not just the cover/dividers (的风格要走所有页)** — the
+- **(q) the register carries through EVERY slide, not just the cover/dividers (the register must reach every page)** — the
   chosen style's signature is visible on ordinary interior content slides, not only the bookends. This
   is the **quiet register signature** of the chrome-budget rule (§ "The QUIET REGISTER SIGNATURE…"),
   *not* the loud signature motif: a faint grid/scanline, a corner numeral system, a thin edge rule, a
@@ -1043,7 +1043,7 @@ NOT a blanket per-slide quota):
   chrome-budget dose — the register signature is the chrome-quiet, meaning-free *echo* that repeats as
   part of the design SYSTEM (item (m)/§1), never fighting content. A deck whose style lives only on the
   first and last page — cover dressed, interiors bare default — FAILS this check. (History: a user
-  flagged exactly this — "风格肯定是要走所有页的，不能只有首尾页".) **Record it as a real contract-card
+  flagged exactly this — that the style must run through ALL the pages, not just the first and last.) **Record it as a real contract-card
   field** — the design-language block carries `interior register: <the quiet cue> | none (flat by
   register — <reason>)` — so the critic's Lens-B `register_interiors` check (`agents/critic.md`,
   `references/review-rubrics.md`) can read it; a bare style whose register stops at the cover, with no

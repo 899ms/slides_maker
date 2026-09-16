@@ -487,7 +487,7 @@ def categorical_slides(prs, sw=None, sh=None):
                         if any(abs(o["t"] - b["t"]) < 0.20 and o["l"] > b["l"] + 0.25
                                for o in bx if o is not b):
                             paired += 1
-                    if paired >= 3:                      # 3+ 行「短标签 + 平行说明」
+                    if paired >= 3:                      # 3+ rows of 'short label + parallel explanation'
                         hits.append(i)
                         done = True
                         break

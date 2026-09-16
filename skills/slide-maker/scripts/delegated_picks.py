@@ -5,7 +5,7 @@
 its own measured failure: under "decide everything yourself" you ANSWER the Step-0 questions with
 "defensible, purpose-derived picks" and post them as the FIRST FYI, "so a wrong pick costs one
 glance to veto, not a build" — and **delegation covers preferences, never information only the user
-has, and never which deck this is.** Measured: a run read 「你自行决定」 as licence to pick the ANGLE
+has, and never which deck this is.** Measured: a run read a Chinese "you decide the rest" directive as licence to pick the ANGLE
 too and delivered a thesis about 19th-century building regulation; every gate passed and it answered
 a question nobody asked.
 

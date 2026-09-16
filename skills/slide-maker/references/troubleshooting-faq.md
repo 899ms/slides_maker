@@ -204,7 +204,7 @@ counting them made a first cut fire on 4 of 20 slides of a professionally-made d
 - **Fix:** `deckkit.source_note(slide, "Crunchbase Q1 2026", as_of="30 July 2026")` — the per-slide
   provenance line; or cite it in the **speaker notes**, which count (a presented deck legitimately
   keeps the slide clean and the citation in the notes).
-- **If the attribution is already there in prose** ("这是 README 举的例子"), it is a false alarm —
+- **If the attribution is already there in prose** ("this is the example the README gives"), it is a false alarm —
   the source-phrase vocabulary is deliberately generous but cannot be exhaustive. Accept and move on.
 - **If you cannot name where the figure came from, that is not a lint problem.** It is the
   never-invent floor: source it, go qualitative, or ask. This is the one advisory whose finding may

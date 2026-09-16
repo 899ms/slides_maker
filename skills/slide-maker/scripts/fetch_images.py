@@ -467,7 +467,7 @@ def _safe_name(s, fallback="photo"):
     """Filesystem-safe, and NOT Latin-only.
 
     The first version stripped everything outside `[A-Za-z0-9._-]`, so every Chinese or Japanese
-    subject collapsed to the bare fallback: 北京大学校园 and 東京タワー both became `photo`, and a
+    subject collapsed to the bare fallback: a Chinese campus name and a Japanese landmark name both became `photo`, and a
     deck's asset folder lost the one thing that makes a filename useful. ``\\w`` with the unicode flag
     keeps letters in any script and still drops the separators and shell-hostile punctuation that
     actually matter. Every modern filesystem this skill runs on stores those names fine."""

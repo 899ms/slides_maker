@@ -57,8 +57,7 @@ direction*; the single real render confirms *fidelity*.
    - **The DNA runs through EVERY preview slide, not just the cover.** `preset_directions` marks each
      token with its `dna`; the cover shows the loud hero motif (`_dna_cover`) and every interior
      archetype slide carries a quiet **ambient register signature** (`_dna_ambient` — a corner mark,
-     an edge rule, a faint grid/scanline). This is deliberate: a user reported a style that "只有
-     首尾页" (lived only on the first/last page). The gate must SHOW the register carrying the whole
+     an edge rule, a faint grid/scanline). This is deliberate: a user reported a style that lived only on the first and last page. The gate must SHOW the register carrying the whole
      deck, and the built `style.py` must do the same — see step 7 and `agents/slide-design.md`
      (register-signature self-verify).
    🔴 **The rule is PAIRWISE and checkable: any two directions must differ on ≥2 of

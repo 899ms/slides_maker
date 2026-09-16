@@ -285,9 +285,9 @@ Study the generated image the way you'd study a provided style example
 
   | Identity family | Latin register | CJK pairing note |
   |---|---|---|
-  | Comic / hand-drawn / doodle | rounded humanist or comic-adjacent display (Comic Neue if installed → Trebuchet MS/Verdana fallback) | a rounded 圆体-class face if installed → Hiragino Sans GB fallback; never a brush Kai (reads formal, not playful) |
+  | Comic / hand-drawn / doodle | rounded humanist or comic-adjacent display (Comic Neue if installed → Trebuchet MS/Verdana fallback) | a rounded gothic (yuanti-class) face if installed → Hiragino Sans GB fallback; never a brush Kai (reads formal, not playful) |
   | Blueprint / technical / terminal | technical sans + mono labels (Consolas/Menlo class) | Hiragino Sans GB · mono digits |
-  | Ink-wash / brush / 东方 | serif Latin (Georgia class) | Kai/Song per `east-asian-aesthetic.md`; lining digits beside CJK |
+  | Ink-wash / brush / Eastern | serif Latin (Georgia class) | Kai/Song per `east-asian-aesthetic.md`; lining digits beside CJK |
   | Pixel / retro / arcade | geometric sans or mono, square terminals | Hiragino Sans GB; avoid rounded faces |
   | Painterly / organic / botanical | humanist serif or light humanist sans | Songti or Hiragino by warmth |
   | Editorial / magazine / collage | high-contrast serif display + grotesque body | Songti display + Hiragino body |
@@ -461,7 +461,7 @@ them, and show both. The content slide is essential: it proves the blocks actual
       interchangeable filler (abstract mesh, random gradient, stock swoosh) that would sit under any deck.
       An image that is beautifully on-style but topically generic **fails** — regenerate with the deck's
       own subject motifs folded into the prompt (the REFERENT RULE, `image-generation.md`). This is the
-      user's requirement: 生成图要融合风格且与 topic/内容强相关.
+      user's requirement: a generated image must carry the style AND be strongly tied to the topic.
 - [ ] `style.py` derived: palette **extracted from the image**, motif helpers, component helpers,
       fonts/chrome, a **`content_bg(slide)`** for the shallow interior background, and a
       **`brand(slide)`** logo helper if the deck is about a company/institution/product.
@@ -553,7 +553,7 @@ pick (palette, energy, brand colours) before generating. Each entry gives the *p
   a hand-lettered accent. Great for youth/community/launch energy.
 - **Ukiyo-e / woodblock** — timeless, crafted, Japanese. *Palette:* indigo, vermilion, cream, seafoam.
   *Motifs:* flat colour planes, bold keylines, stylised waves/clouds, washi grain. *Type:* serif/brush accent.
-- **Ink wash / 水墨** — contemplative, literati. *Palette:* ink blacks on paper + one vermilion seal-red.
+- **Ink wash** — contemplative, literati. *Palette:* ink blacks on paper + one vermilion seal-red.
   *Motifs:* brush strokes, mist gradients, negative space. *Type:* see `east-asian-aesthetic.md` (`ink_wash`).
 - **Flat vector illustration** — friendly product/explainer. *Palette:* 4–6 cheerful mids on white.
   *Motifs:* geometric characters/scenes, simple shadows, spot illustrations. *Type:* rounded geometric sans.

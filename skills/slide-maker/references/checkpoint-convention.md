@@ -14,7 +14,7 @@ veto, not a build. The FLOOR: delegation covers *preferences*, never *informatio
 has*, and never **which deck this is**. 🔴 A common genre carries a DEFAULT the request already
 implies — 「介绍巴黎的 PPT」 means the city introduction people actually give: places, districts,
 food, what to see. Take that reading unless the user signalled otherwise. Measured: a run read
-「你自行决定」 as licence to pick the ANGLE too, and delivered a thesis about 19th-century building
+a Chinese "you decide the rest" directive as licence to pick the ANGLE too, and delivered a thesis about 19th-century building
 regulation — every gate passed, and it answered a question nobody asked. Deciding the angle is
 not a preference pick; it is deciding what the deck IS, which is the one thing the ask already
 did. An unusual angle is a proposal: name it in one line in the first FYI so it costs one glance
@@ -110,7 +110,7 @@ carries the style onto ORDINARY INTERIOR pages (a faint grid/scanline, a corner 
 edge rule, a small seal), or the explicit carve `none (flat by register — <reason>)`. It is a required
 line, not an optional one: self-verify (q), PRE-FLIGHT 6b and the critic's Lens-B `register_interiors`
 check all READ this field, and a deck whose style lives only on the cover and dividers fails all
-three — 的风格要走所有页. Do not confuse it with the loud signature motif, whose ≤3-appearance budget
+three — the register reaches every page. Do not confuse it with the loud signature motif, whose ≤3-appearance budget
 still binds; this one is the chrome-quiet echo that MAY repeat on every page. + the **`density:`
 line as two numbers** (planned median words/slide, planned count over 70, and how many content slides
 have a non-text protagonist — self-verify (r); the hand-off density gate is compared against these) +
@@ -145,7 +145,7 @@ the mechanical-check verdict rides on the same line, so a collapsed set cannot b
 choice without the collapse being spoken — or the named carve (e.g. `carve: user said just-go` /
 `carve: Mode-A mimic`). Branch (d): `picked <X> of 3 (gallery: <path>)`, **or**, when Auto/你决定
 skipped the gallery, `carve: auto-pick — ` **followed by all three candidate styles WITH the
-one-clause reason each loser lost** (e.g. `art-deco: 与 shanghai-city 撞档 · photo-collage: 无版权图源`).
+one-clause reason each loser lost** (e.g. `art-deco: clashes with shanghai-city · photo-collage: no rights-cleared image source`).
 **A design checkpoint on branch (c) or (d) with no gate line is not ready.** Both are the gate
 artifact that keeps the choose-a-look step from silently vanishing — history: branch (c)'s gate was
 made a default precisely because an "offer" got skipped under momentum, and branch (d)'s gallery

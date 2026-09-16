@@ -425,7 +425,7 @@ Use the web for **three jobs**, and run it whether or not you have a source:
     or renamed product is the exact failure this prevents. Record it as the checkpoint's
     **`lifecycle:`** line (named things confirmed current · anything found discontinued/renamed, and
     how the deck handles it — dropped, or shown with an honest "being retired" note).
-  - **充实 / SUBSTANCE — every load-bearing point carries a concrete SPECIFIC, not an adjective.**
+  - **SUBSTANCE — every load-bearing point carries a concrete SPECIFIC, not an adjective.**
     Research to the depth where a claim is a real number / date / price / named benchmark / named
     mechanism — never "state-of-the-art" or "powerful" standing alone. The test: *hide the subject's
     name — does the slide still say something a competitor's slide couldn't?* If a load-bearing slide's
@@ -457,7 +457,7 @@ forward for. While building the arc and the per-slide content, keep asking the q
 - **Openings for decide/status arcs default to SCQA** — Situation the room already agrees with → Complication that breaks it → the Question the room now asks → your Answer (the deck). The Complication→Question handoff is what makes the audience *ask for* the recommendation before it arrives; a decide-deck that opens on the answer wastes its one chance at pull.
 - **Where is the material's native TENSION?** Attention is earned by a *gap* — between what the
   audience believes and what the material shows, between effort and result, between two numbers
-  that shouldn't coexist (投入↑ 而增长↓). Find the tension already IN the source and put it early;
+  that shouldn't coexist (spend rising while growth falls). Find the tension already IN the source and put it early;
   a deck that opens with background instead of tension has lost the room before slide 3.
 - **Inspire/pitch arcs may use the sparkline** — alternate current-reality and future-state beats across the middle (not one contrast at the end), and engineer ONE deliberate peak the room will retell (Duarte's STAR moment); name the peak slide in the arc.
 - **What's the one thing they DON'T already know?** Lead with the insight they can't predict, not
@@ -809,7 +809,7 @@ One row per slide — **content only**:
 
 | # | Takeaway (an assertion sentence) | Role · question · beat | Content units (terse) | Visual source (which figure / number / data belongs here, AND which question it answers: what / how / why) | notes | Spoken thread (presented decks only) |
 
-Keep *Role · question · beat* terse — one word / short phrase each (e.g. `problem · "为什么增长停滞?"
+Keep *Role · question · beat* terse — one word / short phrase each (e.g. `problem · "why has growth stalled?"
 · tension`); it's the editorial contract the design agent reads. The *Spoken thread* column (or an
 indented line per row, if the table gets wide) is required on a **presented** deck and omitted
 entirely on a self-read one — full plan only, never the compact checkpoint table (§4). Be specific in *Visual source* —

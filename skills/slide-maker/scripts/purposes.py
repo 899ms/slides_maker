@@ -20,7 +20,7 @@ is the critic's job and always will be. The cheap catch is the one worth having:
 no feasibility slide and a committee deck with no ask are not weak decks, they are decks missing a
 section their audience is required to score.
 
-Synonyms are multilingual on purpose — a 中文 deck names the same section in 中文, and a check that
+Synonyms are multilingual on purpose — a Chinese deck names the same section in Chinese, and a check that
 only knows English would fire on every one of them.
 
     python3 scripts/purposes.py --list

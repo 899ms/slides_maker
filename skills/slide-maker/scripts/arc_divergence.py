@@ -272,7 +272,7 @@ def check(arcs, goal=None):
     """`goal` is the recorded `interview.goal`, when the caller has one. The per-candidate
     `serves_goal` clause is required unconditionally; what the goal adds is the ECHO report —
     which candidates' clauses share vocabulary with the goal they claim to serve. It is
-    REPORTED, never blocking: overlap across languages (a 中文 goal, English clauses) is
+    REPORTED, never blocking: overlap across languages (a Chinese goal, English clauses) is
     legitimately zero, so a hard gate here would punish exactly the bilingual decks that are
     fine. The report exists so a coordinator or critic sees the mismatch in one line instead
     of never — the Melbourne failure was not that the field was empty, it was that nothing
