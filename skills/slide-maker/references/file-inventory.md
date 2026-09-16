@@ -188,9 +188,14 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   (presentation · investigations · management · outcome), thesis defense (contributions ·
   limitations · future work), conference talk (contribution · evidence · limitations), job talk
   (track record · research plan · fit) and exec/investor readout (the ask · the number · the
-  risk) — EIGHT of the thirteen genres in that file; the remaining five (lab meeting, work
-  status, product pitch, teaching, webinar) stay prose because their required content is
-  genuinely least conventional, and a deck in one of them reports NOT CHECKED. 🔴 This is the `formats.py` / `check_surface.py` mechanism
+  risk) — plus lab meeting (what changed · open questions), work status (outcome · the ask), product
+  pitch (positioning · benefits) and teaching (objectives · worked example · recap) — TWELVE of
+  the thirteen entries in that file. 🔴 Every list was DERIVED FROM THAT FILE'S OWN PROSE, never
+  invented: teaching's three were already in its Layout and Signature lines, the lab meeting's
+  two are its Signature line verbatim. Where a genre's prose names no required section, none was
+  added. The thirteenth, `webinar`, has no list ON PURPOSE — it is a delivery MODE, not a genre
+  (the same session can be a lecture, a pitch or a readout), so `purposes.NOT_A_GENRE` recognises
+  the medium words and `check_purpose` asks for the GENRE instead of silently checking nothing. 🔴 This is the `formats.py` / `check_surface.py` mechanism
   generalised from SURFACES to GENRES, for the same measured reason — the shape of a genre is
   exactly what an author under time pressure drops (a poster loses methods and limitations; a
   committee deck loses the ask and becomes a status update). Binds by matching the RECORDED purpose

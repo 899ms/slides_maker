@@ -163,6 +163,10 @@ polish. Calm, low-chrome, content-forward.
   recurring diagram or a category mark; keep them off the result slides; a status chip often beats a
   status icon. A style-matched family still fits — just sparing (see `icons.md` Scenario fit).
 - **Signature:** "what changed since last time" framing; open questions slide.
+- 🔴 **Declares (checked): what changed · open questions.** Both come from the Signature line
+  above; a working session with neither is a report, and nobody called a meeting for a report.
+- 🔴 **Fidelity:** this is the one audience where rounding a shaky number up costs you directly —
+  they will build advice on it.
 
 ## Work status update to a manager / team
 Decision- and outcome-oriented; the reader is busy. Lead with results, make status
@@ -175,6 +179,9 @@ scannable.
 - **Layout/chrome:** consistent header with the status, tidy footer with date/owner.
   Use chips/badges for status. Predictable grid > clever layout.
 - **Signature:** a takeaway line per slide phrased as the *decision or ask*.
+- 🔴 **Declares (checked): outcome · the ask.**
+- 🔴 **Fidelity:** a status update with no ask is a report the reader did not need. If nothing is
+  wanted from them, say so explicitly rather than leaving them to guess.
 
 ## Academic conference talk
 A *spoken* talk to a room, often dim. Big, legible, one message per slide; built to
@@ -266,6 +273,9 @@ modern, visual; the product itself is the hero.
   Same for any competitor/customer logos: real or omit — **never** a recolored monochrome `simple:`
   glyph on a proof/partner slide (the icon mechanism recolors it to the deck accent → a wrong-colour
   look-alike); `simple:` is for naming a tool inline, not for a credibility logo (`icons.md`).
+- 🔴 **Declares (checked): positioning · benefits.** Both from the Signature line above.
+- 🔴 **Fidelity:** a benefit is a CLAIM. Every number on a pitch slide is one a customer may hold
+  you to; an unverifiable one is not persuasion, it is an unpaid debt.
 
 ## Thesis defense
 Formal, rigorous, complete; an expert committee that will probe. Serious and
@@ -303,6 +313,10 @@ progressive; a little warmth is welcome.
   short-list guard).
 - **Signature:** an objectives slide up front and a recap at the end; questions to the
   audience built in.
+- 🔴 **Declares (checked): objectives · worked example · recap.** All three are already in the
+  Layout and Signature lines above — this only makes them checkable.
+- 🔴 **Fidelity:** a novice cannot tell a simplification from a claim. Say when you are
+  simplifying, or the simplification is what they carry away as fact.
 
 ## Webinar / online presentation
 A talk delivered over video (Zoom/Teams/streamed), watched on screens of varying size,
@@ -324,6 +338,13 @@ tabs. Like a conference talk but built for a *shared-screen* medium, not a proje
   pacing genuinely helps a remote audience you can't read (by design sense, not a quota — see
   `references/animation.md`); explicit "ask in the chat" prompts; a visible agenda so late
   joiners orient. If it's recorded, ensure every slide reads as a still frame.
+- 🔴 **NO section list, and the reason is not 'too unconventional'.** A webinar is a delivery
+  MODE, not a genre: the same session can be a lecture, a product pitch or an exec readout, and
+  those need different content — so a list attached to "webinar" would be a guess about which,
+  firing on two decks in three. What it genuinely constrains is the MEDIUM, and that already
+  lives in the lint's type floors and `formats.py`'s safe zones. Record the GENRE as the
+  purpose ("a teaching webinar", "an investor webinar") — `check_purpose` recognises the
+  medium words and asks you for the genre rather than silently checking nothing.
 
 ## Grant proposal / funding pitch
 ERC · NWO · NIH · Horizon. The highest-stakes deck an academic makes, and the one with the most
@@ -390,12 +411,17 @@ a decision, and they cannot do that without the information that was available w
 > is the critic's job. Terms are multilingual; extend them with `design_plan.purpose_section_terms`
 > rather than waiving, and waive in writing when a deck genuinely has none.
 >
-> **Eight of the thirteen genres on this page are now checked** (grant · committee · journal club ·
-> clinical case · defense · conference talk · job talk · exec readout). The remaining five — lab
-> meeting, work status update, product pitch, teaching, webinar — are **still prose**, which is a
-> real gap and not a claim of coverage: a genre with no registry entry binds to nothing and
-> reports NOT CHECKED. They are the five whose required content is genuinely least conventional,
-> which is a reason to be careful about inventing one, not a reason to pretend they are covered.
+> **TWELVE of the thirteen entries on this page are now checked.** The thirteenth, **webinar**, has no
+> section list on purpose: it is a delivery MODE, not a genre, and `check_purpose` says so rather
+> than checking nothing (see its entry above).
+>
+> 🔴 **Every section list here was DERIVED FROM THIS PAGE'S OWN PROSE, not invented.** Teaching's
+> objectives/example/recap were already in its Layout and Signature lines; the lab meeting's "what
+> changed" and "open questions" and the pitch's "positioning" and "benefits" are its Signature line
+> verbatim. That is the whole move — the conventions were already written down and simply could not
+> be checked. Where a genre's prose does NOT name a required section, none was added: inventing one
+> would fire on good decks, and a check that fires on good decks is how people learn to ignore
+> checks.
 
 ## Preset fit by purpose — a fast sanity map (fit is a default, avoid is a flag, both overridable with a stated reason)
 | Purpose | Natural fits | Flag before using |

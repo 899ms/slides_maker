@@ -205,9 +205,109 @@ PURPOSES = (
         fidelity="A readout that names no downside is read as a sales pitch, and the first "
                  "question will be the one you left out. Name the assumption the number rests on.",
     ),
+
+    Purpose(
+        "research_meeting", "Research meeting with a supervisor / lab group",
+        "A working session with an expert audience, held often. Its two sections come straight out "
+        "of this skill's own recipe for it — 'what changed since last time' framing, and an open "
+        "questions slide — because a working session with neither is a report, and nobody called a "
+        "meeting to receive a report.",
+        binds_on=("lab meeting", "group meeting", "supervisor meeting", "research meeting",
+                  "weekly meeting", "one-on-one", "组会", "小组会", "例会", "和导师"),
+        required_sections=(
+            ("what changed", ("since last", "what changed", "this week", "progress", "update",
+                              "new result", "上次之后", "本周", "进展", "新结果")),
+            ("open questions", ("open question", "question", "stuck", "blocker", "not sure",
+                                "need help", "where i am stuck", "问题", "卡住", "不确定", "请教")),
+        ),
+        fidelity="A working session is where an unfinished result is USEFUL. Rounding a shaky "
+                 "number up for the supervisor is the one audience where it costs you directly — "
+                 "they will build advice on it.",
+    ),
+    Purpose(
+        "work_status", "Work status update to a manager / team",
+        "Decision- and outcome-oriented, for a reader who is busy. Its sections are this skill's "
+        "own recipe: lead with the RESULT, and make every takeaway a decision or an ask.",
+        binds_on=("status update", "status report", "weekly update", "project update",
+                  "sprint review", "team update", "工作汇报", "周报", "月报", "项目汇报"),
+        required_sections=(
+            ("outcome", ("outcome", "result", "results", "delivered", "shipped", "completed",
+                         "achieved", "成果", "结果", "已完成", "交付")),
+            ("the ask", ("decision", "we need", "the ask", "approve", "request", "blocked on",
+                         "recommend", "决策", "需要", "请批准", "建议")),
+        ),
+        fidelity="A status update with no ask is a report the reader did not need. If nothing is "
+                 "wanted from them, say that explicitly rather than leaving them to guess.",
+    ),
+    Purpose(
+        "product_pitch", "Product description / pitch",
+        "Selling a product to prospects, customers or users. Two sections come from this skill's "
+        "own recipe: a crisp one-line POSITIONING ('X for Y who want Z'), and benefits rather than "
+        "features.",
+        binds_on=("product pitch", "sales deck", "product demo", "customer presentation",
+                  "product launch", "go-to-market", "产品介绍", "产品发布", "销售材料", "客户演示"),
+        required_sections=(
+            ("positioning", ("for teams who", "for people who", "positioning", "we help",
+                             "is a", "designed for", "定位", "面向", "帮助"))
+            ,
+            ("benefits", ("benefit", "benefits", "you can", "saves", "so that", "value",
+                          "outcome for you", "收益", "价值", "你可以")),
+        ),
+        fidelity="Benefits, not features — and a benefit is a claim. Every number on a pitch slide "
+                 "is one a customer may hold you to; an unverifiable one is not persuasion, it is "
+                 "an unpaid debt.",
+    ),
+    Purpose(
+        "teaching", "Teaching / lecture",
+        "The goal is understanding and retention for a mixed or novice audience. This skill's own "
+        "recipe already names the three: an objectives slide up front, a 'concept → example' "
+        "spine, and a recap at the end — which is also what every instructional-design framework "
+        "asks for, and what a lecture assembled under time pressure drops first.",
+        binds_on=("lecture", "teaching", "tutorial", "course", "class", "workshop", "讲课",
+                  "教学", "授课", "课程", "培训"),
+        required_sections=(
+            ("objectives", ("objective", "objectives", "learning goal", "by the end", "you will "
+                            "be able", "what you will learn", "目标", "学习目标", "本节")),
+            ("worked example", ("example", "worked example", "let us", "walk through", "case",
+                                "demo", "例子", "示例", "演练")),
+            ("recap", ("recap", "summary", "to summarise", "to summarize", "key points",
+                       "takeaway", "小结", "总结", "要点")),
+        ),
+        fidelity="A novice cannot tell a simplification from a claim. Say when you are "
+                 "simplifying — 'this is roughly true, the exact version is…' — or the "
+                 "simplification is what they will carry away as fact.",
+    ),
 )
 
 BY_NAME = {p.name: p for p in PURPOSES}
+
+# 🔴 DELIVERY MODES, NOT GENRES — deliberately absent from PURPOSES, with the reason.
+# A webinar is not a kind of argument; it is a kind of ROOM. The same webinar can BE a lecture, a
+# product pitch or an exec readout, and those three have different required content — so a section
+# list attached to "webinar" would be a guess about which one, firing on two decks out of three.
+# What a webinar actually constrains is the MEDIUM (contrast, the central safe area, type size,
+# icon weight), and that already lives in the lint's type floors and `formats.py`'s safe zones.
+# Recording this is the difference between "we chose not to" and "nobody thought about it": a
+# reader who records `webinar` gets asked WHICH GENRE it is, rather than a silent NOT CHECKED.
+NOT_A_GENRE = {
+    ("webinar", "online presentation", "zoom talk", "teams talk", "virtual talk", "livestream",
+     "网络研讨会", "线上分享", "直播"):
+        "a webinar is a delivery MODE, not a genre — the same session can be a lecture, a product "
+        "pitch or an exec readout, and those need different content. Record the GENRE as the "
+        "purpose (the medium is already handled by the type floors and the safe-area rules), e.g. "
+        "'a teaching webinar' or 'an investor webinar'.",
+}
+
+
+def not_a_genre(recorded: str):
+    """The explanation when a recorded purpose names a MEDIUM rather than a genre, else None."""
+    if not recorded:
+        return None
+    blob = str(recorded).lower()
+    for terms, why in NOT_A_GENRE.items():
+        if any(t in blob for t in terms):
+            return why
+    return None
 
 
 def match(recorded: str):

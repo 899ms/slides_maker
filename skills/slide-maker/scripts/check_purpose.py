@@ -121,6 +121,13 @@ def check(pptx, purpose_text, *, extra_terms=None, waive=None):
 
     p = purposes.match(purpose_text)
     if p is None:
+        mode = purposes.not_a_genre(purpose_text)
+        if mode:
+            # a silent NOT CHECKED here would be a worse answer than a question: the reader HAS a
+            # genre, they just recorded the room instead of the argument.
+            raise RuntimeError(
+                "the recorded purpose %r names a DELIVERY MODE, not a genre — %s"
+                % ((purpose_text or "")[:60], mode))
         raise RuntimeError(
             "no registry purpose binds to the recorded purpose %r — nothing was checked. That is "
             "correct when the deck is a genre this registry does not carry (a product pitch, a "
@@ -163,7 +170,8 @@ def _selftest():
                        ("journal club on a MICCAI paper", "journal_club"),
                        ("组会读论文", "journal_club"),
                        ("tumour board", "clinical_case"),
-                       ("a product pitch to investors", None),
+                       ("a product pitch to investors", "product_pitch"),
+                       ("an ethics committee submission", None),
                        ("", None)):
         got = purposes.match(text)
         name = got.name if got else None

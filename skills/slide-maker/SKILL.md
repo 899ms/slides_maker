@@ -516,25 +516,34 @@ source-material floor still gets asked);
 when in doubt, keep it. Never assume the **topic/content**, the **style**, or **which
 template** — confirm each.
 
-🔴 **EIGHT purposes DECLARE required content, and the deck is held to it at hand-off.** A grant
-proposal (aims · feasibility · risk), a progress/guidance committee (progress · plan · **ask**), a
-journal club (attribution · critique), a clinical case (presentation · investigations · management ·
-outcome), a **thesis defense** (contributions · limitations · future work), a **conference talk**
-(contribution · evidence · limitations), a **job talk** (track record · research plan · fit) and an
-**exec/investor readout** (the ask · the number · the risk) each carry sections their audience is
-asked to judge against — so a deck
-missing one is not a lean deck, it is a deck missing something the room needs. `scripts/purposes.py`
-declares them and `scripts/check_purpose.py` looks for them in the built file (both gate paths, CJK
-terms included, extend with `design_plan.purpose_section_terms`, waive in writing). It binds ONLY
-when the recorded purpose matches a registry entry — anything else is NOT CHECKED, never a guessed
-genre. **This is the `formats.py`/`check_surface.py` mechanism generalised from SURFACES to GENRES**,
-and for the same measured reason: the shape of a genre is exactly what an author under time pressure
-drops. Each also carries one fidelity rule beyond never-invent — a pilot stated as a pilot, open work
-that reads as open, their claim separable from yours, and on a clinical case **de-identification,
-which is the one irreversible item on this page**. The remaining five genres in `design-by-purpose.md` (lab
-meeting · work status · product pitch · teaching · webinar) remain prose, and a deck in one of those
-reports NOT CHECKED rather than clean — they are the five whose required content is genuinely least
-conventional, which is a reason not to invent one.
+🔴 **TWELVE of the thirteen purposes DECLARE required content, and the deck is held to it at
+hand-off.** grant (aims · feasibility · risk) · progress/guidance committee (progress · plan ·
+**ask**) · journal club (attribution · critique) · clinical case (presentation · investigations ·
+management · outcome) · thesis defense (contributions · limitations · future work) · conference
+talk (contribution · evidence · limitations) · job talk (track record · research plan · fit) ·
+exec/investor readout (the ask · the number · the risk) · lab meeting (what changed · open
+questions) · work status (outcome · the ask) · product pitch (positioning · benefits) · teaching
+(objectives · worked example · recap). Each carries sections its audience is asked to judge
+against, so a deck missing one is not a lean deck — it is a deck missing something the room needs.
+`scripts/purposes.py` declares them and `scripts/check_purpose.py` looks for them in the built file
+(both gate paths, CJK terms included, extend with `design_plan.purpose_section_terms`, waive in
+writing). It binds ONLY when the recorded purpose matches a registry entry — anything else is NOT
+CHECKED, never a guessed genre. **This is the `formats.py`/`check_surface.py` mechanism generalised
+from SURFACES to GENRES**, and for the same measured reason: the shape of a genre is exactly what an
+author under time pressure drops.
+🔴 **Every section list was DERIVED FROM `design-by-purpose.md`'s OWN PROSE, never invented** —
+teaching's objectives/example/recap were already in its Layout and Signature lines, the lab
+meeting's "what changed" and "open questions" are its Signature line verbatim. Where a genre's prose
+names no required section, none was added: a check that fires on good decks is how people learn to
+ignore checks.
+🔴 **The thirteenth, `webinar`, has NO section list on purpose — it is a delivery MODE, not a
+genre.** The same session can be a lecture, a pitch or a readout, so a list attached to it would be
+a guess about which. What it constrains is the MEDIUM, already held by the type floors and
+`formats.py`'s safe zones — and `check_purpose` recognises the medium words and asks you for the
+GENRE instead of silently checking nothing.
+Each genre also carries one fidelity rule beyond never-invent — a pilot stated as a pilot, open work
+that reads as open, their claim separable from yours, a simplification flagged to a novice, and on a
+clinical case **de-identification, which is the one irreversible item on this page**.
 
 **The `review:` question is NOT asked here — it moved to Step 5, after the first clean render.**
 It used to be a Step-0 axis, which forced the user to size a review of a deck nobody had seen;

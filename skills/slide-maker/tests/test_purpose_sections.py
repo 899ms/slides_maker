@@ -92,8 +92,9 @@ for text, want in (("PhD guidance committee meeting", "committee"),
                    ("journal club on a MICCAI paper", "journal_club"),
                    ("组会读论文", "journal_club"),
                    ("tumour board case presentation", "clinical_case"),
-                   ("a product pitch to investors", None),
-                   ("teaching a first-year lecture", None),
+                   ("a product pitch to investors", "product_pitch"),   # was None until
+                   ("teaching a first-year lecture", "teaching"),        # these two registered
+                   ("an ethics committee submission", None),
                    ("", None)):
     got = purposes.match(text)
     ck((got.name if got else None) == want,
@@ -113,15 +114,22 @@ _ec = purposes.match("steering committee update")
 ck(_ec is not None and _ec.name == "exec_readout",
    "'steering committee update' now binds to exec_readout — it was negative until that genre was "
    "registered, and the ask/number/risk shape is genuinely its own")
+# 🔴 Two more cases MOVED to positive when `product_pitch` and `teaching` were registered, the
+# same way "steering committee update" did when `exec_readout` was. Recording each move instead of
+# deleting the case: a negative assertion that becomes wrong is the registry growing correctly.
+for text, want in (("a product pitch to investors", "product_pitch"),
+                   ("teaching a first-year lecture", "teaching")):
+    got = purposes.match(text)
+    ck(got is not None and got.name == want,
+       "%r now binds to %s — it was negative until that genre was registered" % (text[:34], want))
 for text in ("investment committee readout", "ethics committee submission",
-             "a business proposal for a client",
-             "project proposal review", "product pitch to investors",
-             "teaching a first-year lecture"):
+             "a business proposal for a client", "project proposal review",
+             "an IRB submission", "a press release"):
     ck(purposes.match(text) is None,
        "%r binds to NOTHING — it is not one of these genres" % text[:40])
 
 try:
-    cp.check(full, "a product pitch to investors")
+    cp.check(full, "an ethics committee submission")
     ck(False, "an unbound genre must RAISE rather than check nothing silently")
 except RuntimeError as exc:
     ck("binds to the recorded purpose" in str(exc),
@@ -174,6 +182,38 @@ ck(missing(nl, "PhD guidance committee",
    "…and a deck in a language the registry does not carry is cleared by extending the TERMS, "
    "which keeps the check alive, rather than by waiving it away")
 
+print("\n— the four genres added from this page's OWN prose bind, in both languages")
+for text, want in (("lab meeting with my supervisor", "research_meeting"), ("组会", "research_meeting"),
+                   ("weekly status update", "work_status"), ("周报", "work_status"),
+                   ("product pitch to customers", "product_pitch"), ("产品介绍", "product_pitch"),
+                   ("a first-year lecture", "teaching"), ("教学课程", "teaching")):
+    got = purposes.match(text)
+    ck((got.name if got else None) == want, "%r -> %s" % (text[:30], got.name if got else "NOTHING"))
+# 组会 (lab meeting) vs 组会读论文 (journal club) — longest term wins, or the more specific genre loses
+ck(purposes.match("组会读论文").name == "journal_club",
+   "组会读论文 still binds to journal_club, not to the shorter 组会 — the longest matching term wins, "
+   "which is what keeps a specific genre from being swallowed by a general one")
+
+print("\n— WEBINAR is not a genre, and saying so beats checking nothing")
+for text in ("a webinar for our users", "线上分享", "an online presentation"):
+    ck(purposes.match(text) is None, "%r binds to no genre" % text)
+    ck(purposes.not_a_genre(text) is not None,
+       "…and %r is recognised as a delivery MODE, so the reader is asked for the genre" % text[:24])
+ck(purposes.match("a teaching webinar") is not None
+   and purposes.match("a teaching webinar").name == "teaching",
+   "…while 'a teaching webinar' DOES bind — it names a genre, and the medium is beside the point")
+ck(purposes.not_a_genre("PhD guidance committee") is None,
+   "a real genre is never mistaken for a medium")
+
+print("\n— the lists were DERIVED from design-by-purpose.md, not invented")
+dbp = open(os.path.join(SKILL, "references/design-by-purpose.md")).read()
+for genre, phrase in (("teaching", "objectives slide up front and a recap"),
+                      ("research_meeting", "what changed since last time"),
+                      ("product_pitch", "crisp one-line positioning"),
+                      ("work_status", "decision or ask")):
+    ck(phrase.lower() in dbp.lower(),
+       "%s's sections trace to prose already on that page (%r)" % (genre, phrase[:34]))
+
 print("\n— every registered purpose is reachable and actually checks something")
 for p in purposes.PURPOSES:
     ck(bool(p.required_sections), "%s declares at least one section" % p.name)
@@ -187,8 +227,9 @@ ck("purposes.py" in skill, "…and the registry")
 dbp = open(os.path.join(SKILL, "references/design-by-purpose.md")).read()
 for genre in ("Grant proposal", "guidance committee", "Journal club", "Clinical case"):
     ck(genre in dbp, "design-by-purpose.md carries the %r recipe" % genre)
-ck("remain prose" in dbp or "still prose" in dbp,
-   "…and says plainly that the OTHER purposes are still unchecked, rather than implying coverage")
+ck("TWELVE of the thirteen" in dbp and "delivery MODE, not a genre" in dbp,
+   "…and states the coverage exactly (12 of 13) plus WHY the thirteenth has no list — a delivery "
+   "mode is not a genre — rather than implying full coverage or vague under-coverage")
 
 print()
 print("%d passed, %d failed" % (len(OK), len(BAD)))
