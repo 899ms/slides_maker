@@ -2926,8 +2926,9 @@ def _print_stats(rows, mode, sw, sh, lums=None, static_ok=False, icon_ev=None, b
     pingfang = sum(r.get("pingfang", 0) for r in rows)
     if platform.system() == "Darwin" and pingfang:
         warns.append(f"PINGFANG ON MACOS: {pingfang} run(s) carry 'PingFang SC' as the EA font — the "
-                     f"macOS LibreOffice render loop substitutes a handwriting face for it; use "
-                     f"'Hiragino Sans GB' (see deckkit.EAFONT; presets now default to it)")
+                     f"macOS LibreOffice render loop substitutes a handwriting face for it, and the "
+                     f"width measurement cannot find it either (CJK laid out at 60% of its true "
+                     f"width, measured); use 'Hiragino Sans GB' (see deckkit.EAFONT)")
     tight_slides = [str(i + 1) for i, r in enumerate(rows) if r.get("cjk_tight")]
     if tight_slides:
         warns.append(f"CJK TIGHT LEADING: slide(s) {', '.join(tight_slides)} have multi-line CJK "

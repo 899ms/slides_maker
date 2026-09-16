@@ -28,9 +28,11 @@ vast breathing room. Reach for it on 中文 cultural / 文化 / 人文 / 传统 
 - **Brush / serif CJK display.** Set `deckkit.EADISPLAY = "Kaiti SC"` (楷体 — the macOS family name;
   on Windows the same face is named `"KaiTi"`; `presets.py`'s `_KAITI` resolves this per platform) or
   `"Songti SC"` (宋体) for titles — a calligraphic/serif face carries the register. For body use
-  **Hiragino Sans GB** (render-loop-safe) or Heiti — **PingFang SC is final-deck-only**: the macOS
-  LibreOffice render loop substitutes it with a handwriting face, blinding the render self-check (the
-  render-loop trap in `multilingual.md`; the ink presets ship `ea="Hiragino Sans GB"` for this reason).
+  **Hiragino Sans GB** — on macOS the sans that both the render loop and the width measurement can
+  see. **PingFang SC is not safe even for the final deck**: LibreOffice swaps it for a handwriting
+  face, and the measurement cannot find it, so its CJK text is laid out at 60% of its true width
+  (measured; the render-loop trap in `multilingual.md`; the ink presets ship
+  `ea="Hiragino Sans GB"` for this reason).
   (Flag the font dependency at hand-off — a render machine without the face falls back, though the
   `.pptx` still tags it. See `font-guidance.md` / `multilingual.md`.)
 - **Generous emptiness (留白).** Negative space is a *positive* element here — a near-empty slide with

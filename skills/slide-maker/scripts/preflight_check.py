@@ -256,22 +256,31 @@ def _bundled_only(name):
 
 
 def item10_fonts(prs):
-    used = set()
-    for s in prs.slides:
-        for sh, _sx, _sy in _leaves(s.shapes):
-            if sh.has_text_frame:
-                for p in sh.text_frame.paragraphs:
-                    for r in p.runs:
-                        if r.font.name:
-                            used.add(r.font.name)
-    if not used:
-        return ("NOT CHECKABLE", "no explicit run fonts found (theme fonts only)")
+    # 🔴 ONE inventory and ONE resolver, shared with check_fonts_resolve. This item used to collect
+    # `run.font.name`, which python-pptx reads from <a:latin> ONLY, and to decide "installed" from
+    # matplotlib's font list — a second inventory and a second predicate. On a Chinese deck it never
+    # saw the face that draws the Chinese. MEASURED: EAFONT='PingFang SC' (installed on the Mac,
+    # invisible to the measurement path) laid 24 CJK glyphs out at 60% of their true width while
+    # this item printed "all 1 font(s) resolve locally: ['Calibri']" and check_fonts_resolve, in the
+    # same hand-off, reported the face unresolved. Two instruments reading two inventories will
+    # disagree; this one now reads the other's, so they cannot.
     try:
-        from matplotlib import font_manager
-        have = {f.name for f in font_manager.fontManager.ttflist}
-    except Exception:
-        return ("NOT CHECKABLE", f"fonts used: {sorted(used)}; could not enumerate installed fonts")
-    missing = sorted(f for f in used if f not in have)
+        import check_fonts_resolve as cfr
+        carried, _theme, _unattributed = cfr.faces_in_use(prs)
+    except Exception as exc:
+        return ("NOT CHECKABLE", "could not read which faces carry this deck's text "
+                                 f"({exc.__class__.__name__}: {exc})")
+    used = {face for face, by in carried.items() if sum(by.values())}
+    if not used:
+        return ("NOT CHECKABLE", "no face carries any text on these slides")
+    ok = cfr._resolver()
+    if ok is None:
+        return ("NOT CHECKABLE", f"fonts used: {sorted(used)}; deckkit is not importable, so "
+                                 f"whether they resolve cannot be tested here")
+    verdict = {face: ok(face) for face in used}
+    undecidable = sorted(f for f, v in verdict.items() if v is None)
+    missing = sorted(f for f, v in verdict.items() if v is False)
+    cjk_missing = [f for f in missing if carried[f].get("ea")]
 
     # Split the two failures apart. They need opposite responses, and conflating them is how a
     # build ships layout computed against a font it never actually saw.
@@ -297,9 +306,20 @@ def item10_fonts(prs):
         # only machine the portability rule is about. Item 10's own wording is "noted for the
         # hand-off", i.e. flag it. Failing here fails perfectly good decks: CI (Ubuntu) has no
         # Helvetica Neue, so every macOS-authored deck would be "not ready to render".
-        return ("ADVISORY", f"font(s) not installed on THIS machine: {missing} - may be fine "
-                            f"where the deck is presented, but name them in the hand-off "
-                            f"(used: {sorted(used)})")
+        # 🔴 But it must not REASSURE. Every wrap/fit number for the text those faces carry was
+        # measured in a stand-in on this machine, and for CJK that stand-in need not have CJK
+        # glyphs at all — "may be fine where presented" was the whole message a PingFang deck got.
+        cjk = ("; {} draw(s) CJK text, and a stand-in without CJK glyphs measures it far too "
+               "narrow (60% of the true width, measured) - build with a CJK face that resolves "
+               "here, see references/multilingual.md Render-loop trap".format(cjk_missing)
+               if cjk_missing else "")
+        return ("ADVISORY", f"font(s) that do not resolve on THIS machine: {missing} - every wrap, "
+                            f"fit and overflow number for the text they carry was measured in a "
+                            f"stand-in here{cjk}. They may be fine where the deck is presented, "
+                            f"but name them in the hand-off (used: {sorted(used)})")
+    if undecidable:
+        return ("ADVISORY", f"could not test whether {undecidable} resolve on this machine - "
+                            f"reported, not assumed fine (used: {sorted(used)})")
     return ("PASS", f"all {len(used)} font(s) resolve locally: {sorted(used)}")
 
 

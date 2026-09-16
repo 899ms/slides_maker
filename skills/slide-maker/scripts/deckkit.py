@@ -316,7 +316,8 @@ FONT    = "Calibri"       # display font — cross-platform default (ships with 
 MONO    = "Consolas"      # code / filenames — Calibri's cross-platform monospace pair.
 EQFONT  = "Arial"         # equations — universal glyph + Greek coverage
 EAFONT  = None            # East-Asian font for CJK text (e.g. "Hiragino Sans GB" — render-loop-safe on macOS;
-                          # avoid "PingFang SC" for verification: LibreOffice substitutes a handwriting face
+                          # avoid "PingFang SC": LibreOffice substitutes a handwriting face AND the width
+                          # measurement cannot resolve it, so CJK is laid out at 60% of true width
                           # / "Microsoft YaHei" / "Noto Sans CJK SC"). When set, every run
                           # ALSO carries an <a:ea> typeface so PowerPoint/Keynote render
                           # Chinese/Japanese/Korean glyphs with THIS font (not an

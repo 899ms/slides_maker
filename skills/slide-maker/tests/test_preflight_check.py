@@ -106,7 +106,10 @@ def _(td):
     dk.speaker_notes(s, "x")
     prs.save(str(td / "font.pptx"))
     code, out = run(td / "font.pptx", "--static")
-    return code == 0 and "not installed on THIS machine" in out and "mechanical subset clean" in out
+    # item 10 says "do not resolve", not "not installed": PingFang SC IS installed on a Mac and
+    # still cannot be measured, so the old wording was wrong for exactly the face that mattered.
+    return (code == 0 and "do not resolve on THIS machine" in out
+            and "Definitely Not An Installed Font" in out and "mechanical subset clean" in out)
 
 
 @case("the suite's own fixtures do not depend on a platform-specific font")

@@ -128,7 +128,8 @@ a substitute (`font-guidance.md` → the app-bundle section). Override with a st
 
 **Non-Latin decks:** the font names below are Latin. For Chinese/Japanese/Korean, pick
 the script-appropriate equivalent and set `deckkit.EAFONT` — sans (modern/corporate/
-talks) → Heiti SC / PingFang SC / Noto Sans CJK; serif (formal/defense) → Songti SC /
+talks) → Hiragino Sans GB (macOS) / Noto Sans CJK — not Heiti SC or PingFang SC, which the
+width measurement cannot see on macOS; serif (formal/defense) → Songti SC /
 Noto Serif CJK; brush → Kaiti SC. See `references/multilingual.md`.
 
 ---
