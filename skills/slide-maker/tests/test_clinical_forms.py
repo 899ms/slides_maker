@@ -89,17 +89,52 @@ times = [6, 6, 6, 7, 10, 13, 16, 22, 23]
 events = [1, 1, 1, 1, 0, 1, 1, 1, 1]
 dc.km_curve(out("km.png"), [("arm", times, events)], risk_table=True)
 ck(os.path.exists(out("km.png")), "a KM curve renders from RAW (times, events)")
-s_, at_risk, obs, i, ladder = 1.0, len(times), sorted(zip(times, events)), 0, []
-while i < len(obs):
-    t = obs[i][0]
-    d = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 1)
-    c = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 0)
-    if d:
-        s_ *= (1 - d / at_risk); ladder.append((t, round(s_, 4)))
-    at_risk -= (d + c); i += d + c
+# 🔴 The REAL estimator, compared by exact list — never a re-implementation in the test. This arm
+# used to rebuild the estimator here and compare THAT to the textbook, so it never saw what
+# km_curve drew; and it compared with zip(), which passes an empty ladder.
+_ts, _sv, _cens = dc._km_steps(times, events)
+ladder = [(t, round(v, 4)) for t, v in zip(_ts[1:], _sv[1:])]
 want = [(6, 0.6667), (7, 0.5556), (13, 0.4167), (16, 0.2778), (22, 0.1389), (23, 0.0)]
-ck(all(a[0] == b[0] and abs(a[1] - b[1]) < 1e-3 for a, b in zip(ladder, want)),
-   "the Kaplan–Meier ladder matches the textbook series exactly: %s" % ladder[:3])
+ck(ladder == want, "the Kaplan–Meier ladder matches the textbook series exactly: %s" % ladder)
+ck(_ts[0] == 0.0 and _sv[0] == 1.0 and len(_cens) == 1 and _cens[0][0] == 10
+   and abs(_cens[0][1] - 5 / 9) < 1e-9,
+   "...starts at (0, 1), and the one censored subject is marked ON the curve at t=10 (%s)" % _cens)
+ck(_ts.count(23) == 1, "...and when the last observation is an EVENT nothing is appended after it")
+
+_ts, _sv, _cens = dc._km_steps([3, 5, 8, 12, 15, 20], [1, 1, 0, 1, 1, 0])
+ck(_ts[-1] == 20 and abs(_sv[-1] - 2 / 9) < 1e-9 and abs(_sv[-2] - 2 / 9) < 1e-9,
+   "🔴 a curve whose LAST subject is censored runs on to that follow-up (t=20, S=2/9) instead of "
+   "ending in a bare vertical drop at the last event (got %s)" % list(zip(_ts, _sv))[-2:])
+ck((20, _sv[-1]) in [(t, v) for t, v in _cens],
+   "...so the final censor mark sits ON the line rather than floating after it")
+
+_ts, _sv, _cens = dc._km_steps([4, 9, 12], [0, 0, 0])
+ck(_ts == [0.0, 12] and _sv == [1.0, 1.0],
+   "🔴 a group with NO events is a flat line at 1.0 out to its last follow-up — it used to be a "
+   "single (0, 1) point, which draws nothing (got %s)" % list(zip(_ts, _sv)))
+_ts, _sv, _cens = dc._km_steps([2, 5, 5], [1, 1, 0])
+ck(_ts == [0.0, 2, 5] and abs(_sv[-1] - 1 / 3) < 1e-9 and _cens == [(5, _sv[-1])],
+   "a tied event and censoring at the final time adds no extra step (got %s)" % list(zip(_ts, _sv)))
+
+# …and what is DRAWN, read off the real figure, not inferred from the estimator
+_figs = []
+_real_save = dc._save
+dc._save = lambda fig, path: (_figs.append(fig), _real_save(fig, path))[1]
+try:
+    dc.km_curve(out("km_tail.png"), [("Control", [3, 5, 8, 12, 15, 20], [1, 1, 0, 1, 1, 0]),
+                                     ("Treated", [6, 9, 14, 18, 24, 30], [1, 0, 1, 0, 1, 0]),
+                                     ("No events", [7, 11], [0, 0])])
+finally:
+    dc._save = _real_save
+_ax = _figs[-1].axes[0]
+_drawn = {ln.get_label(): list(ln.get_xdata()) for ln in _ax.lines if not ln.get_label().startswith("_")}
+ck(_drawn.get("Control", [None])[-1] == 20 and _drawn.get("Treated", [None])[-1] == 30
+   and _drawn.get("No events", [None])[-1] == 11,
+   "the plotted lines end at each group's last follow-up — Control 20, Treated 30, No events 11 "
+   "(drawn: %s)" % {k: v[-1] for k, v in _drawn.items()})
+ck(_ax.get_xlim()[1] >= 30,
+   "...and the x-range reaches the longest follow-up (30), not the last event (24): xlim %s"
+   % (tuple(round(v, 2) for v in _ax.get_xlim()),))
 raises(lambda: dc.km_curve(out("x.png"), [("a", [1, 2, 3], [1, 0])]),
        "aligned", "misaligned times/events are refused")
 raises(lambda: dc.km_curve(out("x.png"), [("a", [1, 2], [1, 2])]),
@@ -171,6 +206,12 @@ import sigs as _sigs                                                      # noqa
 ck("consort_flow" in _sigs.EXAMPLES,
    "…and it carries the runnable scaffold every FORM_GUARANTEE entry owes (smoke_deckkit enforces "
    "FORM_GUARANTEE ⊆ EXAMPLES, and executes each scaffold against a real slide)")
+for _name in ("forest_plot", "km_curve", "bland_altman", "roc_curve"):
+    ck(_name in _sigs.EXAMPLES and "placeholder" in _sigs.EXAMPLES[_name]
+       and _sigs._guarantee(_name),
+       "%s has a RUNNABLE scaffold (smoke_deckkit executes it), says its numbers are placeholders, "
+       "and states the guarantee a hand-roll loses — a recipe with no scaffold printed 'no copy-paste "
+       "scaffold yet', and a form nobody can copy is a form that gets hand-rolled wrong" % _name)
 ck(not ({"forest_plot", "km_curve", "bland_altman", "roc_curve"} & set(ca.FORM_GUARANTEE)),
    "the four PNG recipes are NOT in FORM_GUARANTEE — they write a file rather than drawing on a "
    "slide, exactly like waterfall/distribution/marimekko, so their backstop is the routing")

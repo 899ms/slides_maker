@@ -865,6 +865,36 @@ def forest_plot(out, rows, *, null=1.0, log=None, summary=None, xlabel=None, xli
     return _save(fig, out)
 
 
+def _km_steps(times, events):
+    """The Kaplan–Meier estimate as plottable steps: (ts, sv, censor_marks).
+
+    S(t) = prod over event times t_i <= t of (1 - d_i / n_i), starting from (0, 1).
+
+    🔴 The step runs to the LAST OBSERVATION, not the last event. Stopping at the last event — what
+    this did — ended every curve whose final subject was censored in a bare vertical drop, left that
+    subject's censor mark floating over empty axes, clipped the x-range at the last EVENT so the
+    longest follow-up was cut off the plot, and drew NOTHING for a group with no events at all
+    (one (0, 1) point is not a line) — the arm a small trial most wants to show. Found by LOOKING at
+    the scaffold's render; the suite's ladder test re-implemented the estimator and compared that.
+    """
+    obs = sorted(zip(times, events))
+    ts, sv, s, at_risk, cens, i = [0.0], [1.0], 1.0, len(obs), [], 0
+    while i < len(obs):
+        t = obs[i][0]
+        d = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 1)
+        c = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 0)
+        if d:
+            s *= (1.0 - d / at_risk)
+            ts.append(t); sv.append(s)
+        if c:
+            cens.append((t, s))
+        at_risk -= (d + c)
+        i += d + c
+    if obs and obs[-1][0] > ts[-1] + 1e-12:
+        ts.append(obs[-1][0]); sv.append(s)       # carry the estimate to the last follow-up
+    return ts, sv, cens
+
+
 def km_curve(out, groups, *, xlabel="Time", ylabel="Survival probability", risk_table=True,
              palette=None, dark=False, font=None, figsize=(6.8, 4.4), censor_marks=True,
              percent=False, xlim=None):
@@ -913,22 +943,7 @@ def km_curve(out, groups, *, xlabel="Time", ylabel="Survival probability", risk_
                                  f"1 means the event happened, 0 means censored")
             obs = sorted(zip(ts, ev))
             n0 = len(obs)
-            # the estimator: S(t) = prod over event times t_i<=t of (1 - d_i / n_i)
-            ts_out, sv_out, s, at_risk = [0.0], [1.0], 1.0, n0
-            cens = []
-            i = 0
-            while i < len(obs):
-                t = obs[i][0]
-                d = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 1)
-                c = sum(1 for (tt, ee) in obs[i:] if abs(tt - t) < 1e-12 and ee == 0)
-                if d:
-                    s *= (1.0 - d / at_risk)
-                    ts_out.append(t); sv_out.append(s)
-                if c:
-                    cens.append((t, s))
-                at_risk -= (d + c)
-                i += d + c
-            ts, sv = ts_out, sv_out
+            ts, sv, cens = _km_steps(ts, ev)
         curves.append((label, ts, sv, cens, n0, obs))
 
     if risk_table:

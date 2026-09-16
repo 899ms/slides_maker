@@ -248,6 +248,32 @@ EXAMPLES = {
              '         [("baseline", [2, 4, 3, 2, 5]), ("ours", [5, 3, 2, 4, 3])],\n'
              '         axis_range=(0, 5), highlight=1)\n'
              'dk.picture(s, "profile.png", 0.8, 1.2, 8.4, 3.6, fit="contain")',
+    # The four clinical / evidence recipes. Each one's DEFAULT is the thing a hand-roll gets wrong
+    # (a linear axis for ratios, a line for survival, a correlation for agreement, a stretched ROC).
+    # 🔴 Every number below is a PLACEHOLDER — an effect size, interval, survival time or AUC on a
+    # slide comes from the source, never from a scaffold.
+    "forest_plot": '# placeholder numbers: every estimate and interval comes from the source\n'
+                   'dc.forest_plot("forest.png",\n'
+                   '               [("Trial A", 0.82, 0.61, 1.10, 120),\n'
+                   '                ("Trial B", 0.74, 0.55, 0.99, 200)],\n'
+                   '               summary=("Pooled", 0.77, 0.63, 0.94), xlabel="Hazard ratio")\n'
+                   'dk.picture(s, "forest.png", 0.8, 1.2, 8.4, 3.6, fit="contain")',
+    "km_curve": '# placeholder data: times and events (1 = event, 0 = censored) come from the source\n'
+                'dc.km_curve("km.png", [\n'
+                '    ("Control", [3, 5, 8, 12, 15, 20], [1, 1, 0, 1, 1, 0]),\n'
+                '    ("Treated", [6, 9, 14, 18, 24, 30], [1, 0, 1, 0, 1, 0]),\n'
+                '], xlabel="Months")\n'
+                'dk.picture(s, "km.png", 0.8, 1.2, 8.4, 3.6, fit="contain")',
+    "bland_altman": '# placeholder data: one pair of measurements per subject, from the source\n'
+                    'dc.bland_altman("agreement.png",\n'
+                    '                [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],\n'
+                    '                [10.5, 10.8, 12.4, 12.9, 14.6, 14.8, 16.7, 16.9, 18.5, 19.1],\n'
+                    '                names=("MRI", "CT"))\n'
+                    'dk.picture(s, "agreement.png", 0.8, 1.2, 8.4, 3.6, fit="contain")',
+    "roc_curve": '# placeholder data: true labels and model scores come from the source\n'
+                 'dc.roc_curve("roc.png",\n'
+                 '             [("Model", [0, 0, 1, 1, 0, 1], [0.1, 0.4, 0.35, 0.8, 0.2, 0.7])])\n'
+                 'dk.picture(s, "roc.png", 2.6, 1.0, 4.8, 4.3, fit="contain")   # keep it square',
 }
 
 
@@ -287,6 +313,16 @@ _EXTRA_GUARANTEES = {
                  "100%-stacked bar throws away",
     "radar": "zero-anchored spokes on a shared range, so profile area is not inflated by a "
              "cropped axis",
+    "forest_plot": "a LOG axis for ratios by default (0.5 and 2 read as the same size of effect), "
+                   "every interval checked to contain its own estimate, and the pooled estimate "
+                   "drawn as a diamond",
+    "km_curve": "survival computed from raw times and events and drawn as a STEP — the estimate "
+                "changes only at an observed event — with censoring ticks and numbers at risk",
+    "bland_altman": "the bias and 95% limits of agreement (bias ± 1.96·SD of the differences), "
+                    "drawn and labelled — agreement, not a correlation; unpaired or too-short data "
+                    "is refused",
+    "roc_curve": "a square canvas with the chance diagonal and the AUC computed from raw labels and "
+                 "scores; a single-class or non-binary outcome is refused",
 }
 
 
