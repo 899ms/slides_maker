@@ -40,7 +40,7 @@ with a detector that was verified by planting the defect back.
   measured false positives: `NOTES ECHO SLIDE` (Mayer's redundancy — notes that repeat the slide,
   caught by symmetric sameness OR by the fraction of the notes that is verbatim slide text, because
   the real failure lifts one or two LINES and scores only ~0.6 on the symmetric measure),
-  `CATEGORY TITLE` (a bare `Overview` / `背景` / `概要` / `Überblick`, across nine languages, with
+  `CATEGORY TITLE` (a bare `Overview` / `Überblick` / the Chinese and Japanese equivalents, across nine languages, with
   `Timeline`/`Roadmap` carved out because they name the artifact rather than the kind of page), and
   `CHART SAYS IT TWICE` (Tufte — data labels plus a value axis print the same number twice).
   🔴 Two more were tried and REJECTED BY THE DATA, recorded so "tried and it does not work" never
@@ -54,7 +54,7 @@ with a detector that was verified by planting the defect back.
 ### Changed
 
 - 🔴 **Written-reason floors counted CODEPOINTS, so every one of them was twice as strict in
-  Chinese.** Measured: `audience_brief` rejected 「敢不敢把求职材料交给它」 (11 codepoints, width 22)
+  Chinese.** Measured: `audience_brief` rejected an 11-codepoint Chinese brief (display width 22)
   against `MIN_TEXT = 12` while a 12-letter English phrase carrying a third as much passed.
   `written_reason.reason_width` had shipped months earlier and TWELVE sites across six modules never
   reached for it — two of them written the same day as a module that used it correctly. The guard is
@@ -1144,8 +1144,8 @@ image-provenance work, the loud motif tier, and then, on its own author, most of
   the deck was fine and the console could not print a tick. 30 CLI entry points now degrade an
   unencodable glyph to `?` and finish; a UTF-8 console is untouched.
 - **Two paths were quietly Latin-only.** `fetch_images._safe_name` stripped everything outside
-  `[A-Za-z0-9._-]`, so 北京大学校园 and 東京タワー both became the bare fallback; and the credit
-  check gated on `len(author) >= 4`, so 张伟 — a complete personal name — could not satisfy it and
+  `[A-Za-z0-9._-]`, so a Chinese campus name and a Japanese landmark name both became the bare fallback; and the credit
+  check gated on `len(author) >= 4`, so a two-character Chinese personal name — complete as written — could not satisfy it and
   a correctly credited Chinese deck reported MISSING CREDIT. Weighting is now script-aware.
 - **`motif_page` rendered an EMPTY page on a 9:16 canvas.** A shape rotates about its own CENTRE,
   not the point you place its left edge on, so every `radial` ray pivoted around its own midpoint
@@ -2090,7 +2090,7 @@ below is additive.
   register motif, so Swiss and Bauhaus looked like the same slide in two colourways.
 - **`archetypes_html.preset_directions([names])`** — new bridge that converts preset names into
   direction tokens carrying a `dna` marker; **`_dna_cover()`** renders each preset's signature motif
-  as an HTML overlay on the cover preview (Swiss ghost-numeral `01`, Ink-wash `印` seal, Memphis
+  as an HTML overlay on the cover preview (Swiss ghost-numeral `01`, Ink-wash seal stamp, Memphis
   scattered dots, Blueprint grid/nodes, Bauhaus primitive triad, Midcentury starburst/atom, Terminal
   scanlines + `> _` prompt, Synthwave perspective-grid horizon + banded sunset). The gate now proves
   the style, so a pick is a pick between *languages*, not hues.
@@ -2333,7 +2333,7 @@ below is additive.
   digit top-spread 2/100pt, Baskerville 2 — both *lining*, both wrongly blocked. Replaced the list
   with measurement. (The list had been copied from the skill's own prose without checking it.)
 - **The gate inverted on CJK:** `_digit_share` divided by raw character count, so `"2026 Roadmap"`
-  scored 0.36 (warn) while `"2026 年路线图"` scored 0.50 (build failure) — Chinese decks did not get
+  scored 0.36 (warn) while its Chinese equivalent scored 0.50 (build failure) — Chinese decks did not get
   the carve-out SKILL.md promises. Now weighted by visual width, with the threshold re-measured into
   the empty gap between word-bearing headings (≤0.40) and real display numerals (≥0.67).
 - **`_font_file` shadowing:** the numeral resolver was overridden by matplotlib's same-named helper
@@ -2499,7 +2499,7 @@ below is additive.
   font → EADISPLAY → EAFONT → a CJK-capable system face; documented in `multilingual.md` +
   `image-generation.md`.
 - **`native_chart` CJK labels uncontrolled** — python-pptx writes font names into `<a:latin>` only,
-  so chart category/series labels (一月/营收) fell back to the theme's EA default. `_theme_chart` now
+  so chart category/series labels (Chinese month and revenue labels) fell back to the theme's EA default. `_theme_chart` now
   writes `<a:ea>` into every chartSpace `defRPr` (verified in the XML).
 - **New build-time gate `CJK_NO_EA`** — CJK runs with no `<a:ea>` font now fail `lint_layout`
   (CRITICAL) at build time instead of only after the render round-trip; `lint_deck` stays as the
@@ -2633,7 +2633,7 @@ below is additive.
   the existing `npx skills add` / marketplace paths.
 
 ### Changed
-- The 3:4 social format is named **rednote** (小红书's English name) across `scripts/formats.py`
+- The 3:4 social format is named **rednote** (the English name of Xiaohongshu) across `scripts/formats.py`
   and `references/canvas-formats.md`.
 
 ### Fixed
@@ -2649,7 +2649,7 @@ below is additive.
 
 ### Added
 - **Canvas formats** — `scripts/formats.py`, a named canvas-format registry (16:9 default ·
-  4:3 · square 1:1 · 小红书 3:4 · story 9:16 · A4 print) with per-format dimensions,
+  4:3 · square 1:1 · Xiaohongshu 3:4 · story 9:16 · A4 print) with per-format dimensions,
   platform-UI safe zones, chrome policy, density guidance, lint flags, and a `band()`
   safe-content-rect helper (safe zones + footer reserve). Opt-in: the 16:9 default path
   never touches it, and all deckkit components carry over unchanged.
