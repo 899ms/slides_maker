@@ -516,10 +516,13 @@ source-material floor still gets asked);
 when in doubt, keep it. Never assume the **topic/content**, the **style**, or **which
 template** — confirm each.
 
-🔴 **Four purposes DECLARE required content, and the deck is held to it at hand-off.** A grant
+🔴 **EIGHT purposes DECLARE required content, and the deck is held to it at hand-off.** A grant
 proposal (aims · feasibility · risk), a progress/guidance committee (progress · plan · **ask**), a
-journal club (attribution · critique) and a clinical case (presentation · investigations ·
-management · outcome) each carry sections their audience is asked to judge against — so a deck
+journal club (attribution · critique), a clinical case (presentation · investigations · management ·
+outcome), a **thesis defense** (contributions · limitations · future work), a **conference talk**
+(contribution · evidence · limitations), a **job talk** (track record · research plan · fit) and an
+**exec/investor readout** (the ask · the number · the risk) each carry sections their audience is
+asked to judge against — so a deck
 missing one is not a lean deck, it is a deck missing something the room needs. `scripts/purposes.py`
 declares them and `scripts/check_purpose.py` looks for them in the built file (both gate paths, CJK
 terms included, extend with `design_plan.purpose_section_terms`, waive in writing). It binds ONLY
@@ -528,8 +531,10 @@ genre. **This is the `formats.py`/`check_surface.py` mechanism generalised from 
 and for the same measured reason: the shape of a genre is exactly what an author under time pressure
 drops. Each also carries one fidelity rule beyond never-invent — a pilot stated as a pilot, open work
 that reads as open, their claim separable from yours, and on a clinical case **de-identification,
-which is the one irreversible item on this page**. The other purposes in `design-by-purpose.md`
-remain prose, and a deck in one of those genres reports NOT CHECKED rather than clean.
+which is the one irreversible item on this page**. The remaining five genres in `design-by-purpose.md` (lab
+meeting · work status · product pitch · teaching · webinar) remain prose, and a deck in one of those
+reports NOT CHECKED rather than clean — they are the five whose required content is genuinely least
+conventional, which is a reason not to invent one.
 
 **The `review:` question is NOT asked here — it moved to Step 5, after the first clean render.**
 It used to be a Step-0 axis, which forced the user to size a review of a deck nobody had seen;

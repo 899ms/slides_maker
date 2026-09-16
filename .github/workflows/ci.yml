@@ -679,6 +679,17 @@ jobs:
           grep -qE "^[0-9]+ passed, 0 failed" /tmp/renderpar.log || {
             echo "::error::render-equivalence suite did not run to completion"; exit 1; }
 
+      # A gate CALLED on both runtimes can still be unable to READ either one's record. parity
+      # compares the two gate FILES; this compares BEHAVIOUR, against the real scaffolds that the
+      # two --init tools write. Measured: check_purpose was wired into both paths, parity reported
+      # 0 problems, and it read a key the Codex evidence file does not contain at any level.
+      - name: Schema reach (an extractor must find its field on BOTH runtimes)
+        run: |
+          set -o pipefail
+          python tests/test_schema_reach.py | tee /tmp/reach.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/reach.log || {
+            echo "::error::schema reach suite did not run to completion"; exit 1; }
+
       # A deck's GENRE declares content it is not finished without — the formats.py/check_surface
       # mechanism generalised from SURFACES to GENRES. design-by-purpose.md carried nine purpose
       # recipes that NOTHING consumed, so every rule in it was advisory by construction.

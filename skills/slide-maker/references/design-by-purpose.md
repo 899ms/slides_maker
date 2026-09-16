@@ -194,6 +194,9 @@ an official template or venue norms, those override this section.
   style-matched, sparing family is fine — not off by rule.
 - **Signature:** a clear arc (problem → method → result → so-what); a memorable
   closing message slide named "Conclusion".
+- 🔴 **Declares (checked): contribution · evidence · limitations.**
+- 🔴 **Fidelity:** the room cannot check you while you are in it, which is exactly why the
+  limitation slide matters. State the regime where the method does NOT hold.
 
 ## Academic job talk / faculty interview
 A *spoken* talk to a whole department — like a conference talk in legibility, but
@@ -221,6 +224,9 @@ of a room holding people far from your subfield.
 - **Signature:** open by establishing *who you are as a scholar* and the program's unifying
   thesis; descend into 2-3 deep results; **close on a concrete future-program roadmap** (named
   5-7-year projects) and return to the opening big picture — never end on "Thanks".
+- 🔴 **Declares (checked): track record · research plan · fit.**
+- 🔴 **Fidelity:** the plan is judged on feasibility, not ambition. A five-year programme with
+  no named first project reads as a wish — say what starts in month one.
 
 ## Company / stakeholder / investor readout
 Persuasive and credible to a mixed, partly non-technical audience. Polished, on-brand,
@@ -232,6 +238,9 @@ confident.
 - **Layout/chrome:** strong title slide and section dividers, consistent premium
   spacing, hero-number layouts, clean icons used sparingly.
 - **Signature:** a clear story spine and an explicit ask/next-steps close.
+- 🔴 **Declares (checked): the ask · the number · the risk.**
+- 🔴 **Fidelity:** a readout that names no downside reads as a sales pitch, and the first
+  question will be the one you left out. Name the assumption the number rests on.
 
 ## Product description / pitch
 Selling a product to prospects/customers/users. The most *designed* deck of the set —
@@ -275,6 +284,9 @@ authoritative, but still legible as a talk.
   (`big_numeral`) + typographic hierarchy; restrained matched icons, not zero by rule.
 - **Signature:** contributions slide stated plainly; limitations + future work owned
   honestly; an appendix of defensible detail.
+- 🔴 **Declares (checked): contributions · limitations · future work.**
+- 🔴 **Fidelity:** own the limitations before the committee finds them. One you raised is
+  evidence of judgement; the same one raised from the floor is a gap.
 
 ## Teaching / lecture
 Goal is *understanding and retention*, mixed/novice audience. Friendly, clear,
@@ -378,8 +390,12 @@ a decision, and they cannot do that without the information that was available w
 > is the critic's job. Terms are multilingual; extend them with `design_plan.purpose_section_terms`
 > rather than waiving, and waive in writing when a deck genuinely has none.
 >
-> **The other purposes on this page are still prose.** That is a real gap and not a claim of
-> coverage: a genre with no registry entry binds to nothing and reports NOT CHECKED.
+> **Eight of the thirteen genres on this page are now checked** (grant · committee · journal club ·
+> clinical case · defense · conference talk · job talk · exec readout). The remaining five — lab
+> meeting, work status update, product pitch, teaching, webinar — are **still prose**, which is a
+> real gap and not a claim of coverage: a genre with no registry entry binds to nothing and
+> reports NOT CHECKED. They are the five whose required content is genuinely least conventional,
+> which is a reason to be careful about inventing one, not a reason to pretend they are covered.
 
 ## Preset fit by purpose — a fast sanity map (fit is a default, avoid is a flag, both overridable with a stated reason)
 | Purpose | Natural fits | Flag before using |

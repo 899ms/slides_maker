@@ -185,8 +185,12 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   advisory by construction — and the four genres with the most rigid conventions were missing from
   the list entirely: grant proposal (aims · feasibility · risk), progress/guidance committee
   (progress · plan · ask), journal club (attribution · critique), clinical case
-  (presentation · investigations · management · outcome). Three of those four are among the most
-  common decks an academic makes. 🔴 This is the `formats.py` / `check_surface.py` mechanism
+  (presentation · investigations · management · outcome), thesis defense (contributions ·
+  limitations · future work), conference talk (contribution · evidence · limitations), job talk
+  (track record · research plan · fit) and exec/investor readout (the ask · the number · the
+  risk) — EIGHT of the thirteen genres in that file; the remaining five (lab meeting, work
+  status, product pitch, teaching, webinar) stay prose because their required content is
+  genuinely least conventional, and a deck in one of them reports NOT CHECKED. 🔴 This is the `formats.py` / `check_surface.py` mechanism
   generalised from SURFACES to GENRES, for the same measured reason — the shape of a genre is
   exactly what an author under time pressure drops (a poster loses methods and limitations; a
   committee deck loses the ask and becomes a status update). Binds by matching the RECORDED purpose

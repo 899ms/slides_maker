@@ -103,8 +103,18 @@ for text, want in (("PhD guidance committee meeting", "committee"),
 # proposal into academic section lists, firing three or four times at the wrong deck. And because
 # `recorded_purpose` also reads the AUDIENCE BRIEF, a loose term reaches far more decks than a
 # purpose row alone. A check that fires on the wrong genre is how people learn to ignore checks.
+# 🔴 "steering committee update" MOVED to the positive list when `exec_readout` was registered.
+# It was correctly negative while the registry held only academic genres; a steering-committee
+# update really is an exec readout, and ask/number/risk is exactly its shape. Recording the move
+# rather than deleting the case: a negative assertion that becomes wrong is information about the
+# registry growing, not a reason to loosen the guard. "ethics committee submission" stays negative
+# — that genre has its own required content and this registry does not carry it.
+_ec = purposes.match("steering committee update")
+ck(_ec is not None and _ec.name == "exec_readout",
+   "'steering committee update' now binds to exec_readout — it was negative until that genre was "
+   "registered, and the ask/number/risk shape is genuinely its own")
 for text in ("investment committee readout", "ethics committee submission",
-             "steering committee update", "a business proposal for a client",
+             "a business proposal for a client",
              "project proposal review", "product pitch to investors",
              "teaching a first-year lecture"):
     ck(purposes.match(text) is None,

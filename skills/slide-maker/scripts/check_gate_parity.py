@@ -47,6 +47,21 @@ CODEX = SKILL / "scripts" / "codex_delivery_gate.py"
 CONTRACTS = ("anchor_proof", "material_probe", "audience_brief", "blind_read", "taste_ledger",
              "composition_probe", "delegated_picks")
 
+# 🔴 Gate sections whose CHECK IS FED by something extracted from the record — as opposed to the
+# ~19 shared / 11 Codex reads that only look up a WAIVER, which is absent from a scaffold by design.
+# This file compares the two gate FILES and cannot tell whether an extractor can actually read
+# either runtime's schema: `check_purpose` was wired into both paths, reported here as 21 sections
+# and 0 problems, and read `design.purpose` — a key the Codex schema does not have, at any level.
+# The gate existed there and could almost never bind, with parity green throughout.
+#
+# So each name here must be exercised by `tests/test_schema_reach.py`, which fills BOTH runtimes'
+# real scaffolds the way each runtime actually fills them and asserts the extraction succeeds. A
+# static scan cannot replace it: the extractor that failed loops over a tuple of candidate key
+# names, which no regex reads.
+RECORD_FED = ("purpose", "surface", "content.audience_brief", "checkpoints", "design_plan")
+
+REACH_SUITE = "tests/test_schema_reach.py"
+
 # One-sided on purpose, with the reason. An empty reason is what this script prevents.
 ALLOWLIST = {
     "surface": "the Codex evidence file records the surface as a field rather than gating it; "
@@ -93,6 +108,18 @@ def main(argv=None) -> int:
 
     missing = [n for n, ok in rows if not ok and n not in ALLOWLIST]
     stale = [n for n in ALLOWLIST if n not in names]
+    # a record-FED section with no behavioural reach coverage is the hole this guard could not see
+    reach_src = ""
+    try:
+        reach_src = (SKILL / REACH_SUITE).read_text(encoding="utf-8")
+    except OSError:
+        pass
+    uncovered = ([] if not reach_src
+                 else [n for n in RECORD_FED if n not in reach_src
+                       and n.split(".")[-1] not in reach_src])
+    if not reach_src:
+        uncovered = list(RECORD_FED)
+    stale_fed = [n for n in RECORD_FED if n not in names and "." not in n]
     shared_src = SHARED.read_text(encoding="utf-8")
     contract_gap = [c for c in CONTRACTS if c in shared_src and c not in cx]
 
@@ -107,10 +134,19 @@ def main(argv=None) -> int:
     for n in stale:
         print("[parity] ALLOWLIST names `{}`, which is no longer a gate section — stale permission."
               .format(n))
+    for n in uncovered:
+        print("[parity] `{}` is FED by something read out of the record, and {} does not exercise "
+              "it. Being CALLED on both paths is not the same as being able to READ either schema "
+              "— measured: check_purpose was wired into both, parity was green, and it read a key "
+              "the Codex evidence file does not contain at any level.".format(n, REACH_SUITE))
+    for n in stale_fed:
+        print("[parity] RECORD_FED names `{}`, which is no longer a gate section — stale entry."
+              .format(n))
 
-    bad = len(missing) + len(contract_gap) + len(stale)
-    print("[parity] {} gate section(s) + {} shared contract(s): {} problem(s)."
-          .format(len(names), len(CONTRACTS), bad))
+    bad = len(missing) + len(contract_gap) + len(stale) + len(uncovered) + len(stale_fed)
+    print("[parity] {} gate section(s) + {} shared contract(s) + {} record-fed section(s): "
+          "{} problem(s)."
+          .format(len(names), len(CONTRACTS), len(RECORD_FED), bad))
     return 1 if bad else 0
 
 

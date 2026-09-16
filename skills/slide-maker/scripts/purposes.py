@@ -133,6 +133,78 @@ PURPOSES = (
                  "of birth, study date and institution on any scan, read on all four edges and in "
                  "every overlay strip. Get a de-identified export; never crop or blur and ship.",
     ),
+
+    Purpose(
+        "defense", "Thesis defense",
+        "An expert committee that will probe. The three sections below are what a defense is "
+        "SCORED on: what you contributed, what you know is wrong with it, and what comes next. A "
+        "defense that names no limitations reads as one that has not found them yet.",
+        binds_on=("thesis defense", "phd defense", "doctoral defense", "viva", "dissertation "
+                  "defense", "promotie", "答辩", "博士答辩", "论文答辩"),
+        required_sections=(
+            ("contributions", ("contribution", "contributions", "we propose", "this thesis",
+                               "novelty", "我们提出", "贡献", "创新")),
+            ("limitations", ("limitation", "limitations", "caveat", "weakness", "threats to "
+                             "validity", "局限", "不足")),
+            ("future work", ("future work", "future directions", "next steps", "outlook",
+                             "further research", "未来工作", "展望", "后续")),
+        ),
+        fidelity="Own the limitations before the committee finds them. A limitation you raised is "
+                 "evidence of judgement; the same one raised from the floor is a gap.",
+    ),
+    Purpose(
+        "conference_talk", "Academic conference talk",
+        "10-20 minutes, an audience who did not read the paper and will not remember three things. "
+        "The contribution and the evidence for it are the talk; everything else is context.",
+        binds_on=("conference talk", "conference presentation", "miccai", "ismrm", "cvpr", "neurips",
+                  "oral presentation", "spotlight talk", "会议报告", "大会报告", "口头报告"),
+        required_sections=(
+            ("contribution", ("contribution", "we propose", "our method", "this work", "novelty",
+                              "我们提出", "本文", "贡献")),
+            ("evidence", ("result", "results", "evaluation", "experiment", "we evaluate",
+                          "benchmark", "结果", "实验", "评估")),
+            ("limitations", ("limitation", "limitations", "caveat", "does not", "fails when",
+                             "局限", "不足")),
+        ),
+        fidelity="A conference audience cannot check you in the room, which is exactly why the "
+                 "limitation slide matters. State the regime where the method does NOT hold.",
+    ),
+    Purpose(
+        "job_talk", "Academic job talk / faculty interview",
+        "A hiring committee is deciding whether to bet five years on you. They are scoring a "
+        "TRAJECTORY, not a paper: what you have done, what you will do with their resources, and "
+        "why you specifically.",
+        binds_on=("job talk", "faculty interview", "faculty position", "tenure track",
+                  "interview seminar", "求职报告", "教职面试"),
+        required_sections=(
+            ("track record", ("published", "my work", "i have", "prior work", "to date",
+                              "已发表", "我的工作", "过往")),
+            ("research plan", ("research plan", "next five years", "future programme", "my lab",
+                               "will pursue", "agenda", "研究计划", "未来五年")),
+            ("fit", ("fit", "why here", "collaborat", "your department", "this institute",
+                     "适合", "合作", "为什么是这里")),
+        ),
+        fidelity="The plan is judged on feasibility, not ambition. A five-year programme with no "
+                 "named first project reads as a wish; say what starts in month one.",
+    ),
+    Purpose(
+        "exec_readout", "Company / stakeholder / investor readout",
+        "A room that must DECIDE and has less time than you think. Minto applies literally: the "
+        "answer first, the number that supports it, and the risk you are asking them to accept.",
+        binds_on=("stakeholder readout", "investor readout", "board readout", "exec readout",
+                  "executive readout", "steering committee", "quarterly review", "board meeting",
+                  "投资人汇报", "董事会", "管理层汇报", "季度汇报"),
+        required_sections=(
+            ("the ask", ("we recommend", "the ask", "decision", "approve", "we propose", "request",
+                         "建议", "决策", "请批准")),
+            ("the number", ("revenue", "cost", "roi", "budget", "headcount", "%", "growth",
+                            "impact", "收入", "成本", "预算", "指标")),
+            ("the risk", ("risk", "risks", "mitigation", "downside", "what could go wrong",
+                          "assumption", "风险", "假设", "下行")),
+        ),
+        fidelity="A readout that names no downside is read as a sales pitch, and the first "
+                 "question will be the one you left out. Name the assumption the number rests on.",
+    ),
 )
 
 BY_NAME = {p.name: p for p in PURPOSES}
