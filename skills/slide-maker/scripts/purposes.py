@@ -85,7 +85,8 @@ PURPOSES = (
                           "published", "achieved", "进展", "已完成", "去年")),
             ("plan", ("plan", "next", "remaining", "timeline", "roadmap", "schedule", "ahead",
                       "计划", "下一步", "时间线", "剩余")),
-            ("ask", ("advice", "guidance", "decision", "question", "input", "feedback",
+            # no bare "input": "input data" is not an ask, and the rest already cover it
+            ("ask", ("the ask", "advice", "guidance", "decision", "question", "feedback",
                      "recommend", "建议", "决策", "请教", "问题")),
         ),
         fidelity="What is NOT done yet must read as not done. A committee's value is advice on open "
@@ -101,8 +102,8 @@ PURPOSES = (
         binds_on=("journal club", "paper presentation", "reading group", "present a paper",
                   "discuss the paper", "文献汇报", "文献阅读", "组会读论文", "论文分享", "读书会"),
         required_sections=(
-            ("attribution", ("et al", "authors", "published in", "doi", "arxiv", "reference",
-                             "citation", "source", "作者", "发表于", "文献")),
+            ("attribution", ("attribution", "et al", "authors", "published in", "doi", "arxiv",
+                             "reference", "citation", "source", "作者", "发表于", "文献")),
             ("critique", ("limitation", "limitations", "weakness", "critique", "caveat",
                           "my take", "assessment", "concerns", "局限", "不足", "评价", "批评")),
         ),
@@ -161,7 +162,7 @@ PURPOSES = (
         required_sections=(
             ("contribution", ("contribution", "we propose", "our method", "this work", "novelty",
                               "我们提出", "本文", "贡献")),
-            ("evidence", ("result", "results", "evaluation", "experiment", "we evaluate",
+            ("evidence", ("evidence", "result", "results", "evaluation", "experiment", "we evaluate",
                           "benchmark", "结果", "实验", "评估")),
             ("limitations", ("limitation", "limitations", "caveat", "does not", "fails when",
                              "局限", "不足")),
@@ -177,7 +178,7 @@ PURPOSES = (
         binds_on=("job talk", "faculty interview", "faculty position", "tenure track",
                   "interview seminar", "求职报告", "教职面试"),
         required_sections=(
-            ("track record", ("published", "my work", "i have", "prior work", "to date",
+            ("track record", ("track record", "published", "my work", "i have", "prior work", "to date",
                               "已发表", "我的工作", "过往")),
             ("research plan", ("research plan", "next five years", "future programme", "my lab",
                                "will pursue", "agenda", "研究计划", "未来五年")),
@@ -197,7 +198,7 @@ PURPOSES = (
         required_sections=(
             ("the ask", ("we recommend", "the ask", "decision", "approve", "we propose", "request",
                          "建议", "决策", "请批准")),
-            ("the number", ("revenue", "cost", "roi", "budget", "headcount", "%", "growth",
+            ("the number", ("the number", "revenue", "cost", "roi", "budget", "headcount", "%", "growth",
                             "impact", "收入", "成本", "预算", "指标")),
             ("the risk", ("risk", "risks", "mitigation", "downside", "what could go wrong",
                           "assumption", "风险", "假设", "下行")),
@@ -247,8 +248,10 @@ PURPOSES = (
         binds_on=("product pitch", "sales deck", "product demo", "customer presentation",
                   "product launch", "go-to-market", "产品介绍", "产品发布", "销售材料", "客户演示"),
         required_sections=(
+            # 🔴 no "is a": it is not a positioning phrase, it is English. It matched "This is a
+            # summary" and made this whole section vacuous.
             ("positioning", ("for teams who", "for people who", "positioning", "we help",
-                             "is a", "designed for", "定位", "面向", "帮助"))
+                             "designed for", "built for", "helps you", "定位", "面向", "帮助"))
             ,
             ("benefits", ("benefit", "benefits", "you can", "saves", "so that", "value",
                           "outcome for you", "收益", "价值", "你可以")),
@@ -268,7 +271,9 @@ PURPOSES = (
         required_sections=(
             ("objectives", ("objective", "objectives", "learning goal", "by the end", "you will "
                             "be able", "what you will learn", "目标", "学习目标", "本节")),
-            ("worked example", ("example", "worked example", "let us", "walk through", "case",
+            # bare "case" is not a teaching signal ("in case", "use case", "showcase"); the
+            # distinctive words already carry it
+            ("worked example", ("example", "worked example", "let us", "walk through", "case study",
                                 "demo", "例子", "示例", "演练")),
             ("recap", ("recap", "summary", "to summarise", "to summarize", "key points",
                        "takeaway", "小结", "总结", "要点")),
@@ -279,6 +284,10 @@ PURPOSES = (
     ),
 )
 
+# 🔴 EVERY section's own NAME is one of its terms. Sounds obvious; five sections shipped without
+# it, and `job_talk/track record` reported MISSING on a deck whose slide said "My track record"
+# — the section's own words. A term list assembled from synonyms forgets the word it is a synonym
+# OF. `tests/test_purpose_sections.py` asserts this for every section so a new one cannot repeat it.
 BY_NAME = {p.name: p for p in PURPOSES}
 
 # 🔴 DELIVERY MODES, NOT GENRES — deliberately absent from PURPOSES, with the reason.
@@ -292,8 +301,8 @@ BY_NAME = {p.name: p for p in PURPOSES}
 NOT_A_GENRE = {
     ("webinar", "online presentation", "zoom talk", "teams talk", "virtual talk", "livestream",
      "网络研讨会", "线上分享", "直播"):
-        "a webinar is a delivery MODE, not a genre — the same session can be a lecture, a product "
-        "pitch or an exec readout, and those need different content. Record the GENRE as the "
+        "the same session can be a lecture, a product pitch or an exec readout, and those need "
+        "different content. Record the GENRE as the "
         "purpose (the medium is already handled by the type floors and the safe-area rules), e.g. "
         "'a teaching webinar' or 'an investor webinar'.",
 }

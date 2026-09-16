@@ -220,6 +220,40 @@ for p in purposes.PURPOSES:
     ck(bool(p.binds_on), "%s has binding terms, so it can be reached" % p.name)
     ck(bool(p.fidelity), "%s carries its own fidelity rule beyond never-invent" % p.name)
 
+print("\n— MATCHING IS WORD-START, not naive substring — three checks were VACUOUS without it")
+# a deck with none of the content, containing only words that happen to CONTAIN the terms
+nc = deck("nocontent.pptx", ["Our action plan for the project",
+                             "The benefit of this approach", "This is a summary"])
+ck("investigations" in missing(nc, "tumour board case presentation"),
+   "clinical investigations is NOT satisfied by 'ct' inside a-CT-ion / proje-CT")
+ck("fit" in missing(nc, "faculty interview job talk"),
+   "job-talk fit is NOT satisfied by 'fit' inside bene-FIT")
+ck("positioning" in missing(nc, "product pitch to customers"),
+   "product positioning is NOT satisfied by 'is a' — which is English, not a positioning phrase, "
+   "and made this whole section report nothing missing on ANY deck")
+
+print("\n— …and the boundary is on the START only, because several terms are PREFIXES")
+pre = deck("prefix.pptx", ["Specific aims", "Feasibility and our track record",
+                           "Risk and mitigation"])
+ck(missing(pre, "ERC grant") == [],
+   "'feasib' still matches FEASIBility — a trailing boundary would have broken it silently")
+pre2 = deck("prefix2.pptx", ["Learning objectives", "A live demonstration", "Recap of key points"])
+ck(missing(pre2, "a lecture") == [],
+   "'demo' still matches DEMOnstration")
+ck(cp._names("%", "we grew 50% this year"),
+   "a term with no letters or digits ('%') falls back to substring — it has no boundary to anchor")
+
+print("\n— every section carries its OWN NAME as a term")
+# five shipped without it, and job_talk/track record reported MISSING on a slide reading
+# "My track record" — a synonym list forgets the word it is a synonym OF.
+for p_ in purposes.PURPOSES:
+    for lbl, terms in p_.required_sections:
+        ck(any(lbl.lower() in t.lower() or t.lower() in lbl.lower() for t in terms),
+           "%s/%s includes its own name" % (p_.name, lbl))
+own = deck("ownname.pptx", ["My track record", "Research plan for five years", "Why I fit here"])
+ck(missing(own, "faculty job talk") == [],
+   "…so a deck whose slide literally says 'My track record' is not reported as missing it")
+
 print("\n— routing: layer 1 carries the trigger, which is what a non-Claude runtime reads")
 skill = open(os.path.join(SKILL, "SKILL.md")).read()
 ck("check_purpose.py" in skill, "SKILL.md names the checker")
@@ -230,6 +264,59 @@ for genre in ("Grant proposal", "guidance committee", "Journal club", "Clinical 
 ck("TWELVE of the thirteen" in dbp and "delivery MODE, not a genre" in dbp,
    "…and states the coverage exactly (12 of 13) plus WHY the thirteenth has no list — a delivery "
    "mode is not a genre — rather than implying full coverage or vague under-coverage")
+
+print("\n— the Codex RUNBOOK is a hand-copy of the registry, and the drift guard must not be vacuous")
+# 🔴 WHY THIS BLOCK EXISTS. `references/codex-runtime.md` lists the genres in prose because a Codex
+# agent reads it as its runbook. Writing that list out by hand got 1 of 12 wrong within minutes: it
+# said "lab meeting" (a trigger word) where every gate message prints `research_meeting`, so an
+# agent grepping the runbook for the name in its own error would have found nothing. A guard now
+# lives in `check_purpose --selftest`. A guard nobody has seen FAIL is indistinguishable from one
+# that checks nothing, so each arm is mutated here and must report.
+import contextlib, dataclasses, io                                          # noqa: E402
+import check_purpose as _cp                                                 # noqa: E402
+import purposes as _pu                                                      # noqa: E402
+
+_BASE = _pu.PURPOSES
+_teach = [x for x in _BASE if x.name == "teaching"][0]
+
+
+def _selftest_faults(registry):
+    """Run the real selftest against a mutated registry; return the ✗ lines it printed."""
+    _pu.PURPOSES = registry
+    try:
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            _cp._selftest()
+        return [ln.strip()[2:].strip() for ln in buf.getvalue().splitlines()
+                if ln.strip().startswith("\u2717")]
+    finally:
+        _pu.PURPOSES = _BASE
+
+
+ck(_selftest_faults(_BASE) == [],
+   "control: the UNMUTATED registry and the shipped runbook agree — the guard is not stuck red")
+
+_renamed = tuple(x for x in _BASE if x.name != "teaching") + (
+    dataclasses.replace(_teach, name="lecture_hall"),)
+ck(any("lecture_hall" in f for f in _selftest_faults(_renamed)),
+   "renaming a genre without touching the runbook is REPORTED — this is the exact defect found "
+   "this round (runbook said 'lab meeting', gates say 'research_meeting')")
+
+_extra_section = tuple(x for x in _BASE if x.name != "teaching") + (
+    dataclasses.replace(_teach,
+                        required_sections=_teach.required_sections + (("assessment", ("quiz", "测验")),)),)
+ck(any("assessment" in f for f in _selftest_faults(_extra_section)),
+   "adding a required section without documenting it is REPORTED — a runbook that understates a "
+   "genre's content is worse than one that omits the genre, because it reads as complete")
+
+# a duplicate of an ALREADY-DOCUMENTED genre leaves every name and section present, so only the
+# stated total can catch it — proving the count arm is reachable on its own, not dead code.
+_counts = tuple(_selftest_faults(_BASE + (dataclasses.replace(_teach),)))
+ck(any("stated count has gone stale" in f for f in _counts),
+   "growing the registry by a genre the runbook already names is caught by the STATED COUNT alone "
+   "— that arm is independently reachable")
+ck(not any("never names" in f for f in _counts),
+   "…and nothing else fired on it, so that really was the count arm and not a name check in disguise")
 
 print()
 print("%d passed, %d failed" % (len(OK), len(BAD)))

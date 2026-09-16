@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -114,6 +115,31 @@ def recorded_purpose(gates):
     return " ".join(b for b in bits if b)
 
 
+def _names(term, blob):
+    """Does `blob` NAME `term`? Word-START boundary for Latin, plain substring for CJK.
+
+    🔴 Naive substring matching made three of these checks VACUOUS, which is worse than having no
+    check at all — it passes every deck and teaches the reader that the gate is noise. Measured on
+    a deck containing only "Our action plan for the project", "The benefit of this approach" and
+    "This is a summary":
+
+        clinical_case/investigations   satisfied by "ct"  inside a-CT-ion / proje-CT
+        job_talk/fit                   satisfied by "fit" inside bene-FIT
+        product_pitch                  reported NOTHING missing at all
+
+    The boundary is on the START only, never the end, because several terms are deliberate
+    PREFIXES — "feasib" must match feasibility and feasible, "demo" must match demonstration. A
+    trailing boundary would silently break those, which is the same class of quiet failure.
+    A term with no letters or digits at all (`%`) has no word boundary to anchor to and falls back
+    to substring.
+    """
+    if any(ord(c) > 0x2E80 for c in term):
+        return term in blob                       # CJK has no word boundaries
+    if not any(c.isalnum() for c in term):
+        return term in blob                       # e.g. "%" — nothing to anchor
+    return re.search(r"(?<![a-z0-9])" + re.escape(term), blob) is not None
+
+
 def check(pptx, purpose_text, *, extra_terms=None, waive=None):
     """(problems, facts). problems = [(code, message), ...]. Raises when nothing binds."""
     import purposes
@@ -147,7 +173,7 @@ def check(pptx, purpose_text, *, extra_terms=None, waive=None):
         return [], facts
     for label, keys in p.required_sections:
         keys = tuple(keys) + tuple(more.get(label.lower(), ()))
-        if not any(str(k).lower() in blob for k in keys):
+        if not any(_names(str(k).lower(), blob) for k in keys):
             facts["missing"].append(label)
             problems.append((
                 "MISSING SECTION",
@@ -196,6 +222,52 @@ def _selftest():
         bad.append("the shared .deck-gates.json shape was not read")
     if purposes.match(recorded_purpose(codex)) is None:
         bad.append("the Codex evidence shape was not read")
+    # 🔴 THESE DOCS ARE HAND-COPIES OF THIS REGISTRY, AND HAND-COPIES DRIFT.
+    # Both files list the genres and their sections in prose, because that is where each runtime's
+    # agent LEARNS the genres exist — `design-by-purpose.md` on the shared path, `codex-runtime.md`
+    # on the Codex one. A genre absent from the doc its runtime reads is one that run never uses.
+    # Measured: writing that list out by hand got 1 of 12 wrong within minutes (it said "lab
+    # meeting", the colloquial trigger, where every gate message says `research_meeting`), so an
+    # agent grepping the doc for the name in its own error found nothing. Not a style check: it is
+    # the doc-vs-code drift that makes a capability invisible to whichever runtime reads that file.
+    COUNTS = {11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen"}
+    REF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "references")
+    # (file, anchor, span) — an anchor bounds the check to the paragraph that makes the claim;
+    # None means the whole file is the genre reference.
+    DOCS = (("codex-runtime.md", "The deck's GENRE may declare required content", 2400),
+            ("design-by-purpose.md", None, None))
+    total = len(purposes.PURPOSES) + len(purposes.NOT_A_GENRE)
+    for fname, anchor, span in DOCS:
+        try:
+            doc = open(os.path.join(REF, fname), encoding="utf-8").read()
+            chunk = doc if anchor is None else doc[doc.index(anchor):doc.index(anchor) + span]
+        except (OSError, ValueError) as exc:
+            bad.append("could not read the genre reference in references/%s (%s) — that file is "
+                       "where one runtime learns these genres exist" % (fname, exc))
+            continue
+        para = " ".join(chunk.lower().split())
+        for p_ in purposes.PURPOSES:
+            if p_.name.replace("_", " ") not in para:
+                bad.append("references/%s never names %r — every gate message prints that exact "
+                           "name, so an agent grepping its own error finds nothing" % (fname, p_.name))
+            for lbl, _terms in p_.required_sections:
+                if lbl.lower() not in para:
+                    bad.append("references/%s omits section %r of %r — a doc that understates a "
+                               "genre's content reads as complete, which is worse than omitting it"
+                               % (fname, lbl, p_.name))
+        for _key in purposes.NOT_A_GENRE:                 # the key is a TUPLE of trigger words
+            medium = _key[0] if isinstance(_key, tuple) else _key
+            if medium not in para:
+                bad.append("references/%s never mentions %r as a DELIVERY MODE — that path would "
+                           "look like it silently checks nothing there" % (fname, medium))
+        word = COUNTS.get(total)
+        if word is None:
+            bad.append("the registry now holds %d entries, outside COUNTS in this selftest — extend "
+                       "the map so each doc's stated count keeps being checked" % total)
+        elif word not in para:
+            bad.append("references/%s does not say %r where it states its coverage, but the registry "
+                       "now holds %d entries — the stated count has gone stale" % (fname, word, total))
+
     for b in bad:
         print("  ✗", b)
     print("[purpose] selftest %s" % ("FAILED" if bad else "ok"))
