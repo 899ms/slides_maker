@@ -194,7 +194,8 @@ def main():
 
 
 def _probe_collection(path, faces):
-    """Write a .ttc whose NAME TABLES register `faces` = [(family, style, advance of 一)].
+    """Write a .ttc whose NAME TABLES register `faces` =
+    [(family, style, advance of 一[, OS/2 weight, width class, bold-flagged])].
 
     Built here so the resolver is tested on every runner: a CI box has neither PingFang nor
     Heiti, and a test that only runs where they exist tests the machine, not the code. Each face
@@ -204,7 +205,9 @@ def _probe_collection(path, faces):
     from fontTools.pens.ttGlyphPen import TTGlyphPen
     from fontTools.ttLib import TTCollection
     fonts = []
-    for family, style, adv in faces:
+    for face in faces:
+        family, style, adv = face[:3]
+        weight, width, bold_flag = (tuple(face[3:6]) + (400, 5, False)[len(face) - 3:])[:3]
         fb = FontBuilder(1000, isTTF=True)
         fb.setupGlyphOrder([".notdef", "uni4E00", "space"])
         fb.setupCharacterMap({0x4E00: "uni4E00", 0x20: "space"})
@@ -217,8 +220,10 @@ def _probe_collection(path, faces):
         fb.setupHorizontalHeader(ascent=800, descent=-200)
         fb.setupNameTable({"familyName": family, "styleName": style,
                            "typographicFamily": family, "typographicSubfamily": style})
-        fb.setupOS2(sTypoAscender=800, usWinAscent=800, usWinDescent=200)
+        fb.setupOS2(sTypoAscender=800, usWinAscent=800, usWinDescent=200, usWeightClass=weight,
+                    usWidthClass=width, fsSelection=(0x20 if bold_flag else 0x40))
         fb.setupPost()
+        fb.font["head"].macStyle = 1 if bold_flag else 0
         fonts.append(fb.font)
     coll = TTCollection()
     coll.fonts = fonts
@@ -227,7 +232,8 @@ def _probe_collection(path, faces):
 
 def _reset_font_caches():
     dk._NAME_INDEX = None
-    for c in (dk._FONT_PATH_CACHE, dk._FONT_SUB_CACHE, dk._PIL_FONT_CACHE, dk._FACE_IDX_CACHE):
+    for c in (dk._FONT_FACE_CACHE, dk._FACE_META_CACHE, dk._FONT_SUB_CACHE, dk._PIL_FONT_CACHE,
+              dk._FACE_IDX_CACHE):
         c.clear()
 
 
@@ -240,9 +246,15 @@ def _name_table_checks():
     line in DejaVu Sans, at 60% of its true width. LibreOffice, meanwhile, renders both faces
     correctly (verified by the fonts it embeds), so the ruler and the render disagreed.
     """
+    import os
+    import subprocess
     import tempfile
     print("\n— a family known only by its font file's name table")
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="nametable-"))
+    # the on-disk index cache must be this test's own — never the user's, and never shared with a
+    # concurrent run — so the tests below can assert what it does without touching anything real
+    prev_cache = os.environ.get("SLIDE_MAKER_CACHE")
+    os.environ["SLIDE_MAKER_CACHE"] = str(tmp / "cache")
     probe = tmp / "Probe.ttc"
     _probe_collection(probe, [("Zz Probe TC", "Regular", 1000),     # face 0
                               ("Zz Probe SC", "Regular", 700),      # face 1
@@ -267,10 +279,13 @@ def _name_table_checks():
               adv("Zz Probe SC", True) == 900, adv("Zz Probe SC", True))
         check("the other family in the same file resolves to ITS face",
               adv("Zz Probe TC") == 1000, adv("Zz Probe TC"))
-        check("a file whose faces do not name the family keeps the original rule (exact Regular "
-              "anywhere, else face 0)",
+        check("a file whose faces do not name the family is chosen among AS A WHOLE, by the same "
+              "metadata rule: regular = a Regular face, bold = the heavier Semibold (it used to be "
+              "face 0 for bold too, i.e. bold measured at regular width)",
               dk._face_index(str(probe), False, "Some Other Family") == 0
-              and dk._face_index(str(probe), True, "Some Other Family") == 0)
+              and dk._face_index(str(probe), True, "Some Other Family") == 2,
+              (dk._face_index(str(probe), False, "Some Other Family"),
+               dk._face_index(str(probe), True, "Some Other Family")))
         idx_obj = dk._NAME_INDEX
         dk._name_lookup("Zz Probe TC")
         check("the name-table index is built once per process, not per lookup",
@@ -287,11 +302,128 @@ def _name_table_checks():
         dk._extra_font_files = real_extra
         _reset_font_caches()
 
+    # 🔴 WHICH FACE, from the font's metadata. Each case below is a family whose faces are NOT simply
+    # Regular + Bold, reproduced from a real macOS family and checked against the face LibreOffice
+    # embeds for the same run. A rule keyed on style NAMES got every one of these wrong.
+    print("\n— which face of a family: OS/2 weight, width and flags, not style names")
+    cases = tmp / "Cases.ttc"
+    _probe_collection(cases, [
+        ("Zz Hoef", "Ornaments", 1000, 400, 5, False),   # Hoefler Text: a decorative face at 400
+        ("Zz Hoef", "Regular", 600, 400, 5, False),
+        ("Zz Hoef", "Black", 800, 700, 5, True),
+        ("Zz Chart", "Roman", 500, 400, 5, False),       # Charter: Bold carries NO bold flag,
+        ("Zz Chart", "Bold", 700, 700, 5, False),        # Black does — the renderer draws Bold
+        ("Zz Chart", "Black", 900, 900, 5, True),
+        ("Zz Hei", "Medium", 900, 400, 5, True),         # Heiti TC: weight 400 AND flagged bold
+        ("Zz Hei", "Light", 450, 300, 5, False),
+        ("Zz Lant", "Demibold", 600, 400, 5, False),     # Lantinghei: every face declares 400
+        ("Zz Lant", "Extralight", 300, 400, 5, False),
+        ("Zz Lant", "Heavy", 950, 400, 5, False),
+        ("Zz Phos", "Inline", 800, 400, 5, False),       # Phosphate: nothing heavier exists
+        ("Zz Phos", "Solid", 520, 400, 5, False),
+        ("Zz Fut", "Medium", 510, 500, 5, False),        # Futura: a condensed face is heavier
+        ("Zz Fut", "Bold", 710, 700, 5, True),
+        ("Zz Fut", "Condensed ExtraBold", 650, 800, 3, True),
+    ])
+    split_a, split_b = tmp / "SplitLight.ttc", tmp / "SplitMedium.ttc"
+    _probe_collection(split_a, [("Zz Split", "Light", 430, 300, 5, False)])
+    _probe_collection(split_b, [("Zz Split", "Medium", 880, 400, 5, True)])
+    dk._extra_font_files = lambda: [str(probe), str(cases), str(split_a), str(split_b)]
+    _reset_font_caches()
+    try:
+        def adv2(name, bold=False):
+            # at 250pt one pixel is one font unit, so each face's advance reads back exactly — at 10pt
+            # a pixel is 25 units and 520 reads as 525, which says nothing about WHICH face was loaded
+            f = dk._pil_font(name, 250, bold)
+            return round(f.getlength("一") / dk._MEAS_PREC / 250 * 1000)
+
+        for fam, bold, want, why in (
+                ("Zz Hoef", False, 600, "a decorative face (Ornaments) is never the regular while a plain one exists"),
+                ("Zz Hoef", True, 800, "...and bold is the heavier Black, not Ornaments"),
+                ("Zz Chart", True, 700, "bold is chosen by WEIGHT: 700 Bold beats the bold-FLAGGED 900 Black"),
+                ("Zz Hei", False, 450, "a weight-400 face that is flagged bold is the family's BOLD, so regular is Light"),
+                ("Zz Hei", True, 900, "...and bold is that Medium"),
+                ("Zz Lant", False, 300, "when every face declares one OS/2 weight, the style name ranks them: regular = ExtraLight"),
+                ("Zz Lant", True, 950, "...and bold = Heavy (heavier-first, as CSS matches 700)"),
+                ("Zz Phos", False, 520, "Inline is decorative, so regular is Solid"),
+                ("Zz Phos", True, 520, "no heavier face -> the regular face, which a renderer synthesises bold from"),
+                ("Zz Fut", True, 710, "a normal-width Bold is preferred over a heavier CONDENSED face"),
+                ("Zz Split", False, 430, "a family split across FILES: regular comes from the Light file"),
+                ("Zz Split", True, 880, "...and bold from the Medium file")):
+            got = adv2(fam, bold)
+            check("%s: %s" % (fam, why), got == want, "measured the face with advance %s, wanted %s" % (got, want))
+    finally:
+        dk._extra_font_files = real_extra
+        _reset_font_caches()
+
+    # 🔴 THE INDEX IS KEPT ON DISK. One missing face — deckkit's own default MONO, Consolas, is absent
+    # from macOS — made every build pay the 0.5s scan (example build 0.75s -> 1.3s, measured).
+    print("\n— the name-table index persists between processes, and knows when it is stale")
+    dk._extra_font_files = lambda: [str(probe)]
+    _reset_font_caches()
+    try:
+        cache_file = pathlib.Path(dk._font_index_cache_path())
+        dk._name_table_index()
+        check("a first build writes the cache (source=%s)" % dk._NAME_INDEX_SOURCE,
+              dk._NAME_INDEX_SOURCE == "built" and cache_file.exists())
+        first = dict(dk._NAME_INDEX)
+        dk._NAME_INDEX = None
+        dk._name_table_index()
+        check("...and the next load comes FROM the cache, identical",
+              dk._NAME_INDEX_SOURCE == "cache" and dk._NAME_INDEX == first, dk._NAME_INDEX_SOURCE)
+        extra = tmp / "Extra.ttc"
+        _probe_collection(extra, [("Zz Late Arrival", "Regular", 700)])
+        dk._extra_font_files = lambda: [str(probe), str(extra)]
+        dk._NAME_INDEX = None
+        dk._name_table_index()
+        check("installing a font changes the signature, so the index is REBUILT and finds it",
+              dk._NAME_INDEX_SOURCE == "built" and dk._norm_family("Zz Late Arrival") in dk._NAME_INDEX)
+        os.utime(str(extra), (1, 1))                     # same files, one of them changed
+        dk._NAME_INDEX = None
+        dk._name_table_index()
+        check("a CHANGED font file (mtime) also invalidates the cache", dk._NAME_INDEX_SOURCE == "built")
+        cache_file.write_text("{ not json", encoding="utf-8")
+        dk._NAME_INDEX = None
+        ok_corrupt = True
+        try:
+            dk._name_table_index()
+        except Exception:
+            ok_corrupt = False
+        check("a corrupt cache file is rebuilt, never raised", ok_corrupt and dk._NAME_INDEX_SOURCE == "built")
+        blocker = tmp / "not-a-dir"
+        blocker.write_text("x", encoding="utf-8")
+        os.environ["SLIDE_MAKER_CACHE"] = str(blocker / "sub")      # unwritable: a FILE is in the way
+        dk._NAME_INDEX = None
+        ok_ro = True
+        try:
+            dk._name_table_index()
+        except Exception:
+            ok_ro = False
+        check("an unwritable cache location costs a rebuild, never an error",
+              ok_ro and dk._norm_family("Zz Probe SC") in (dk._NAME_INDEX or {}))
+        os.environ["SLIDE_MAKER_CACHE"] = str(tmp / "cache-xproc")
+        code = ("import sys; sys.path.insert(0, %r); import deckkit as dk; dk._name_table_index(); "
+                "print(dk._NAME_INDEX_SOURCE)" % str(HERE.parent / "scripts"))
+        runs = [subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                               env=dict(os.environ)).stdout.strip().splitlines()[-1:] for _ in range(2)]
+        check("across PROCESSES: the first builds, the second loads the cache (%s)" % runs,
+              runs == [["built"], ["cache"]])
+    finally:
+        dk._extra_font_files = real_extra
+        os.environ["SLIDE_MAKER_CACHE"] = str(tmp / "cache")
+        _reset_font_caches()
+
     # a face matplotlib already knows must never pay for the scan
     _reset_font_caches()
     dk._font_file("DejaVu Sans")
     check("a face matplotlib resolves directly never builds the name-table index",
           dk._NAME_INDEX is None)
+
+    if prev_cache is None:
+        os.environ.pop("SLIDE_MAKER_CACHE", None)
+    else:
+        os.environ["SLIDE_MAKER_CACHE"] = prev_cache
+    _reset_font_caches()
 
     # the live half: only where the real faces exist, and only then
     print("\n— live: the macOS faces that measured at 60% before this")

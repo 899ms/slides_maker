@@ -261,7 +261,14 @@ interview answer at all — each reads the built file itself):
   other and both disagree with the render. Record
   `{"fonts": {"waived": "<why a substituted measurement is acceptable here>"}}` only when a
   substituted measurement genuinely is acceptable — the usual fix is
-  `deckkit.use_platform_fonts()` or installing the face.
+  `deckkit.use_platform_fonts()` or installing the face. 🔴 `use_platform_fonts()` moves only the
+  LATIN faces (FONT/MONO); for an East-Asian face it changes nothing, so set `deckkit.EAFONT` to a
+  CJK face that resolves on this machine (macOS: Hiragino Sans GB, PingFang SC, Heiti SC, Songti SC;
+  Linux: Noto Sans CJK SC; Windows: Microsoft YaHei) and rebuild — the finding names the face and
+  how many East-Asian characters it draws. The check reads the face per SCRIPT and follows a
+  template's theme, including an Office theme's per-script face picked by the run's `lang`, and
+  deckkit resolves a family by its font files' own name tables, so a face listed by the OS but
+  missing from matplotlib's index (PingFang, Heiti SC) is measured as itself.
 
 
 3. **Treat categories as a visual-system decision.** In the per-slide design ledger, mark every slide
