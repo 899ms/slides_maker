@@ -9,6 +9,145 @@ section is a distilled summary — the full notes live on the
 
 ## [Unreleased]
 
+## [5.5.0] — 2026-09-19
+
+**The release about coverage that looked complete and was not.** A gate that runs is not a gate that
+works, and most of this release is the difference. The template branch passed the whole pipeline on
+a real institutional deck while three checks could not see the template's own paint. PRE-FLIGHT 10
+read only the Latin font slot, so a Chinese deck whose Chinese face resolved nowhere printed "all 1
+font(s) resolve locally: ['Calibri']". deckkit measured Heiti SC and PingFang SC, both installed, in
+a stand-in with no CJK glyphs, at 60% of their true width. A purpose check matched `ct` inside
+"action". Gate parity was green while a new gate could almost never read the Codex record. Each fix
+below ships with a detector verified by putting the defect back.
+
+### Added
+
+- **Genre-required content: `scripts/purposes.py` and `scripts/check_purpose.py`, on both gate
+  paths.** `design-by-purpose.md` described each genre's conventions and nothing checked them. Twelve
+  of its thirteen genres now declare the sections their audience judges against, each derived from
+  that page's own prose: grant (aims · feasibility · risk), committee (progress · plan · ask),
+  journal club (attribution · critique), clinical case (presentation · investigations · management ·
+  outcome), defense (contributions · limitations · future work), conference talk (contribution ·
+  evidence · limitations), job talk (track record · research plan · fit), exec readout (the ask · the
+  number · the risk), research meeting (what changed · open questions), work status (outcome · the
+  ask), product pitch (positioning · benefits) and teaching (objectives · worked example · recap).
+  Speaker notes count, Chinese synonyms are built in, and a section can be waived in writing. The
+  thirteenth, webinar, is a delivery mode, not a genre: it is reported as NOT CHECKED with a request
+  to record the genre, instead of carrying a guessed list.
+- **Clinical and evidence-synthesis forms.** A search of the skill found no Kaplan–Meier, forest
+  plot, CONSORT, Bland–Altman or ROC anywhere: it could style a clinical deck and could not draw one.
+  `deckkit.consort_flow` enforces the participant arithmetic (each stage minus its documented
+  exclusions must equal the next, or it raises with the sum spelled out); `designed_charts.forest_plot`
+  puts ratios on a log axis, checks every interval contains its estimate and draws the pooled estimate
+  as a diamond; `km_curve` computes a step from raw times and events, with censoring ticks and numbers
+  at risk; `bland_altman` draws bias and 95% limits of agreement rather than a correlation;
+  `roc_curve` keeps a square canvas and the chance diagonal and computes the AUC from raw labels. All
+  five have runnable `sigs --example` scaffolds executed by the smoke suite, and the clinical ones say
+  their numbers are placeholders.
+- **`scripts/check_template_profile.py`: a registered template's `profile.md` must be obeyed, not
+  merely available.** By grep it was read by two producers and by no check. A profile opts in with a
+  `## Machine-checkable contract` block and binds by the deck's own fingerprint (layout names and
+  canvas size), so a runtime that never recorded which template it used is still checked. A profile
+  with no contract is NOT CHECKED, never clean.
+- **`scripts/check_fonts_resolve.py`: the faces a deck names must resolve on the machine that
+  measured it.** Reported on both gate paths and never blocking, because the machine doing the
+  gating need not be the one that did the measuring, and deckkit's own defaults (Calibri, Consolas)
+  ship with neither macOS nor Linux.
+- **Schema reach: `tests/test_schema_reach.py` and `RECORD_FED` in `check_gate_parity`.** Parity
+  compares gate FILES, and it was green while `check_purpose` could almost never bind on Codex: the
+  Codex evidence scaffold has no `purpose` key anywhere. A gate fed by a record extraction must now
+  be shown, behaviourally, to read both runtimes' real scaffolds.
+
+### Changed
+
+- 🔴 **The template branch: three holes every gate reported clean through**, all found on one real
+  institutional template deck. Backing fill now resolves an inherited picture or gradient `<p:bg>`
+  and brand furniture painted as SHAPES on the layout or master, with theme colours read through the
+  master's `<p:clrMap>`, which is frequently not the identity. Both directions had been wrong:
+  white-on-blue was reported as white-on-white, and dark text on a dark band passed silently. On two
+  other template decks the fix was not tuned on, false positives went from 10 to 0 on each, while a
+  deck with two genuine findings kept both.
+- 🔴 **deckkit resolves a family by its font files' own name tables, and picks the face from the
+  font's metadata.** matplotlib indexes one name per file, so a family registered anywhere else was
+  invisible: `STHeiti Light.ttc` registers Heiti SC yet is indexed as "STHeiti", and PingFang lives in
+  macOS's downloadable-asset store, which matplotlib never scans. Five shipped presets set
+  `ea = "Heiti SC"`. Across all 459 families installed on the macOS machine this was measured on, the
+  sweep went from 31 measured in a stand-in (20 of them CJK, including Hiragino Kaku Gothic ProN) and
+  2 measured in another family's face, to 0 and 0; CJK text in Heiti SC and PingFang SC went from 60%
+  of its true width to 100%. The face is chosen from the OS/2 weight, width and bold/italic flags in
+  CSS weight-matching order, across every file of the family; the old style-NAME rule measured Hoefler
+  Text in its Ornaments face and missed that Marker Felt's bold is called "Wide". Against the face
+  LibreOffice actually embeds for the same runs, on 48 families whose faces are not simply Regular
+  plus Bold, 49 of 78 runs agreed before and 67 of 78 agree now; the rest are LibreOffice's own
+  choices (it sets regular Futura and Yu Gothic text in their Bold faces). The index is cached on
+  disk, keyed on every font file's path, size and modification time, so one missing default face no
+  longer costs every build a 0.5s scan.
+- 🔴 **PRE-FLIGHT 10 and `check_fonts_resolve` read ONE face inventory.** Each character is credited
+  to the face that actually draws it (East-Asian text from `<a:ea>`, complex scripts from `<a:cs>`,
+  the rest from `<a:latin>`), following the run, paragraph, list style and theme, including an Office
+  theme's per-script face chosen by the run's `lang`, and reading groups, table cells and fields. An
+  English deck built with `EAFONT` set is no longer blamed for a CJK face that draws nothing, and the
+  "N face(s) checked" count no longer includes every per-script face an Office theme declares (a
+  one-face deck reported 33).
+- **Purpose terms match at word starts.** Plain substring matching made three checks vacuous (`ct`
+  inside "action", `fit` inside "benefit", `is a` inside "this is a summary"), and a product-pitch
+  deck reported nothing missing at all. `check_purpose --selftest` now also checks the two reference
+  files that restate the registry, since writing one of them out by hand got a genre name wrong.
+- **The skill's prose is in English throughout.** Chinese remains only where it is the mechanism:
+  the Chinese writing tics a critic must detect, literals the code matches, values written onto
+  slides, phrases a user types, and measured specimens.
+- **CJK faces on macOS, restated from measurement.** The documented warning that LibreOffice
+  substitutes PingFang SC with a handwriting face did not reproduce: LibreOffice 26.2 embeds
+  PingFangSC-Regular and PingFangSC-Semibold, the same faces deckkit now measures. Hiragino Sans GB
+  stays the default because it ships in `/System/Library/Fonts` on every Mac. The `PINGFANG ON MACOS`
+  lint warning fires only where PingFang does not resolve.
+- **`codex-runtime.md` carries what a non-Claude runtime needs:** the twelve genres and their
+  sections, and the fact that `use_platform_fonts()` moves only the Latin faces, so a CJK font finding
+  is fixed by setting `EAFONT` to a CJK face that resolves.
+- **`TEXT_OVERLAP` in the troubleshooting FAQ: do not dismiss it because the render looks clean.**
+  LibreOffice wraps a no-wrap line at the box width anyway, for Latin and CJK alike, so the render
+  shows two tidy lines where PowerPoint draws one line into its neighbour.
+
+### Fixed
+
+- **`km_curve` ended every curve at its last event.** A curve whose last subject was censored stopped
+  in a bare vertical drop with its censor mark floating after it, the x-range was cut at the last
+  event, and a group with no events drew nothing. The estimator now carries to the last follow-up.
+  Its test had re-implemented the estimator and compared with `zip()`, which passes an empty ladder;
+  it now asserts the real function and the plotted line data.
+- **`wordmark()`'s CJK fallback could never fire.** It asked whether the font path was `None`, and
+  `_font_file` returns a stand-in rather than `None`, so a CJK mark whose face did not resolve
+  rendered as tofu.
+- **The fonts check blocked every stock build on Linux** until shipped defaults became notes in the
+  theme loop as well as the named-face loop; its tests now ask the machine which face resolves
+  instead of naming one.
+- **The lint fixture chose its face with a predicate that is always true,** so on Linux its PASS deck
+  was laid out in Helvetica Neue and measured in DejaVu Sans, a width error of about 13.6%.
+- **A test left fixture images in the working directory.** The in-process fixture now writes to a
+  private directory.
+
+### Security
+
+From the ClawHub security audit of 5.4.0, each finding checked against this code:
+
+- **Codex image generation: an untrusted prompt no longer reaches an approval-free sub-agent as
+  instructions.** The prompt sits between markers carrying a per-job random token and is declared to
+  be data; a prompt containing the marker words, a chat special token or a control character is
+  refused before any generation. The sub-agent sees only a fixed work name, in a fresh empty directory
+  that is its whole workspace, and the result is moved into place afterwards. Every output must be a
+  bare image name inside `--out-dir` or the manifest's own folder; `../`, separators, a Unicode slash
+  look-alike and symlinks out are refused, and one bad item stops the whole batch.
+- **Only this job's Codex transcript is read.** The newest-file fallback could hand a slide a
+  sibling job's picture when images were generated in parallel, which is the default, and the
+  environment pointer it trusted named the parent session rather than the one that made the image.
+  The transcript is now located by the exact thread id `codex exec --json` reports, and its first
+  record must name the same id.
+- **Unchanged and now declared:** `import deckkit` still installs a missing required package (opt
+  out with `SLIDE_MAKER_NO_ENV_CHECK=1`), and the delivery gate still imports `surface_*.py` kits
+  found beside the checked deck. `references/security-and-capabilities.md` now lists both. The
+  audit's 28 "tool poisoning" findings compare each internal script with the skill-level
+  description; every script carries its own docstring.
+
 ## [5.4.0] — 2026-09-13
 
 **The release about instruments that were measuring the wrong thing.** Every defect in it has the

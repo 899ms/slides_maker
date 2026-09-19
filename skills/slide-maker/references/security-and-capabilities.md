@@ -12,7 +12,7 @@ capabilities; it is whether they are **declared, scoped and refusable**. This fi
 
 | Capability | Where | Why it exists | Turn it off |
 |---|---|---|---|
-| **Installs Python packages** into the active interpreter (`python-pptx`, `pymupdf`, `Pillow`, `matplotlib`) | `check_env.py --ensure`, Step 0.0b | A missing library otherwise surfaces at the RENDER, the slowest step in the pipeline, after all the authoring is spent | `SLIDE_MAKER_NO_ENV_CHECK=1` |
+| **Installs Python packages** into the active interpreter (`python-pptx`, `pymupdf`, `Pillow`, `matplotlib`, `numpy`) | `check_env.py --ensure`, Step 0.0b — **and `import deckkit` itself**, the moment one of them is missing, so an agent that skips Step 0 still gets a working build | A missing library otherwise surfaces at the RENDER, the slowest step in the pipeline, after all the authoring is spent. The versions are lower bounds, not pins, and nothing asks first | `SLIDE_MAKER_NO_ENV_CHECK=1` (covers both paths) |
 | **Runs LibreOffice** (`soffice`) to convert pptx → PDF → PNG | `render_deck.py`, `ingest.py` | There is no pure-Python pptx renderer; the visual self-check and the critic loop both need real pixels | don't run the render steps; `SOFFICE` re-points it |
 | **Runs headless Chrome/Edge** | `icons.py`, only when neither cairosvg nor `rsvg-convert` is present | SVG → PNG for icons | install cairosvg or librsvg and it is never used |
 | **Runs `codex exec`** with no approvals | `generate_images_codex.py` | The no-API-key image path for the generate-a-template branch. The sub-agent runs in a fresh EMPTY directory (its writable workspace), the prompt is passed as marked DATA, and the manifest is validated before any generation — see *Session data* | don't use that branch, or use `generate_images_openai.py` |
@@ -61,6 +61,13 @@ identity programmable — and they are loaded with `importlib`
 style file executes it.** That is fine for a file this skill or you just wrote, and it is *not*
 fine for a style file from an untrusted source. Treat a third-party `style.py` exactly as you
 would treat any Python you are about to run: read it first.
+
+**The delivery gate also executes a deck's surface kits.** `check_register_guard.py` calls
+`register_surface.load_kits` on the checked deck's folder, which imports every `surface_*.py` there
+so that an invented register's declared prohibitions exist at hand-off. For a deck this skill built,
+those are its own kits. For a deck folder you did NOT create — say, reviewing a deck someone sent
+you — checking it runs whatever `surface_*.py` sits beside it: move the deck to its own folder, or
+read those files first.
 
 `smoke_deckkit.py` calls `exec()` — a scanner will flag it. It executes `sigs.EXAMPLES`, a
 hardcoded dict literal in `sigs.py`; that module reads no files and takes no input. It is the CI
