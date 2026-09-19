@@ -568,8 +568,9 @@ python3 scripts/generate_images_codex.py \
   --orientation landscape        # hint 16:9 for hero/divider plates
 ```
 One `codex exec` per image — the hosted tool's base64 lands in the Codex session rollout
-(`~/.codex/sessions/.../rollout-*.jsonl`); the script decodes it to the PNG and verifies it (with a
-rollout-extraction fallback). ~30–90s/image; no key, no per-image cost.
+(`~/.codex/sessions/.../rollout-*.jsonl`); the script decodes it to the PNG and verifies it,
+falling back to THAT job's own transcript, found by the exact thread id codex reports — never the
+newest file. ~30–90s/image; no key, no per-image cost.
 
 **What this means in Claude Code specifically** (the most common non-Codex host): CC has no native
 image tool, so rung 2 *is* the path — and it is **free on the user's Codex subscription**, needing

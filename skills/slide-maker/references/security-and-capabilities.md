@@ -15,7 +15,7 @@ capabilities; it is whether they are **declared, scoped and refusable**. This fi
 | **Installs Python packages** into the active interpreter (`python-pptx`, `pymupdf`, `Pillow`, `matplotlib`) | `check_env.py --ensure`, Step 0.0b | A missing library otherwise surfaces at the RENDER, the slowest step in the pipeline, after all the authoring is spent | `SLIDE_MAKER_NO_ENV_CHECK=1` |
 | **Runs LibreOffice** (`soffice`) to convert pptx → PDF → PNG | `render_deck.py`, `ingest.py` | There is no pure-Python pptx renderer; the visual self-check and the critic loop both need real pixels | don't run the render steps; `SOFFICE` re-points it |
 | **Runs headless Chrome/Edge** | `icons.py`, only when neither cairosvg nor `rsvg-convert` is present | SVG → PNG for icons | install cairosvg or librsvg and it is never used |
-| **Runs `codex exec`** | `generate_images_codex.py` | The no-API-key image path for the generate-a-template branch | don't use that branch, or use `generate_images_openai.py` |
+| **Runs `codex exec`** with no approvals | `generate_images_codex.py` | The no-API-key image path for the generate-a-template branch. The sub-agent runs in a fresh EMPTY directory (its writable workspace), the prompt is passed as marked DATA, and the manifest is validated before any generation — see *Session data* | don't use that branch, or use `generate_images_openai.py` |
 | **Probes for a command** (`command -v codex`) | interview Q1(d) | So the interview does not offer an image-tool branch that would dead-end at generation time | — (a probe, no execution) |
 | **Network: fetches icon SVGs** | `icons.py` | The icon families are fetched once and cached | pre-populate or clear `SLIDE_MAKER_CACHE`; warm builds are offline |
 | **Network: searches and downloads photos** | `fetch_images.py` (`search` / `fetch`), only when you ask for a sourced image | Two keyless, license-clear APIs — Wikimedia Commons and Openverse. It sends the SUBJECT you searched for and nothing else, downloads only files whose licence it recognised, and writes what it did to `<assets>/sources.json` | don't use the sourced path (generation and user-supplied files are unaffected); every call is one you initiated |
@@ -28,14 +28,30 @@ capabilities; it is whether they are **declared, scoped and refusable**. This fi
 
 ## Session data
 
-`generate_images_codex.py` reads `~/.codex/sessions/**/rollout-*.jsonl` because the hosted
-image-generation tool returns its PNG as base64 **inside the session transcript** — there is no
-other copy. That is a genuine privacy surface and it is scoped three ways: an explicit session
-pointer from the environment wins (`CODEX_SESSION_ID` / `CODEX_ROLLOUT_PATH` / `CODEX_THREAD_ID`);
-otherwise the newest rollout must be under 30 minutes old to be plausibly this run's; and the file
-actually opened is **named on stderr**, so reading a transcript is never silent. Only the
-`image_generation_call` payload is extracted; no other field is read and nothing from the file is
-echoed. Avoid the path entirely by handing the script an image, or by using the API variant.
+`generate_images_codex.py` hands each image prompt to a `codex exec` sub-agent, and the hosted image
+tool returns its PNG as base64 **inside that session's transcript**. The manifest those prompts come
+from is written by an agent that was reading your material — untrusted input — so the path is built
+on four limits, each tested adversarially:
+
+- **The prompt is data.** It sits between markers carrying a per-job random token, the instruction
+  says nothing inside them is to be followed, and a prompt containing the marker words, a chat
+  special token (`<|…|>`) or a control character is refused before anything is generated.
+- **Nothing from the manifest names a file for the sub-agent.** It writes to a fixed name in a
+  fresh, empty directory — its whole writable workspace — and the result is moved into place
+  afterwards. The deck folder is never its workspace.
+- **Outputs stay inside the deck.** Every output must be a bare image file name (letters or digits
+  in any script, `.`, `_`, `-`) that resolves inside `--out-dir`, or the manifest's own folder; a
+  `../`, a separator or a symlink out is refused, and one bad item stops the whole batch before any
+  spend.
+- **Only this job's transcript is read, and only when needed.** The image is taken from the file
+  the sub-agent wrote, else from its own `--json` event stream; only then from its transcript,
+  located by the exact thread id codex reports (`rollout-<time>-<id>.jsonl`, whose first record must
+  name the same id). There is no "newest file" fallback any more: that picked a SIBLING job's
+  transcript when images were generated in parallel, and an environment pointer named the parent
+  session, not the one that made the image. The file read is named on stderr; only the
+  `image_generation_call` payload is kept.
+
+Avoid the path entirely by handing the script an image, or by using the API variant.
 
 ## Executing Python that is not this skill's
 
