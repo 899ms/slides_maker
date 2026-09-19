@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import pathlib
 import sys
 import tempfile
 from pathlib import Path
@@ -1017,20 +1018,24 @@ def check_sameness(deck_path: Path) -> tuple[int, int]:
     import contextlib, io
     sys.path.insert(0, str(HERE))
     import lint_fixture
-    # lint_fixture binds OUT = Path.cwd() at IMPORT time, so chdir-ing afterwards does not move
-    # where it writes. Ask it where it put the file instead of assuming.
-    with contextlib.redirect_stdout(io.StringIO()):
-        lint_fixture.build_pass()
-    fx_pass = lint_fixture.OUT / "fx_pass.pptx"
+    import shutil
+    import tempfile
+    # lint_fixture binds OUT = Path.cwd() at IMPORT time and its builders read that global when
+    # they RUN, so point it at a private directory. Deleting fx_pass.pptx afterwards was not
+    # enough: build_pass() also writes its panel PNGs, and those were left in whatever directory
+    # the suite ran from.
+    _fx_dir = pathlib.Path(tempfile.mkdtemp(prefix="fx-sameness-"))
+    _fx_prev, lint_fixture.OUT = lint_fixture.OUT, _fx_dir
     st, buf = {}, io.StringIO()
     try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            lint_fixture.build_pass()
+        fx_pass = _fx_dir / "fx_pass.pptx"
         with contextlib.redirect_stdout(buf):
             ld.lint(str(fx_pass), mode="presented", static_ok=True, stats_out=st)
     finally:
-        try:                      # do not leave a fixture deck in whatever dir CI ran from
-            fx_pass.unlink()
-        except OSError:
-            pass
+        lint_fixture.OUT = _fx_prev
+        shutil.rmtree(_fx_dir, ignore_errors=True)
     one("the repo's must-stay-clean PASS fixture scores ZERO sameness codes",
         not st.get("sameness_codes"), st.get("sameness_codes"))
     one("...and it DOES emit TIMID COVER / FLAT TYPE, which is why they are excluded",
