@@ -128,15 +128,15 @@ the render for any stray English chrome.
 ### Font choices
 | Role | Portable (recommended) | macOS | Windows |
 |---|---|---|---|
-| CJK sans (default) | Noto Sans CJK SC / Source Han Sans | **Hiragino Sans GB** (render loop AND measurement can see it); not PingFang SC or Heiti SC — see warning | Microsoft YaHei |
+| CJK sans (default) | Noto Sans CJK SC / Source Han Sans | **Hiragino Sans GB** (in /System/Library/Fonts on every Mac); PingFang SC / Heiti SC also measure and render correctly where installed | Microsoft YaHei |
 | CJK serif (formal) | Noto Serif CJK SC / Source Han Serif | Songti SC | SimSun |
 | CJK brush/handwritten | — | Kaiti SC | KaiTi |
 | Japanese / Korean | Noto Sans JP / KR | Hiragino Sans / Apple SD Gothic | Yu Gothic / Malgun Gothic |
 
 Pick the CJK font to match the *purpose* the same way as Latin (`design-by-purpose.md`):
-sans (Hiragino Sans GB on macOS) for modern/corporate/talks, serif (Songti) for formal/defense.
+sans (Hiragino Sans GB, PingFang SC or Heiti SC on macOS) for modern/corporate/talks, serif (Songti) for formal/defense.
 
-**Render-loop trap (macOS):** in the LibreOffice render used for self-checks and the critic, **PingFang SC gets substituted with a handwriting-style face** — the QC loop then judges pixels that PowerPoint will never show. Default to **Hiragino Sans GB** on macOS (renders identically in LibreOffice and PowerPoint/Keynote); 🔴 **And PingFang SC is not fine for the final deck either.** Every fit, wrap and overflow guard measures the face deckkit can RESOLVE, and on macOS it resolves neither PingFang SC nor Heiti SC (measured on both: the stand-in has no CJK glyphs, so 24 CJK characters measured at 60% of their true width, and text that overflows passes every geometry check). The final deck is the one laid out with those numbers. Do not trust a face list — it is true of one machine: `preflight_check.py` item 10 and `check_fonts_resolve.py` name every East-Asian face that does not resolve here, including one inherited from a template's theme or picked per script by `lang`.
+**CJK faces on macOS — measured, not assumed:** on LibreOffice 26.2 / macOS 26.5, **PingFang SC** and **Heiti SC** both render as themselves (the PDF embeds `PingFangSC-Regular`/`-Semibold` and `STHeitiSC-Light`/`-Medium`) and deckkit measures those same faces, so the ruler and the render agree. Both used to be measured in DejaVu Sans, which has no CJK glyphs — 24 characters at 60% of their true width, and text that overflows passing every geometry check — because PingFang lives in macOS's downloadable-asset store (`/System/Library/AssetsV2/…`), which matplotlib never scans, and `STHeiti Light.ttc` registers "Heiti SC" only in its name table; deckkit now reads both. The handwriting substitution this page used to warn about did not reproduce on that setup. **Hiragino Sans GB** stays the default because it sits in `/System/Library/Fonts` on every Mac, while PingFang is an asset a given Mac may not have. Do not trust a face list — it is true of one machine: `preflight_check.py` item 10 and `check_fonts_resolve.py` name every East-Asian face that does not resolve on THIS machine, including one inherited from a template's theme or picked per script by `lang`.
 
 **Pair CJK fonts by role too — don't set the whole deck in one face** (see the "Type pairing"
 section of `font-guidance.md`). Use a CJK **display** face for titles and a CJK **body** face for
@@ -165,8 +165,8 @@ similar visual weight and spacing:
   together form the deck's text pairing; the CJK/EA and mono faces are *functional* roles under
   the ≤2-text-families rule, `font-guidance.md`; weights ≤3):
   *cross-platform / safest* → **Noto Sans + Noto Sans CJK SC** (or Source Han Sans); *macOS build
-  loop* → **Helvetica Neue (or Inter, if installed) + Hiragino Sans GB** (not PingFang SC, even for
-  the final deck — see the render-loop trap above); *Windows/Office* → **Aptos/Segoe UI + Microsoft
+  loop* → **Helvetica Neue (or Inter, if installed) + Hiragino Sans GB** (PingFang SC also measures and
+  renders correctly where installed — see *CJK faces on macOS* above); *Windows/Office* → **Aptos/Segoe UI + Microsoft
   YaHei or DengXian**; *technical* → **IBM Plex Sans + Source Han Sans**; *warm / friendly /
   teaching* → a rounded-humanist Latin (**Trebuchet MS / Verdana**, or Nunito if installed) +
   **LXGW WenKai / LXGW Bright** (free, OFL — warm Kai-flavoured without full brush formality; NOT
@@ -208,7 +208,7 @@ similar visual weight and spacing:
 ### Portability caveat (say this in step 6)
 PowerPoint can embed fonts, but python-pptx can't, so the recipient's machine needs the
 CJK font installed — or PowerPoint substitutes. Prefer a widely-installed font (Hiragino
-Sans GB on macOS, Microsoft YaHei on Windows) or **Noto Sans/Serif CJK** for maximum portability,
+Sans GB or PingFang on macOS, Microsoft YaHei on Windows) or **Noto Sans/Serif CJK** for maximum portability,
 and tell the user which font the deck expects.
 
 ## CJK typography habits (so it reads like a native deck, not translated)

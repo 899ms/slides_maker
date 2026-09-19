@@ -259,8 +259,8 @@ def item10_fonts(prs):
     # 🔴 ONE inventory and ONE resolver, shared with check_fonts_resolve. This item used to collect
     # `run.font.name`, which python-pptx reads from <a:latin> ONLY, and to decide "installed" from
     # matplotlib's font list — a second inventory and a second predicate. On a Chinese deck it never
-    # saw the face that draws the Chinese. MEASURED: EAFONT='PingFang SC' (installed on the Mac,
-    # invisible to the measurement path) laid 24 CJK glyphs out at 60% of their true width while
+    # saw the face that draws the Chinese. MEASURED (before deckkit read font name tables and macOS's
+    # asset store): EAFONT='PingFang SC' laid 24 CJK glyphs out at 60% of their true width while
     # this item printed "all 1 font(s) resolve locally: ['Calibri']" and check_fonts_resolve, in the
     # same hand-off, reported the face unresolved. Two instruments reading two inventories will
     # disagree; this one now reads the other's, so they cannot.
@@ -311,7 +311,7 @@ def item10_fonts(prs):
         # glyphs at all — "may be fine where presented" was the whole message a PingFang deck got.
         cjk = ("; {} draw(s) CJK text, and a stand-in without CJK glyphs measures it far too "
                "narrow (60% of the true width, measured) - build with a CJK face that resolves "
-               "here, see references/multilingual.md Render-loop trap".format(cjk_missing)
+               "here, see references/multilingual.md CJK faces on macOS".format(cjk_missing)
                if cjk_missing else "")
         return ("ADVISORY", f"font(s) that do not resolve on THIS machine: {missing} - every wrap, "
                             f"fit and overflow number for the text they carry was measured in a "

@@ -311,7 +311,7 @@ deliberate choice, not a miss" — silence reads as "didn't notice".
 | `CJK-LATIN SPACING` warn | Mixed `中文 Latin` spaced *and* unspaced in the same deck | Pick one convention (spaced is house style) and apply it everywhere — `pangu()` normalizes |
 | CJK text much wider than planned | CJK glyphs are ~1.7–2× the width of Latin at equal pt | Budget CJK strings at that multiplier when sizing boxes (the width contract in `references/multilingual.md`) |
 | Font renders as serif/wrong style for 中文 | EA font not set per-run; PowerPoint fell back | Set `dk.EAFONT` before building (§2). If the deck is already built or was not authored here, `deckkit.retrofit_ea(prs, "<face>")` is the fix for the file in hand (§4, `CJK_NO_EA`) |
-| `PINGFANG ON MACOS` warn | The macOS LibreOffice render loop substitutes PingFang SC with a handwriting-style face — the QC loop then judges pixels PowerPoint will never show | Switch `dk.EAFONT` to `"Hiragino Sans GB"` for the build/render loop (PingFang SC is final-deck-only) — the render-loop trap in `references/multilingual.md` |
+| `PINGFANG ON MACOS` warn | The deck sets PingFang SC but THIS Mac has no PingFang file to load — it is a downloadable asset, not in /System/Library/Fonts — so every CJK line was measured in a stand-in | Switch `dk.EAFONT` to `"Hiragino Sans GB"` (on every Mac). Where PingFang is installed the warning does not fire: it measures and renders correctly — *CJK faces on macOS* in `references/multilingual.md` |
 
 ## 10 · FAQ one-liners
 

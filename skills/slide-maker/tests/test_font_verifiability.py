@@ -296,6 +296,23 @@ check(all("%%" not in m and "60% of the true width" in m for _s, f, m in finds i
       "ARGUMENT keeps a doubled percent sign, which is what shipped to both gate paths the first "
       "time ({!r})".format([m[-120:] for _s, f, m in finds if f == "Zz CJK Face"]))
 
+# the "N face(s) checked" count both gate paths print must count faces actually JUDGED — an Office
+# theme declares ~30 per-script faces, and listing them made a one-face deck report 33
+_cnt_deck = _deck([(CJK12, {"latin": GOOD, "ea": "Zz CJK Face"}, "zh-CN")],
+                  theme={("minor", "script:Hans"): "Zz Hans Face", ("minor", "script:Jpan"): "Zz Jpan Face",
+                         ("minor", "script:Kore"): "Zz Kore Face"})
+_cb = io.BytesIO(); _cnt_deck.save(_cb)
+_cp = os.path.join(tempfile.mkdtemp(prefix="fontcnt-"), "c.pptx")
+with open(_cp, "wb") as _fh:
+    _fh.write(_cb.getvalue())
+with _Resolver(set()):
+    _f, _facts = cfr.check(_cp)
+_judged = set(_facts["named"]) | set(_facts["theme"])
+check(not ({"Zz Hans Face", "Zz Jpan Face", "Zz Kore Face"} & _judged)
+      and "Zz CJK Face" in _judged and len(_judged) == len(_facts["named"]) + len(_facts["theme"]),
+      "the faces-checked count is the faces JUDGED — per-script theme faces that draw nothing are "
+      "declared, not checked (named {}, theme {})".format(sorted(_facts["named"]), _facts["theme"]))
+
 _agree("🔴 an ENGLISH run whose <a:ea> slot names an unresolved face (EAFONT set, no Chinese text)",
        _deck([("Quarterly revenue grew in every region", {"latin": GOOD, "ea": "Zz CJK Face"}, None)]),
        set())

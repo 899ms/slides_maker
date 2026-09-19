@@ -2924,11 +2924,14 @@ def _print_stats(rows, mode, sw, sh, lums=None, static_ok=False, icon_ev=None, b
                          f"deck — PRE-FLIGHT 1 (notes = the plan's Spoken thread)")
     import platform
     pingfang = sum(r.get("pingfang", 0) for r in rows)
-    if platform.system() == "Darwin" and pingfang:
-        warns.append(f"PINGFANG ON MACOS: {pingfang} run(s) carry 'PingFang SC' as the EA font — the "
-                     f"macOS LibreOffice render loop substitutes a handwriting face for it, and the "
-                     f"width measurement cannot find it either (CJK laid out at 60% of its true "
-                     f"width, measured); use 'Hiragino Sans GB' (see deckkit.EAFONT)")
+    # Only where PingFang is MISSING. Where it is installed it measures and renders as itself
+    # (LibreOffice 26.2 embeds PingFangSC-Regular/-Semibold, and deckkit reads the same file), so
+    # warning on every PingFang deck would be crying wolf on the machines that are fine.
+    if platform.system() == "Darwin" and pingfang and _fsub("PingFang SC"):
+        warns.append(f"PINGFANG ON MACOS: {pingfang} run(s) carry 'PingFang SC' as the EA font, but "
+                     f"this Mac has no PingFang file to load (it is a downloadable asset, not in "
+                     f"/System/Library/Fonts), so every CJK line was measured in a stand-in; use "
+                     f"'Hiragino Sans GB', which every Mac has (see deckkit.EAFONT)")
     tight_slides = [str(i + 1) for i, r in enumerate(rows) if r.get("cjk_tight")]
     if tight_slides:
         warns.append(f"CJK TIGHT LEADING: slide(s) {', '.join(tight_slides)} have multi-line CJK "

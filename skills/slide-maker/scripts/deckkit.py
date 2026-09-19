@@ -316,8 +316,8 @@ FONT    = "Calibri"       # display font — cross-platform default (ships with 
 MONO    = "Consolas"      # code / filenames — Calibri's cross-platform monospace pair.
 EQFONT  = "Arial"         # equations — universal glyph + Greek coverage
 EAFONT  = None            # East-Asian font for CJK text (e.g. "Hiragino Sans GB" — render-loop-safe on macOS;
-                          # avoid "PingFang SC": LibreOffice substitutes a handwriting face AND the width
-                          # measurement cannot resolve it, so CJK is laid out at 60% of true width
+                          # PingFang SC / Heiti SC also measure and render correctly where installed:
+                          # _font_file reads font name tables and macOS's asset store
                           # / "Microsoft YaHei" / "Noto Sans CJK SC"). When set, every run
                           # ALSO carries an <a:ea> typeface so PowerPoint/Keynote render
                           # Chinese/Japanese/Korean glyphs with THIS font (not an
@@ -4092,16 +4092,136 @@ _FONT_PATH_CACHE = {}
 _PIL_FONT_CACHE = {}
 
 
+def _norm_family(name):
+    return "".join(ch for ch in str(name or "").lower() if ch.isalnum())
+
+
+def _extra_font_files():
+    """Font files the OS renders from but matplotlib never scans.
+
+    macOS downloads some system faces on demand into `/System/Library/AssetsV2/…/AssetData/` —
+    PingFang, the default Chinese face on every modern Mac, among them. CoreText renders them;
+    matplotlib's scan never looks there, so a deck set in PingFang SC was measured in DejaVu Sans,
+    which has no CJK glyphs at all: 24 CJK characters at 60% of their true width, measured.
+    """
+    import glob as _glob
+    out = []
+    for pat in ("/System/Library/AssetsV2/com_apple_MobileAsset_Font*/*.asset/AssetData/*",):
+        out.extend(f for f in _glob.glob(pat) if f.lower().endswith((".ttf", ".otf", ".ttc", ".otc")))
+    return out
+
+
+_NAME_INDEX = None
+
+
+def _name_table_index():
+    """{normalised family: [(path, face_index, style)]} read from every font file's NAME TABLE.
+
+    🔴 matplotlib indexes ONE name per file — face 0 of a collection, under whatever FreeType
+    reports for it — so a family a file registers anywhere else is invisible to name lookup.
+    Measured on macOS: `STHeiti Light.ttc` registers "Heiti TC" (face 0) and "Heiti SC" (face 1)
+    and is indexed as "STHeiti"; five shipped presets set ea="Heiti SC", so every CJK line in them
+    was measured in a stand-in at 60% of its width. Every family record (nameIDs 1 and 16, every
+    platform and language) is read, so localised names resolve too.
+
+    Built once per process and only when a name MISSES in matplotlib (measured: 0.5s for ~675
+    files), keyed on strings — never on id() of a transient object.
+    """
+    global _NAME_INDEX
+    if _NAME_INDEX is not None:
+        return _NAME_INDEX
+    idx = {}
+    try:
+        from matplotlib import font_manager as _fm
+        from fontTools.ttLib import TTCollection, TTFont
+        files = {f.fname for f in _fm.fontManager.ttflist} | set(_extra_font_files())
+    except Exception:
+        _NAME_INDEX = idx
+        return idx
+
+    def english(names, nid):
+        for r in names:
+            if r.nameID == nid and ((r.platformID == 3 and r.langID == 0x409)
+                                    or (r.platformID == 1 and r.langID == 0)):
+                try:
+                    return r.toUnicode()
+                except Exception:
+                    continue
+        return ""
+
+    for path in sorted(str(f) for f in files):
+        try:
+            faces = (TTCollection(path, lazy=True).fonts if path.lower().endswith((".ttc", ".otc"))
+                     else [TTFont(path, lazy=True)])
+        except Exception:
+            continue
+        for i, font in enumerate(faces):
+            try:
+                names = font["name"].names
+            except Exception:
+                continue
+            style = (english(names, 17) or english(names, 2)).strip().lower()
+            fams = set()
+            for r in names:
+                if r.nameID in (1, 16):
+                    try:
+                        fams.add(_norm_family(r.toUnicode()))
+                    except Exception:
+                        pass
+            for fam in fams - {""}:
+                idx.setdefault(fam, []).append((path, i, style))
+    _NAME_INDEX = idx
+    return idx
+
+
+# Which face stands for "regular" and for "bold" when a family is picked by NAME. Regular is the
+# exact style only — otherwise the family's first face, which is what the old lookup measured, so no
+# family that resolved before changes. Bold falls back to the next HEAVIER face a family has
+# (PingFang ships Semibold, not Bold; Heiti ships Medium): measuring bold at the regular width is
+# the dangerous direction, because a measure-then-place guard passes and the renderer wraps.
+_REGULAR_STYLES = ("regular",)
+_BOLD_STYLES = ("bold", "semibold", "semi bold", "demibold", "demi bold", "extrabold",
+                "extra bold", "heavy", "black",
+                # Japanese weight grades: macOS pairs W3 (regular) with W6 (bold) — Hiragino Sans GB,
+                # this skill's recommended CJK face, ships exactly those two, and its bold runs were
+                # measured at W3 until this line existed
+                "w6", "w7", "w8", "w9",
+                "medium")
+
+
+def _name_lookup(name, bold=False):
+    """(path, face_index) for a family found only through the name tables, or None."""
+    hits = [h for h in _name_table_index().get(_norm_family(name), ())
+            if "italic" not in h[2] and "oblique" not in h[2]]
+    if not hits:
+        return None
+    for want in (_BOLD_STYLES if bold else _REGULAR_STYLES):
+        for path, i, style in hits:
+            if style == want:
+                return path, i
+    return hits[0][0], hits[0][1]
+
+
 def _font_file(name, bold=False):
-    """Resolve a font family name to a file path (cached). Returns None if unresolvable."""
+    """Resolve a font family name to a file path (cached). None only if nothing can load at all.
+
+    matplotlib's index first; then the font files' own name tables (see `_name_table_index`); and
+    only then matplotlib's default face — a STAND-IN, which `_font_substituted` reports as such.
+    """
     key = (name, bold)
     if key not in _FONT_PATH_CACHE:
+        path = None
         try:
             from matplotlib import font_manager as _fm
-            _FONT_PATH_CACHE[key] = _fm.findfont(
-                _fm.FontProperties(family=name, weight=("bold" if bold else "normal")))
+            props = _fm.FontProperties(family=name, weight=("bold" if bold else "normal"))
+            try:
+                path = _fm.findfont(props, fallback_to_default=False)
+            except Exception:
+                hit = _name_lookup(name, bold) if name else None
+                path = hit[0] if hit else _fm.findfont(props)
         except Exception:
-            _FONT_PATH_CACHE[key] = None
+            path = None
+        _FONT_PATH_CACHE[key] = path
     return _FONT_PATH_CACHE[key]
 
 
@@ -4117,7 +4237,7 @@ def _font_substituted(name):
             _fm.findfont(_fm.FontProperties(family=name), fallback_to_default=False)
             _FONT_SUB_CACHE[name] = False
         except Exception:
-            _FONT_SUB_CACHE[name] = True
+            _FONT_SUB_CACHE[name] = _name_lookup(name) is None
     return _FONT_SUB_CACHE[name]
 
 
@@ -4180,7 +4300,7 @@ def use_platform_fonts(*, verbose=True):
 _FACE_IDX_CACHE = {}
 
 
-def _face_index(path, bold):
+def _face_index(path, bold, family=None):
     """Which face inside a font COLLECTION (.ttc/.otc) to measure with.
 
     macOS ships whole families as one .ttc — matplotlib resolves "Helvetica Neue" bold and
@@ -4191,26 +4311,38 @@ def _face_index(path, bold):
     silently passes and the renderer wraps the line anyway, which is how a caption sized for
     one line landed a second line on top of a footer. Families with separate files per weight
     (Arial.ttf / Arial Bold.ttf) were never affected, which is why this hid for so long.
+
+    🔴 A collection can also hold several FAMILIES. `PingFang.ttc` is HK, MO, TC, SC × six weights
+    (PingFang SC Regular is face 3, not 0) and `STHeiti Light.ttc` is Heiti TC then Heiti SC. Given
+    the family asked for, the face is chosen among that family's own faces; a file whose faces
+    report no such family keeps the original rule (exact Regular/Bold anywhere, else face 0), so a
+    lookup that resolved before resolves the same way now.
     """
     if not path or not str(path).lower().endswith((".ttc", ".otc")):
         return 0
-    key = (str(path), bold)
+    fam = _norm_family(family)
+    key = (str(path), bold, fam)
     if key in _FACE_IDX_CACHE:
         return _FACE_IDX_CACHE[key]
     idx = 0
     try:
         from PIL import ImageFont
-        want = "bold" if bold else "regular"
-        for i in range(24):
+        faces = []
+        for i in range(64):
             try:
-                style = (ImageFont.truetype(path, 16, index=i).getname()[1] or "").lower()
+                fname, style = ImageFont.truetype(path, 16, index=i).getname()
             except Exception:
                 break
-            if "italic" in style or "oblique" in style:
-                continue
-            if style == want:                      # exact: "Bold" / "Regular", never "Condensed Bold"
-                idx = i
-                break
+            style = (style or "").lower()
+            if "italic" not in style and "oblique" not in style:
+                faces.append((i, _norm_family(fname), style))
+        mine = [f for f in faces if fam and f[1] == fam]
+        if mine:
+            prefs = _BOLD_STYLES if bold else _REGULAR_STYLES
+            idx = next((i for want in prefs for i, _f, st in mine if st == want), mine[0][0])
+        else:                              # exact: "Bold" / "Regular", never "Condensed Bold"
+            want = "bold" if bold else "regular"
+            idx = next((i for i, _f, st in faces if st == want), 0)
     except Exception:
         idx = 0
     _FACE_IDX_CACHE[key] = idx
@@ -4228,7 +4360,7 @@ def _pil_font(name, size_pt, bold=False):
         path = _font_file(name, bold)
         px = max(1, int(round(size_pt * _MEAS_PREC)))
         try:
-            f = ImageFont.truetype(path, px, index=_face_index(path, bold))
+            f = ImageFont.truetype(path, px, index=_face_index(path, bold, name))
         except Exception:
             f = ImageFont.truetype(path, px)
         _PIL_FONT_CACHE[key] = f
@@ -5732,21 +5864,26 @@ def wordmark(text, out_path, *, font=None, color=None, size=180, rule=False, mon
     ink_rgba = tuple(int(v) for v in ink) + (255,)
     # CJK-aware: a Chinese/Japanese/Korean entity name must take an EA-capable face, or PIL
     # resolves a Latin face with no CJK cmap and the deck's logo stand-in ships as tofu chrome.
+    # 🔴 `_font_file` falls back to a stand-in rather than returning None, so "is fp None?" never
+    # fired and an unresolvable EA face went straight to a Latin stand-in — tofu. Ask whether the
+    # NAMED face resolves, which is the question the fallback was written to ask.
     if _has_cjk(str(text)):
         chosen = font or EADISPLAY or EAFONT
-        fp = _font_file(chosen) if chosen else None
+        fp = _font_file(chosen) if chosen and not _font_substituted(chosen) else None
         if fp is None:                           # no usable EA face chosen — pick a CJK-capable one
             for cand in ("Hiragino Sans GB", "PingFang SC", "Microsoft YaHei",
                          "Noto Sans CJK SC", "SimHei"):
-                fp = _font_file(cand)
-                if fp:
+                if not _font_substituted(cand):
+                    chosen, fp = cand, _font_file(cand)
                     break
-        fp = fp or _font_file(DISPLAY or FONT) or _font_file(FONT)
+        if fp is None:
+            chosen = DISPLAY or FONT
+            fp = _font_file(chosen) or _font_file(FONT)
     else:
-        fam = font or DISPLAY or FONT
-        fp = _font_file(fam) or _font_file(FONT)
+        chosen = font or DISPLAY or FONT
+        fp = _font_file(chosen) or _font_file(FONT)
     try:
-        f = ImageFont.truetype(fp, int(size))
+        f = ImageFont.truetype(fp, int(size), index=_face_index(fp, False, chosen))
     except Exception:
         f = ImageFont.load_default()
     s = str(text)

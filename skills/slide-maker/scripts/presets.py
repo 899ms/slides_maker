@@ -7,8 +7,8 @@ These are *starting languages*, not straitjackets — the model still tunes to t
 the user's references always win. Apply one like:
 
     from presets import preset
-    # NOTE: CJK faces use 'Hiragino Sans GB', NOT 'PingFang SC' — the macOS LibreOffice
-    # render loop substitutes a handwriting face for PingFang (see deckkit.EAFONT comment).
+    # NOTE: CJK faces use 'Hiragino Sans GB' — it is in /System/Library/Fonts on every Mac,
+    # while PingFang is a downloadable asset a given Mac may not have (see deckkit.EAFONT).
     p = preset("glassmorphism")
     deckkit.FONT = p["font"]; deckkit.DISPLAY = p["display"]; deckkit.MONO = p["mono"]
     INK = p["ink"]; ACCENTS = p["accents"]; BG = p["bg"]

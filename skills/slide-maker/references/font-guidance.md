@@ -111,7 +111,7 @@ identically anywhere — so when the math font can't be guaranteed (or the formu
 
 ## Non-Latin (CJK / etc.)
 Set `deckkit.EAFONT` to a script-appropriate font so every run is tagged with a CJK
-typeface (not an uncontrolled fallback): Hiragino Sans GB (macOS, render-loop-safe) / Noto Sans CJK SC / Microsoft YaHei — beware PingFang SC and Heiti SC on macOS: the width measurement resolves neither, so every fit and overflow guard runs on a stand-in (CJK measured at 60% of its true width), and LibreOffice also swaps PingFang for a handwriting face, blinding the render self-check
+typeface (not an uncontrolled fallback): Hiragino Sans GB (macOS, in /System/Library/Fonts on every Mac) / Noto Sans CJK SC / Microsoft YaHei — PingFang SC and Heiti SC also measure and render correctly where installed; `check_fonts_resolve.py` names any face that does not resolve on the build machine
 (Chinese), Hiragino / Noto Sans JP (Japanese), Apple SD Gothic / Noto Sans KR (Korean).
 Noto fonts are the most portable (free, broad coverage). Full guidance + RTL limits in
 `references/multilingual.md`.

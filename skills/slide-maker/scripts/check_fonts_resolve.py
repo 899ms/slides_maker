@@ -175,8 +175,8 @@ def an_installed_face():
 #   * crediting a whole run to every slot it names made an English deck built with EAFONT set
 #     "carry" every word in its CJK face — a block for a face that draws nothing;
 #   * reading <a:latin> alone (what python-pptx's `run.font.name` does) made a Chinese deck look
-#     clean. MEASURED: EAFONT='PingFang SC' — installed on the Mac, invisible to the measurement
-#     path — laid 24 CJK glyphs out at 60% of their true width while PRE-FLIGHT 10 printed
+#     clean. MEASURED (before deckkit read font name tables and macOS's asset store): EAFONT=
+#     'PingFang SC' laid 24 CJK glyphs out at 60% of their true width while PRE-FLIGHT 10 printed
 #     "all 1 font(s) resolve locally: ['Calibri']".
 _CS_ORD = ((0x0590, 0x08FF),   # Hebrew · Arabic · Syriac · Thaana · NKo · Arabic Extended-A
            (0x0900, 0x0DFF),   # Devanagari … Sinhala
@@ -347,8 +347,14 @@ def check(pptx):
 
     carried, theme_faces, unattributed = faces_in_use(prs)
     named = {face: sum(by.values()) for face, by in carried.items()}
-    findings, facts = [], {"named": named, "theme": sorted(theme_faces), "unresolved": [],
-                           "undecidable": [], "by_slot": carried, "unattributed": unattributed}
+    # `theme` lists only the theme faces JUDGED beyond `named`: the Latin ones (see the loop below).
+    # It used to list every face the theme declares, and an Office theme names ~30 per-script faces,
+    # so a one-face deck reported "33 face(s) checked" on both gate paths — a count of nothing.
+    theme_judged = sorted(f for f, uses in theme_faces.items()
+                          if f not in named and any(slot == "latin" for _s, slot in uses))
+    findings, facts = [], {"named": named, "theme": theme_judged, "unresolved": [],
+                           "undecidable": [], "by_slot": carried, "unattributed": unattributed,
+                           "theme_declared": sorted(theme_faces)}
 
     def what(by):
         parts = []
@@ -389,7 +395,7 @@ def check(pptx):
                          % (what(carried[face]),
                             "; for CJK text the stand-in need not be a CJK face at all (measured: "
                             "60% of the true width), so build with a CJK face that resolves here "
-                            "— references/multilingual.md §Render-loop trap" if cjk else "",
+                            "— references/multilingual.md §CJK faces on macOS" if cjk else "",
                             "" if sev == "block" else " (under the %d-character floor, so "
                             "reported only)" % MIN_CHARS)))
 
@@ -397,9 +403,7 @@ def check(pptx):
     # chart, SmartArt and notes text this inventory does not read. An East-Asian or complex-script
     # theme face draws only its own script, so one carrying none of it draws nothing on these
     # slides and is not reported.
-    for face, uses in sorted(theme_faces.items()):
-        if face in named or not any(slot == "latin" for _scheme, slot in uses):
-            continue
+    for face in theme_judged:
         good = ok(face)
         if good is None:
             facts["undecidable"].append(face)

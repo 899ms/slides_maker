@@ -184,11 +184,143 @@ def main():
     crit = [f for f in dk.lint_layout(prs, verbose=False) if f[1] == "CRITICAL"]
     check("a well-built CJK deck stays clean under the true ruler", crit == [], crit)
 
+    _name_table_checks()
+
     if SKIP:
         print("\n  ({} width check(s) skipped: no CJK-covering font on this machine — the face-"
               "resolution checks above are the fix and they ran)".format(len(SKIP)))
     print("\n{} passed, {} failed".format(len(PASS), len(FAIL)))
     return 1 if FAIL else 0
+
+
+def _probe_collection(path, faces):
+    """Write a .ttc whose NAME TABLES register `faces` = [(family, style, advance of 一)].
+
+    Built here so the resolver is tested on every runner: a CI box has neither PingFang nor
+    Heiti, and a test that only runs where they exist tests the machine, not the code. Each face
+    gives 一 a different advance, so a width says which face was actually loaded.
+    """
+    from fontTools.fontBuilder import FontBuilder
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+    from fontTools.ttLib import TTCollection
+    fonts = []
+    for family, style, adv in faces:
+        fb = FontBuilder(1000, isTTF=True)
+        fb.setupGlyphOrder([".notdef", "uni4E00", "space"])
+        fb.setupCharacterMap({0x4E00: "uni4E00", 0x20: "space"})
+        pen = TTGlyphPen(None)
+        pen.moveTo((40, 0)); pen.lineTo((40, 700)); pen.lineTo((adv - 40, 700))
+        pen.lineTo((adv - 40, 0)); pen.closePath()
+        empty = TTGlyphPen(None).glyph()
+        fb.setupGlyf({".notdef": empty, "uni4E00": pen.glyph(), "space": empty})
+        fb.setupHorizontalMetrics({".notdef": (500, 0), "uni4E00": (adv, 40), "space": (250, 0)})
+        fb.setupHorizontalHeader(ascent=800, descent=-200)
+        fb.setupNameTable({"familyName": family, "styleName": style,
+                           "typographicFamily": family, "typographicSubfamily": style})
+        fb.setupOS2(sTypoAscender=800, usWinAscent=800, usWinDescent=200)
+        fb.setupPost()
+        fonts.append(fb.font)
+    coll = TTCollection()
+    coll.fonts = fonts
+    coll.save(str(path))
+
+
+def _reset_font_caches():
+    dk._NAME_INDEX = None
+    for c in (dk._FONT_PATH_CACHE, dk._FONT_SUB_CACHE, dk._PIL_FONT_CACHE, dk._FACE_IDX_CACHE):
+        c.clear()
+
+
+def _name_table_checks():
+    """A family registered only in a font file's NAME TABLE resolves, in the right face.
+
+    🔴 matplotlib indexes one name per file. Measured on macOS: `STHeiti Light.ttc` registers
+    "Heiti SC" (face 1) and is indexed as "STHeiti", and PingFang lives in an asset directory it
+    never scans — so decks set in Heiti SC (five shipped presets) or PingFang SC measured every CJK
+    line in DejaVu Sans, at 60% of its true width. LibreOffice, meanwhile, renders both faces
+    correctly (verified by the fonts it embeds), so the ruler and the render disagreed.
+    """
+    import tempfile
+    print("\n— a family known only by its font file's name table")
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="nametable-"))
+    probe = tmp / "Probe.ttc"
+    _probe_collection(probe, [("Zz Probe TC", "Regular", 1000),     # face 0
+                              ("Zz Probe SC", "Regular", 700),      # face 1
+                              ("Zz Probe SC", "Semibold", 900)])    # face 2 — no "Bold" exists
+    real_extra = dk._extra_font_files
+    dk._extra_font_files = lambda: [str(probe)]
+    _reset_font_caches()
+    try:
+        def adv(name, bold=False):
+            f = dk._pil_font(name, 10, bold)
+            return round(f.getlength("一") / dk._MEAS_PREC / 10 * 1000)
+
+        check("a family registered only in a name table is NOT a stand-in",
+              dk._font_substituted("Zz Probe SC") is False, dk._font_substituted("Zz Probe SC"))
+        check("...while a name registered nowhere still is",
+              dk._font_substituted("Zz Probe Nowhere 9") is True)
+        check("🔴 the REQUESTED family's face is measured — face 1, not the collection's face 0 "
+              "(PingFang SC is face 3 of PingFang.ttc; Heiti SC face 1 of STHeiti Light.ttc)",
+              adv("Zz Probe SC") == 700, adv("Zz Probe SC"))
+        check("bold falls to the family's next HEAVIER face when it has no Bold (PingFang ships "
+              "Semibold) — never back to Regular, which under-measures",
+              adv("Zz Probe SC", True) == 900, adv("Zz Probe SC", True))
+        check("the other family in the same file resolves to ITS face",
+              adv("Zz Probe TC") == 1000, adv("Zz Probe TC"))
+        check("a file whose faces do not name the family keeps the original rule (exact Regular "
+              "anywhere, else face 0)",
+              dk._face_index(str(probe), False, "Some Other Family") == 0
+              and dk._face_index(str(probe), True, "Some Other Family") == 0)
+        idx_obj = dk._NAME_INDEX
+        dk._name_lookup("Zz Probe TC")
+        check("the name-table index is built once per process, not per lookup",
+              idx_obj is not None and dk._NAME_INDEX is idx_obj)
+
+        out_sc, out_tc = tmp / "wm_sc.png", tmp / "wm_tc.png"
+        dk.wordmark("一一一一", str(out_sc), font="Zz Probe SC", size=120)
+        dk.wordmark("一一一一", str(out_tc), font="Zz Probe TC", size=120)
+        from PIL import Image
+        w_sc, w_tc = Image.open(out_sc).size[0], Image.open(out_tc).size[0]
+        check("wordmark() draws in the requested family's face too (narrower SC face -> narrower "
+              "mark)", w_sc < w_tc, (w_sc, w_tc))
+    finally:
+        dk._extra_font_files = real_extra
+        _reset_font_caches()
+
+    # a face matplotlib already knows must never pay for the scan
+    _reset_font_caches()
+    dk._font_file("DejaVu Sans")
+    check("a face matplotlib resolves directly never builds the name-table index",
+          dk._NAME_INDEX is None)
+
+    # the live half: only where the real faces exist, and only then
+    print("\n— live: the macOS faces that measured at 60% before this")
+    truth = len(CJK) * 13 / 72.0
+    for fam, reg, bold in (("PingFang SC", "Regular", "Semibold"), ("Heiti SC", "Light", "Medium")):
+        if dk._font_substituted(fam):
+            SKIP.append(fam)
+            print("  skip %s is not installed on this machine" % fam)
+            continue
+        f = dk._pil_font(fam, 13)
+        w = f.getlength(CJK) / dk._MEAS_PREC / 72.0
+        check("%s measures CJK at its true width (%.4fin of %.4fin)" % (fam, w, truth),
+              abs(w - truth) < 0.02, w)
+        check("...regular in the %s face and bold in %s — the faces LibreOffice embeds for the "
+              "same runs (PingFangSC-Regular/-Semibold, STHeitiSC-Light/-Medium, measured)"
+              % (reg, bold),
+              f.getname() == (fam, reg) and dk._pil_font(fam, 13, True).getname() == (fam, bold),
+              (f.getname(), dk._pil_font(fam, 13, True).getname()))
+    if not dk._font_substituted("Hiragino Sans GB"):
+        import tempfile as _tf
+        d = pathlib.Path(_tf.mkdtemp(prefix="wm-"))
+        dk.wordmark("三扇门", str(d / "a.png"), font="Zz Nowhere Face 9", size=120)
+        dk.wordmark("三扇门", str(d / "b.png"), font="Hiragino Sans GB", size=120)
+        from PIL import Image, ImageChops
+        same = ImageChops.difference(Image.open(d / "a.png").convert("RGBA"),
+                                     Image.open(d / "b.png").convert("RGBA")).getbbox() is None
+        check("🔴 a CJK wordmark whose face does not resolve falls back to a CJK face — it used to "
+              "go straight to a Latin stand-in (tofu), because the fallback asked `is fp None` and "
+              "_font_file never returns None", same)
 
 
 if __name__ == "__main__":
