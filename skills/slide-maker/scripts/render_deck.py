@@ -128,11 +128,51 @@ def _section(gates, key, what="an object"):
     return val
 
 
+# ── the COVERAGE LEDGER ──────────────────────────────────────────────────────────────────────
+# 🔴 WHY. A gate that could not bind prints its own `NOT CHECKED` line and nothing counts them, so
+# the run ends with "all hand-off gates pass — the deck may be handed over" whether 24 sections
+# checked something or 15 did. MEASURED across one session's audits: talk time silent on every
+# deck because nothing asked for the budget; the template profile able to bind to 1 of 11
+# registered templates; the Q&A and citation gates reading fields Step 0 never asked for. Each was
+# found by a human reading the transcript. A tally turns that into a number the tool reports about
+# itself — "passed" and "checked" stop being the same sentence.
+_NOT_CHECKED = {}       # section -> the reason its gate could not bind
+_SECTIONS_RUN = []      # every section this run entered, in order
+
+
+def _ledger_reason(line):
+    """The substance of a NOT-CHECKED line: its chrome and its restated label removed.
+
+    The row already carries the section name, so `talk_time: talk time: NOT CHECKED — no budget`
+    says it three times and pushes the part that matters off the end of the line.
+    """
+    txt = re.sub(r"^\s*(?:\[--\]|\[gates\])\s*", "", str(line)).strip()
+    txt = re.sub(r"^[A-Za-z0-9 &/_-]{0,32}?:\s*", "", txt, count=1)
+    return re.sub(r"^(?:NOT CHECKED|not applied)\s*[—-]\s*", "", txt).strip()
+
+
+def not_checked(line, *, reason=None, section=None):
+    """Print a gate's own NOT-CHECKED line UNCHANGED, and record that the section did not bind."""
+    print(line)
+    key = section or _SECTION or "(outside a section)"
+    if key not in _NOT_CHECKED:
+        _NOT_CHECKED[key] = reason or _ledger_reason(line)
+    return None
+
+
+def coverage_ledger(sections):
+    """(checked, not_checked_rows) for the sections this run actually ran."""
+    rows = [(s, _NOT_CHECKED[s]) for s in sections if s in _NOT_CHECKED]
+    return len(sections) - len(rows), rows
+
+
 @contextlib.contextmanager
 def _gate_section(label):
     """Run one INDEPENDENT gate section: a failure inside it never suppresses the others."""
     global _SECTION
     prev, _SECTION = _SECTION, label
+    if label not in _SECTIONS_RUN:
+        _SECTIONS_RUN.append(label)
     try:
         yield
     except _GateStop:
@@ -1035,6 +1075,76 @@ def _acquire_profile():
     return _Profile(tempfile.mkdtemp(prefix="lo_render_"), pooled=False)
 
 
+# 🔴 THE DELIVERED PDF IS THE ARTIFACT THAT TRAVELS, and a plain `--convert-to pdf` drops the alt
+# text the a11y gate spends its whole existence demanding. MEASURED on this machine: the default
+# export produces a tagged PDF (`/StructTreeRoot`, `/Marked true`, `/Lang`) and NOT ONE `/Alt`
+# value — every image description written for a screen reader stops at the .pptx. With
+# `PDFUACompliance` the same deck exports with `pdfuaid` and the descriptions present, as UTF-16
+# `/Alt` strings. The raster is BYTE-IDENTICAL (checked: same sha over the page pixmap) and the
+# file is ~100 bytes larger, so nothing downstream sees a difference — the PNGs this PDF is
+# rasterised into, and every pixel gate reading them, are unaffected.
+#
+# WCAG 2.1 AA is the ADA Title II standard from April 2026, which is what makes this a floor
+# rather than a nicety for the academic and public-sector decks this skill is used for.
+PDF_UA_FILTER = ('pdf:impress_pdf_Export:{"PDFUACompliance":{"type":"boolean","value":"true"},'
+                 '"UseTaggedPDF":{"type":"boolean","value":"true"}}')
+
+
+NOTES_FILTER = ('pdf:impress_pdf_Export:{"ExportOnlyNotesPages":{"type":"boolean","value":"true"},'
+                '"ExportNotesPages":{"type":"boolean","value":"true"},'
+                '"PDFUACompliance":{"type":"boolean","value":"true"}}')
+
+
+def render_notes_pdf(soffice, src, dest):
+    """The SPEAKER HANDOUT: one page per slide, its thumbnail above its notes. None when skipped.
+
+    🔴 WHY THIS IS A DELIVERABLE. This skill requires speaker notes (PRE-FLIGHT 1), reads them to
+    estimate the talk's length, and then hands over a .pptx and a slide PDF in which the notes are
+    invisible — the one artifact a speaker actually rehearses from did not exist. LibreOffice's
+    own notes-pages export produces it: slide thumbnail, notes below, page number, and nothing to
+    lay out by hand.
+
+    A deck with NO notes gets no handout rather than three empty pages, and says so.
+    """
+    try:
+        from pptx import Presentation
+        noted = 0
+        for slide in Presentation(src).slides:
+            try:
+                if slide.has_notes_slide and (slide.notes_slide.notes_text_frame.text or "").strip():
+                    noted += 1
+            except Exception:
+                pass
+        if not noted:
+            print("note: no speaker handout — this deck has notes on no slide. A handout of empty "
+                  "pages is worse than none.", file=sys.stderr)
+            return None
+    except Exception:
+        pass
+    out = tempfile.mkdtemp(prefix="lo_notes_")
+    profile = _acquire_profile()
+    try:
+        cmd = [soffice, "-env:UserInstallation=" + Path(profile.path).as_uri(),
+               "--headless", "--convert-to", NOTES_FILTER, "--outdir", out, src]
+        try:
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            profile.release(discard=True)
+            print("note: the speaker handout timed out; the deck itself is unaffected",
+                  file=sys.stderr)
+            return None
+        made = os.path.join(out, os.path.splitext(os.path.basename(src))[0] + ".pdf")
+        if r.returncode != 0 or not os.path.exists(made):
+            print("note: this LibreOffice would not export notes pages, so no speaker handout was "
+                  "written (the deck and its PDF are unaffected).", file=sys.stderr)
+            return None
+        shutil.move(made, dest)
+        return dest
+    finally:
+        profile.release()
+
+
 def _render_pdf(soffice, src, outdir):
     """pptx -> pdf via a private LibreOffice profile, into an EMPTY private directory.
 
@@ -1051,9 +1161,9 @@ def _render_pdf(soffice, src, outdir):
     """
     pdf = os.path.join(outdir, os.path.splitext(os.path.basename(src))[0] + ".pdf")
 
-    def _once(profile):
+    def _once(profile, filt=PDF_UA_FILTER):
         cmd = [soffice, "-env:UserInstallation=" + Path(profile.path).as_uri(),
-               "--headless", "--convert-to", "pdf", "--outdir", outdir, src]
+               "--headless", "--convert-to", filt, "--outdir", outdir, src]
         try:
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     text=True, timeout=300)
@@ -1065,6 +1175,18 @@ def _render_pdf(soffice, src, outdir):
 
     profile = _acquire_profile()
     result, cmd = _once(profile)
+    if result.returncode != 0 or not os.path.exists(pdf):
+        # An older LibreOffice does not know `PDFUACompliance` and refuses the whole filter string.
+        # Losing the render over an accessibility option would be the wrong trade, so fall back to
+        # the plain export and SAY the deliverable will carry no alt text — silently producing an
+        # inaccessible PDF is the failure this filter exists to fix.
+        plain, cmd_plain = _once(profile, filt="pdf")
+        if plain.returncode == 0 and os.path.exists(pdf):
+            print("note: this LibreOffice rejected the PDF/UA export filter, so the PDF is tagged "
+                  "but carries NO alt text and no PDF/UA identification. Upgrade LibreOffice (7.x+) "
+                  "if the PDF has to be accessible.", file=sys.stderr)
+            profile.release()
+            return (pdf, plain, cmd_plain)
     if result.returncode != 0 and profile.pooled:
         profile.release(discard=True)
         print("note: render failed on a pooled LibreOffice profile — discarding it and retrying "
@@ -1477,6 +1599,7 @@ def check_handoff_gates(pptx, mode="presented", gate_check=False):
         problems = _COLLECTED
     finally:
         _COLLECTED = outer
+    print_coverage_ledger()
     if not problems:
         return
     n = len(problems)
@@ -1567,11 +1690,11 @@ def _style_applied_gate(design, pptx):
         import check_style_applied as csa
         names = csa.preset_names()
     except Exception as exc:                       # never fail a render on the checker itself
-        print(f"  [--] STYLE APPLIED: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] STYLE APPLIED: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     script = _find_build_script(pptx, design)
     if script is None:
-        print("  [--] STYLE APPLIED: NOT CHECKED — no build script found beside the deck "
+        not_checked("  [--] STYLE APPLIED: NOT CHECKED — no build script found beside the deck "
               "(looked for build_<stem>.py). NOT the same as clean: record it as "
               "`design_plan.build_script` and the register a deck DECLARES gets verified against "
               "the one it APPLIES.")
@@ -1583,7 +1706,7 @@ def _style_applied_gate(design, pptx):
         die("`design_plan.style_pick` " + msg.split("—", 1)[-1].strip()
             + f"\n    (build script: {script})")
     if code == 2:
-        print(f"  [--] STYLE APPLIED: NOT CHECKED — {msg}")
+        not_checked(f"  [--] STYLE APPLIED: NOT CHECKED — {msg}")
 
 
 def _LD_A11Y_CODES():
@@ -1626,7 +1749,7 @@ def _check_a11y(pptx, delivery, gates):
     stats, _aspect = _sameness_stats(pptx, delivery)      # one lint run, already cached above
     warns = stats.get("slide_warns")
     if warns is None:
-        print("  [--] A11Y: NOT CHECKED — this lint build does not surface the per-slide warn "
+        not_checked("  [--] A11Y: NOT CHECKED — this lint build does not surface the per-slide warn "
               "stream. NOT the same as clean.")
         return
     codes = _LD_A11Y_CODES()
@@ -1774,7 +1897,7 @@ def _direction_applied_gate(pptx, gates):
         import check_direction_applied as cda
         problems, facts = cda.check(pptx, gates=gates)
     except Exception as exc:
-        print("  [--] direction NOT CHECKED — {}: {} (not the same as clean)"
+        not_checked("  [--] direction NOT CHECKED — {}: {} (not the same as clean)"
               .format(exc.__class__.__name__, exc))
         return
     if facts.get("note"):
@@ -1808,12 +1931,12 @@ def _register_guard_gate(pptx, gates):
     try:
         import check_register_guard as crg
     except Exception as exc:
-        print(f"  [--] REGISTER GUARD: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] REGISTER GUARD: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     try:
         violations, facts = crg.check(pptx, None, gates if isinstance(gates, dict) else {})
     except Exception as exc:
-        print(f"  [--] REGISTER GUARD: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] REGISTER GUARD: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     if facts.get("note"):
         print("  [--] register guard: " + facts["note"])
@@ -1847,7 +1970,7 @@ def _register_pixels_gate(pptx):
     try:
         import check_register_pixels as crp
     except Exception as exc:                       # never fail a render on the checker itself
-        print(f"  [--] REGISTER PIXELS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] REGISTER PIXELS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     deck_dir = Path(pptx).resolve().parent
     taste = None
@@ -1860,14 +1983,14 @@ def _register_pixels_gate(pptx):
     try:
         probs, facts = crp.check(deck_dir, taste=taste)
     except Exception as exc:
-        print(f"  [--] REGISTER PIXELS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] REGISTER PIXELS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     if facts.get("waived"):
         print("[gates] register pixels: waived in writing (design_plan.register_pixels_waived).")
         return
     codes = [c for c, _ in probs]
     if "NO RENDERS" in codes:
-        print("  [--] REGISTER PIXELS: NOT CHECKED — no renders beside the deck. NOT the same as "
+        not_checked("  [--] REGISTER PIXELS: NOT CHECKED — no renders beside the deck. NOT the same as "
               "clean: render first, and the register a deck DECLARES gets checked against the one "
               "it SHOWS.")
         return
@@ -1902,13 +2025,13 @@ def _fonts_gate(pptx, gates):
     try:
         import check_fonts_resolve as cfr
     except Exception as exc:
-        print(f"  [--] FONTS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] FONTS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     waived = (_section(gates, "fonts") or {}).get("waived")
     try:
         findings, facts = cfr.check(pptx)
     except Exception as exc:
-        print(f"  [--] FONTS: NOT CHECKED — {exc}. NOT the same as clean: the faces this deck "
+        not_checked(f"  [--] FONTS: NOT CHECKED — {exc}. NOT the same as clean: the faces this deck "
               f"names were never tested.")
         return
     blocks = [f for f in findings if f[0] == "block"]
@@ -1956,12 +2079,12 @@ def _template_profile_gate(pptx, gates):
     try:
         import check_template_profile as ctp
     except Exception as exc:
-        print(f"  [--] TEMPLATE PROFILE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] TEMPLATE PROFILE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     try:
         finds, facts = ctp.check(pptx, gates=gates)
     except Exception as exc:
-        print(f"  [--] template profile: NOT CHECKED — {exc}")
+        not_checked(f"  [--] template profile: NOT CHECKED — {exc}")
         return
     if facts.get("palette_not_checked"):
         # A skipped check that prints nothing is the thing this repo refuses everywhere else.
@@ -2000,7 +2123,7 @@ def _purpose_gate(pptx, gates):
     try:
         import check_purpose as cpp
     except Exception as exc:
-        print(f"  [--] PURPOSE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] PURPOSE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     sec = _section(gates, "purpose") or {}
     extra = (_section(gates, "design_plan") or {}).get("purpose_section_terms")
@@ -2008,7 +2131,7 @@ def _purpose_gate(pptx, gates):
         probs, facts = cpp.check(pptx, cpp.recorded_purpose(gates),
                                  extra_terms=extra, waive=sec.get("waived"))
     except Exception as exc:
-        print(f"  [--] purpose: NOT CHECKED — {exc}")
+        not_checked(f"  [--] purpose: NOT CHECKED — {exc}")
         return
     print("[gates] purpose: bound to {!r} ({})".format(facts["purpose"], facts["label"]))
     if facts.get("fidelity"):
@@ -2043,13 +2166,13 @@ def _talk_time_gate(pptx, gates):
     try:
         import check_talk_time as ctt
     except Exception as exc:
-        print(f"  [--] TALK TIME: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] TALK TIME: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     sec = _section(gates, "talk_time") or {}
     try:
         findings, facts = ctt.check(pptx, ctt.recorded_minutes(gates), waive=sec.get("waived"))
     except Exception as exc:
-        print(f"  [--] talk time: NOT CHECKED — {exc}")
+        not_checked(f"  [--] talk time: NOT CHECKED — {exc}")
         return
     print("[gates] talk time: {:.0f}-{:.0f} min of speech for a {:.0f}-minute slot "
           "({} of {} slides carry notes)".format(facts["estimate"][0], facts["estimate"][1],
@@ -2083,14 +2206,14 @@ def _citations_gate(pptx, gates):
     try:
         import check_citations as cc
     except Exception as exc:
-        print(f"  [--] CITATIONS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] CITATIONS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     sec = _section(gates, 'citations') or {}
     try:
         findings, facts = cc.check(pptx, cc.recorded_citations(gates),
                                    root=str(Path(pptx).resolve().parent), waive=sec.get("waived"))
     except Exception as exc:
-        print(f"  [--] citations: NOT CHECKED — {exc}")
+        not_checked(f"  [--] citations: NOT CHECKED — {exc}")
         return
     print("[gates] citations: {} cited key(s), {} style, reference list on slide(s) {}".format(
         facts["cited"], facts["style"], facts["list_slides"] or "—"))
@@ -2127,13 +2250,13 @@ def _qa_backup_gate(pptx, gates):
     try:
         import check_qa_backup as cqb
     except Exception as exc:
-        print(f"  [--] Q&A BACKUP: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] Q&A BACKUP: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     sec = _section(gates, 'qa_backup') or {}
     try:
         findings, facts = cqb.check(pptx, cqb.recorded_qa(gates), waive=sec.get("waived"))
     except Exception as exc:
-        print(f"  [--] Q&A backup: NOT CHECKED — {exc}")
+        not_checked(f"  [--] Q&A backup: NOT CHECKED — {exc}")
         return
     print("[gates] Q&A backup: {} anticipated question(s) against {} slide(s)".format(
         facts["questions"], facts["slides"]))
@@ -2168,7 +2291,7 @@ def _surface_gate(pptx, gates):
     try:
         import check_surface as cs
     except Exception as exc:                       # never fail a render on the checker itself
-        print(f"  [--] SURFACE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] SURFACE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     design = (gates or {}).get("design_plan") or {} if isinstance(gates, dict) else {}
     waive = design.get("surface_sections_waived")
@@ -2176,7 +2299,7 @@ def _surface_gate(pptx, gates):
         probs, facts = cs.check(pptx, design.get("format"), waive,
                                 design.get("surface_section_terms"))
     except Exception as exc:
-        print(f"  [--] SURFACE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] SURFACE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     if facts.get("note"):
         print("  [--] SURFACE: " + facts["note"])
@@ -2190,6 +2313,27 @@ def _surface_gate(pptx, gates):
         die("this deck breaks the contract of the canvas it is built on:\n    - "
             + "\n    - ".join("{}: {}".format(c, m) for c, m in probs)
             + "\n    Re-run alone: python3 scripts/check_surface.py {}".format(pptx))
+
+
+def print_coverage_ledger():
+    """Say how many sections actually BOUND — "passed" and "checked" are different sentences.
+
+    Printed on every gate run, pass or fail, because the run that passes is exactly the one where
+    nobody looks. Each row names the section and the reason its gate could not bind, so the line
+    is actionable: a `talk_time` row means nobody recorded the budget, and a `template_profile`
+    row means the deck matched no registered template — two different next moves.
+    """
+    if not _SECTIONS_RUN:
+        return
+    checked, rows = coverage_ledger(_SECTIONS_RUN)
+    print("[gates] COVERAGE: {} section(s) ran — {} bound, {} NOT CHECKED".format(
+        len(_SECTIONS_RUN), checked, len(rows)))
+    for name, why in rows:
+        print("        · {}: {}".format(name, why[:150]))
+    if rows:
+        print("        A gate that could not bind checked NOTHING. That is the right answer for a "
+              "deck the section does not apply to, and it is how a capability goes quietly unused "
+              "— read the rows before treating a pass as coverage.")
 
 
 def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
@@ -3626,7 +3770,7 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
             import canon_probe as _cn                                 # noqa: PLC0415
             _cnf = _cn.faults(pptx, gates)
         except Exception as _exc:                                     # never silently
-            print("  [--] canon rules NOT CHECKED — {}: {}".format(type(_exc).__name__, _exc))
+            not_checked("  [--] canon rules NOT CHECKED — {}: {}".format(type(_exc).__name__, _exc))
             _cnf = []
         for _f in _cnf:
             with _gate_step():
@@ -3655,7 +3799,7 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
         # the SAME resolved delivery the type floor used — reading raw `mode` here is how one run
         # enforced two different deliveries
         if delivery in ("surface", "textheavy"):
-            print("[gates] density: not applied — %s deck (the user chose this density, or the "
+            not_checked("[gates] density: not applied — %s deck (the user chose this density, or the "
                   "surface has no per-slide budget)" % delivery)
             return
         over, total, median = _density_stats(pptx, budget=70 if delivery == "presented" else 120)
@@ -3761,7 +3905,7 @@ def _check_sameness(pptx, delivery, gates):
         why = ("a single-canvas surface" if delivery == "surface"
                else "a portrait/square canvas — a series' repeated frame is the artifact"
                if aspect < 1.2 else "%d content slide(s), under the 8 this is calibrated for" % body_n)
-        print("[gates] sameness: not applied — {} (the per-signal [stats] warnings still print)"
+        not_checked("[gates] sameness: not applied — {} (the per-signal [stats] warnings still print)"
               .format(why))
         return
 
@@ -3899,14 +4043,14 @@ def _check_timidity(pptx, delivery, gates):
     dial = str(design.get("boldness", "")).strip().lower()
     move = str(design.get("signature_move", "")).strip().lower()
     if dial == "conservative" and move.startswith("deliberately restrained"):
-        print("[gates] timidity: not applied — boldness=conservative with a recorded "
+        not_checked("[gates] timidity: not applied — boldness=conservative with a recorded "
               "`deliberately restrained` move; restraint IS the position here")
         return
     if delivery == "surface" or aspect < 1.2 or body_n < 8:
         why = ("a single-canvas surface" if delivery == "surface"
                else "a portrait/square canvas" if aspect < 1.2
                else "%d content slide(s), under the 8 this is calibrated for" % body_n)
-        print("[gates] timidity: not applied — {} (the per-signal [stats] warnings still print)"
+        not_checked("[gates] timidity: not applied — {} (the per-signal [stats] warnings still print)"
               .format(why))
         return
 
@@ -4550,7 +4694,7 @@ def main(argv):
 
     # The PDF is an INTERMEDIATE of this render (pptx -> PDF -> PNG), so it always exists. Whether
     # it is promoted to a deliverable beside the .pptx is the user's call at hand-off.
-    pdf_dest = pdf
+    pdf_dest, notes_pdf = pdf, None
     if deliverables and pdf is None:
         die("--deliverables needs a full-deck render; re-run without --fast")
     if deliverables:
@@ -4561,6 +4705,16 @@ def main(argv):
                 shutil.move(pdf, pdf_dest)   # move, not replace: the source is a temp dir that may
         except OSError:                      # sit on a different filesystem
             pdf_dest = pdf                   # couldn't move (odd mount/permissions)
+        # …and the SPEAKER HANDOUT beside it: the artifact a presenter rehearses from, which this
+        # skill demanded the notes for and then never delivered.
+        notes_dest = os.path.join(os.path.dirname(os.path.abspath(pptx)) or ".",
+                                  os.path.splitext(os.path.basename(pptx))[0] + "-notes.pdf")
+        try:
+            notes_pdf = render_notes_pdf(soffice, pptx, notes_dest)
+        except Exception as exc:              # a handout must never cost the delivery
+            print("note: the speaker handout could not be written (%s); the deck is unaffected"
+                  % exc, file=sys.stderr)
+            notes_pdf = None
 
     # Self-contained flip-through viewer — parked BESIDE the .pptx (deck root), same as the PDF, so
     # the user finds it without digging into render/. It references the PNGs through the render subdir
@@ -4603,7 +4757,10 @@ def main(argv):
         print("pdf/viewer: not generated (deck still in progress) — at hand-off, once the user "
               "confirms the deck is final, re-run with --deliverables")
     else:
-        print("pdf: {}".format(pdf_dest))
+        print("pdf: {}  (PDF/UA: tagged, with the alt text carried through)".format(pdf_dest))
+        if notes_pdf:
+            print("speaker handout: {}  (one page per slide: the slide above its notes — the "
+                  "artifact to rehearse from, and to hand out afterwards)".format(notes_pdf))
     if viewer:
         print("preview: {}  (open in a browser; arrow keys flip)".format(
             Path(viewer).resolve().as_uri()))

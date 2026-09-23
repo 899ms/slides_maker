@@ -760,7 +760,7 @@ def check_canon(deck_path, evidence, errors: list[str]) -> None:
         import canon_probe                                            # noqa: PLC0415
         found = canon_probe.faults(str(deck_path), evidence if isinstance(evidence, dict) else None)
     except Exception as exc:                                          # never silently
-        print(f"  [--] canon rules NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        not_checked(f"  [--] canon rules NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     errors.extend("canon: " + f for f in found)
 
@@ -1302,7 +1302,7 @@ def check_style_applied(evidence: dict[str, Any], build_script: Path,
         # NOT an error. A look this checker cannot classify (a generated/bespoke identity whose
         # pick names the preset that art-directed it) is an UNVERIFIED field, not a defect, and
         # blocking it would teach people to waive the gate that guards the real case.
-        print("  [--] design.style_pick NOT CHECKED — " + msg.replace("\n", " "))
+        not_checked("  [--] design.style_pick NOT CHECKED — " + msg.replace("\n", " "))
 
 
 def check_surface_contract(evidence: dict[str, Any], deck_path: Path | None,
@@ -1322,7 +1322,7 @@ def check_surface_contract(evidence: dict[str, Any], deck_path: Path | None,
                                      design.get("surface_sections_waived"),
                                      design.get("surface_section_terms"))
     except Exception as exc:                       # never fail the gate on the checker itself
-        print(f"  [--] surface contract NOT CHECKED — {exc.__class__.__name__}: {exc} "
+        not_checked(f"  [--] surface contract NOT CHECKED — {exc.__class__.__name__}: {exc} "
               f"(not the same as clean)")
         return
     if facts.get("note"):
@@ -1354,7 +1354,7 @@ def check_register_guard(evidence: dict[str, Any], deck_path: Path | None,
         spec.loader.exec_module(module)
         violations, facts = module.check(deck_path, None, {"design_plan": design})
     except Exception as exc:
-        print(f"  [--] register guard NOT CHECKED — {exc.__class__.__name__}: {exc} "
+        not_checked(f"  [--] register guard NOT CHECKED — {exc.__class__.__name__}: {exc} "
               f"(not the same as clean)")
         return
     if facts.get("note"):
@@ -1385,7 +1385,7 @@ def check_direction_applied(evidence: dict[str, Any], deck_path: Path | None,
         spec.loader.exec_module(module)
         problems, facts = module.check(deck_path, gates={"design_plan": design})
     except Exception as exc:
-        print(f"  [--] direction NOT CHECKED — {exc.__class__.__name__}: {exc} "
+        not_checked(f"  [--] direction NOT CHECKED — {exc.__class__.__name__}: {exc} "
               f"(not the same as clean)")
         return
     if facts.get("note"):
@@ -1496,13 +1496,13 @@ def check_template_profile(evidence: dict[str, Any], deck_path: Path | None,
     try:
         checker = load_template_profile_checker()
     except Exception as exc:
-        print(f"  [--] TEMPLATE PROFILE NOT CHECKED — {exc.__class__.__name__}: {exc} "
+        not_checked(f"  [--] TEMPLATE PROFILE NOT CHECKED — {exc.__class__.__name__}: {exc} "
               f"(not the same as clean)")
         return
     try:
         finds, facts = checker.check(str(deck_path), gates=evidence)
     except Exception as exc:
-        print(f"  [--] template profile NOT CHECKED — {exc} (not the same as clean)")
+        not_checked(f"  [--] template profile NOT CHECKED — {exc} (not the same as clean)")
         return
     if facts.get("palette_not_checked"):
         print(f"  [--] template profile: the PALETTE could not be measured — "
@@ -1535,7 +1535,7 @@ def check_purpose(evidence: dict[str, Any], deck_path: Path | None,
     try:
         checker = load_purpose_checker()
     except Exception as exc:
-        print(f"  [--] PURPOSE NOT CHECKED — {exc.__class__.__name__}: {exc} (not clean)")
+        not_checked(f"  [--] PURPOSE NOT CHECKED — {exc.__class__.__name__}: {exc} (not clean)")
         return
     sec = evidence.get("purpose") if isinstance(evidence.get("purpose"), dict) else {}
     extra = (evidence.get("design") or {}).get("purpose_section_terms") if isinstance(
@@ -1544,7 +1544,7 @@ def check_purpose(evidence: dict[str, Any], deck_path: Path | None,
         probs, facts = checker.check(str(deck_path), checker.recorded_purpose(evidence),
                                      extra_terms=extra, waive=(sec or {}).get("waived"))
     except Exception as exc:
-        print(f"  [--] purpose NOT CHECKED — {exc} (not clean)")
+        not_checked(f"  [--] purpose NOT CHECKED — {exc} (not clean)")
         return
     print(f"  [ok] purpose: bound to {facts['purpose']!r} ({facts['label']})")
     if facts.get("fidelity"):
@@ -1581,14 +1581,14 @@ def check_talk_time(evidence: dict[str, Any], deck_path: Path | None,
         ctt = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(ctt)
     except Exception as exc:
-        print(f"  [--] TALK TIME NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        not_checked(f"  [--] TALK TIME NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     waived = (evidence.get("talk_time") or {}).get("waived") if isinstance(
         evidence.get("talk_time"), dict) else None
     try:
         findings, facts = ctt.check(str(deck_path), ctt.recorded_minutes(evidence), waive=waived)
     except Exception as exc:
-        print(f"  [--] talk time NOT CHECKED — {exc} (not clean)")
+        not_checked(f"  [--] talk time NOT CHECKED — {exc} (not clean)")
         return
     print("  [ok] talk time: {:.0f}-{:.0f} min of speech for a {:.0f}-minute slot "
           "({} of {} slides carry notes)".format(facts["estimate"][0], facts["estimate"][1],
@@ -1629,14 +1629,14 @@ def check_qa_backup(evidence: dict[str, Any], deck_path: Path | None,
         cqb = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cqb)
     except Exception as exc:
-        print(f"  [--] Q&A BACKUP NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        not_checked(f"  [--] Q&A BACKUP NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     waived = (evidence.get("qa_backup") or {}).get("waived") if isinstance(
         evidence.get("qa_backup"), dict) else None
     try:
         findings, facts = cqb.check(str(deck_path), cqb.recorded_qa(evidence), waive=waived)
     except Exception as exc:
-        print(f"  [--] Q&A backup NOT CHECKED — {exc} (not clean)")
+        not_checked(f"  [--] Q&A backup NOT CHECKED — {exc} (not clean)")
         return
     print("  [ok] Q&A backup: {} anticipated question(s) against {} slide(s)".format(
         facts["questions"], facts["slides"]))
@@ -1678,7 +1678,7 @@ def check_citations(evidence: dict[str, Any], deck_path: Path | None,
         cc = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(cc)
     except Exception as exc:
-        print(f"  [--] CITATIONS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        not_checked(f"  [--] CITATIONS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     waived = (evidence.get("citations") or {}).get("waived") if isinstance(
         evidence.get("citations"), dict) else None
@@ -1686,7 +1686,7 @@ def check_citations(evidence: dict[str, Any], deck_path: Path | None,
         findings, facts = cc.check(str(deck_path), cc.recorded_citations(evidence),
                                    root=str(deck_path.resolve().parent), waive=waived)
     except Exception as exc:
-        print(f"  [--] citations NOT CHECKED — {exc} (not clean)")
+        not_checked(f"  [--] citations NOT CHECKED — {exc} (not clean)")
         return
     print("  [ok] citations: {} cited key(s), {} style, reference list on slide(s) {}".format(
         facts["cited"], facts["style"], facts["list_slides"] or "—"))
@@ -1725,12 +1725,12 @@ def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,
     try:
         checker = load_fonts_checker()
     except Exception as exc:                       # never fail the gate on the checker itself
-        print(f"  [--] FONTS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        not_checked(f"  [--] FONTS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     try:
         findings, facts = checker.check(str(deck_path))
     except Exception as exc:
-        print(f"  [--] FONTS NOT CHECKED — {exc} (not the same as clean: the faces this deck "
+        not_checked(f"  [--] FONTS NOT CHECKED — {exc} (not the same as clean: the faces this deck "
               f"names were never tested)")
         return
     for sev, face, why in findings:
@@ -1768,7 +1768,7 @@ def check_register_pixels(evidence: dict[str, Any], deck_path: Path | None,
     try:
         checker = load_register_pixels_checker()
     except Exception as exc:                       # never fail the gate on the checker itself
-        print(f"  [--] design.palette NOT CHECKED against the pixels — "
+        not_checked(f"  [--] design.palette NOT CHECKED against the pixels — "
               f"{exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     taste = None
@@ -1781,7 +1781,7 @@ def check_register_pixels(evidence: dict[str, Any], deck_path: Path | None,
     try:
         probs, facts = checker.check(deck_path.parent, taste=taste, design=design)
     except Exception as exc:
-        print(f"  [--] design.palette NOT CHECKED against the pixels — "
+        not_checked(f"  [--] design.palette NOT CHECKED against the pixels — "
               f"{exc.__class__.__name__}: {exc} (not the same as clean)")
         return
     if facts.get("waived"):
@@ -1789,7 +1789,7 @@ def check_register_pixels(evidence: dict[str, Any], deck_path: Path | None,
         return
     codes = [c for c, _ in probs]
     if "NO RENDERS" in codes:
-        print("  [--] design.palette NOT CHECKED against the pixels — no renders beside the deck")
+        not_checked("  [--] design.palette NOT CHECKED against the pixels — no renders beside the deck")
         return
     if facts.get("band"):
         print("  look history: " + facts["band"])
@@ -2354,6 +2354,35 @@ def load_surface_checker() -> Any:
     return module
 
 
+# ── the COVERAGE LEDGER ──────────────────────────────────────────────────────────────────────
+# The same reason as on the shared path: a check that could NOT bind prints its own line and
+# nothing counts them, so a clean run reads as full coverage whether every check bound or half of
+# them did. Measured in one session: three separate gates were silent on every deck because the
+# field they read was never asked for, and each was found by a human reading the transcript.
+_NOT_CHECKED: list[tuple[str, str]] = []
+
+
+def not_checked(line: str) -> None:
+    """Print a check's own NOT-CHECKED line UNCHANGED, and record that it did not bind."""
+    print(line)
+    txt = _re.sub(r"^\s*\[--\]\s*", "", str(line)).strip()
+    m = _re.match(r"(.{0,40}?)\s*(?:NOT CHECKED|not checked)\s*[—-]?\s*(.*)$", txt, _re.S)
+    name = (m.group(1).strip(" :") if m else txt[:40]) or "check"
+    why = (m.group(2).strip() if m else txt)
+    _NOT_CHECKED.append((name, why))
+
+
+def print_coverage_ledger() -> None:
+    """Say how many checks bound. Printed pass or fail — the pass is when nobody looks."""
+    if not _NOT_CHECKED:
+        print("  [ok] coverage: every check that applies to this deck bound")
+        return
+    print(f"  [--] COVERAGE: {len(_NOT_CHECKED)} check(s) could NOT bind and therefore checked "
+          f"nothing:")
+    for name, why in _NOT_CHECKED:
+        print(f"       · {name}: {why[:150]}")
+
+
 def load_template_profile_checker() -> Any:
     # Same one-question-one-implementation rule as load_style_checker() above.
     path = Path(__file__).with_name("check_template_profile.py")
@@ -2761,6 +2790,7 @@ def main() -> int:
         print(f"cannot read gate input: {exc}", file=sys.stderr)
         return 2
     errors = evaluate(lint, components, args.build_script, evidence, args.evidence.parent)
+    print_coverage_ledger()
     if errors:
         # Numbered `[i/n]` and totalled again at the end: a bare `- ` list read through `tail`
         # shows some errors with no hint that more exist, which turns one batched report into a

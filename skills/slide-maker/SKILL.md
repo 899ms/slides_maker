@@ -548,6 +548,21 @@ than a quarter of the slot) are notes. **No budget recorded, or notes on fewer t
 is NOT CHECKED and says which** — a deck that will be READ is never late, and an estimate built from
 a third of the talk is worse than none because it reads like a whole one. Waive in writing
 (`{"talk_time": {"waived": "…"}}`) when the slot really did change.
+🔴 **"PASSED" IS NOT "CHECKED" — read the COVERAGE line.** Every gate run now ends with
+`[gates] COVERAGE: N section(s) ran — X bound, Y NOT CHECKED`, one row per section that could not
+bind and why. Measured, which is why it exists: three gates were silent on every deck because
+nothing asked for the field they read, the template gate could bind to 1 of 11 registered
+templates, and each was found by a human reading a transcript rather than by the tool. A row is
+not a failure — a section that does not apply to this deck is correctly unchecked — but an
+unread ledger is how a capability goes quietly unused. The Codex delivery gate prints the same
+tally.
+🔴 **THE DELIVERED PDF NOW KEEPS ITS ALT TEXT, AND THERE IS A SPEAKER HANDOUT.** `--deliverables`
+exports through LibreOffice's PDF/UA filter: measured, the plain export produced a tagged PDF with
+ZERO `/Alt` values, so every image description the a11y gate demanded stopped at the .pptx — in
+the one artifact that gets emailed. The raster is byte-identical, so nothing downstream changes.
+It also writes **`<deck>-notes.pdf`**, one page per slide with the slide above its notes: this
+skill requires speaker notes and reads them to estimate the talk's length, and then handed over
+two artifacts in which they are invisible. A deck with no notes gets no handout and says so.
 🔴 **A PRESENTED DECK IS NAVIGATED, NOT JUST READ — and until now this library could not make one
 jump.** Measured: `hlinkClick` appeared only in `_EA_FOLLOWERS`, a constant listing XML element order,
 and `click_action` in no file at all, so every "backup slide" this skill ever built was reachable only by arrowing past

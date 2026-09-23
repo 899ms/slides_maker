@@ -173,6 +173,32 @@ No two fingerprints are identical; one pair shares a single colour and binding n
 neither steals the other's deck — verified by building one from each. Decks built from four
 templates I never tested against bind to themselves and pass.
 
+### "Passed" was not "checked", and the artifacts that leave the pipeline
+
+**A coverage ledger, on both runtimes.** A gate that could not bind printed its own NOT-CHECKED
+line and nothing counted them, so a run ended with "all hand-off gates pass — the deck may be
+handed over" whether 24 sections bound or 15 did. Every run now ends with
+`COVERAGE: N section(s) ran — X bound, Y NOT CHECKED`, one row per section and the reason it could
+not bind. The rows are not failures — a section that does not apply to this deck is correctly
+unchecked — but this release exists partly because three such gates were silent on every deck and
+each was found by a person reading a transcript rather than by the tool.
+
+**The delivered PDF was dropping every alt text.** Measured: `--convert-to pdf` exports a *tagged*
+PDF — `/StructTreeRoot`, `/Marked true`, `/Lang` — carrying NOT ONE `/Alt` value, so every image
+description the a11y gate demands stopped at the .pptx, in the one artifact that gets emailed.
+The export now goes through LibreOffice's PDF/UA filter: `pdfuaid` is declared and the
+descriptions are present. The raster is byte-identical (same hash over the page pixmap) and the
+file is about a hundred bytes larger, so every PNG and every pixel gate downstream is unaffected;
+a LibreOffice that rejects the filter falls back to the plain export and says the PDF will carry
+no alt text. WCAG 2.1 AA became the ADA Title II standard in April 2026, which is what makes this
+a floor rather than a nicety for the decks this skill is used for.
+
+**A speaker handout, which did not exist.** This skill requires speaker notes and reads them to
+estimate the talk's length, then handed over a .pptx and a slide PDF in which the notes are
+invisible — the artifact a presenter actually rehearses from was never produced. `--deliverables`
+now also writes `<deck>-notes.pdf`: one page per slide, the slide above its own notes. A deck with
+notes on no slide gets no handout rather than a run of empty pages, and says so.
+
 ### Also
 
 - `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from

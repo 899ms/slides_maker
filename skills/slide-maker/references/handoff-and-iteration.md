@@ -70,6 +70,14 @@ does NOT fall back**: you named the pages, so a deck whose mapping is uncertain 
 silent widening — it exits 1 and tells you to render the whole deck.
 
 ## What the deliverable folder contains
+
+🔴 **`<deck>-notes.pdf` — the speaker handout** — is written by `--deliverables` whenever the deck
+has notes on any slide: one page per slide, the slide above its own notes. It is what a presenter
+rehearses from and what gets handed out afterwards, and it did not exist while this skill required
+speaker notes and read them to estimate the talk's length. The deck PDF beside it is exported
+through LibreOffice's **PDF/UA** filter, so the alt text the a11y gate demanded is actually in the
+file a reader receives — the plain export carried none.
+
 The deck + `render/` PNGs, the build script (source of truth), the speaker-notes source,
 `assets/` (incl. `sourced/credits.txt` when sourced photos exist),
 and the final lint/stats snapshot — a tidy, buildable bundle.

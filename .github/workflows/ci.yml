@@ -724,6 +724,15 @@ jobs:
             echo "::error::Q&A backup suite did not run to completion"; exit 1; }
           python scripts/check_qa_backup.py --selftest
 
+      # The artifacts that LEAVE the pipeline: the PDF a reader receives, the handout a presenter
+      # rehearses from, and the tally that stops "passed" from being read as "checked".
+      - name: Deliverable accessibility + the coverage ledger
+        run: |
+          set -o pipefail
+          python tests/test_deliverable_accessibility.py | tee /tmp/deliv.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/deliv.log || {
+            echo "::error::deliverable-accessibility suite did not run to completion"; exit 1; }
+
       # An academic deck's citations were strings somebody typed onto a slide: nothing in this
       # skill read a bibliography, so nothing could tell a correct year from a remembered one.
       - name: Citations (markers, reference list and .bib must agree)

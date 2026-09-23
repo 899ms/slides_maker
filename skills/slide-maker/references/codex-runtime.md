@@ -268,6 +268,10 @@ interview answer at all — each reads the built file itself):
   `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
   `UNCOVERED TEMPLATE FURNITURE`. Deviating is legitimate design; record it as
   `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
+- **The COVERAGE tally.** The gate prints `[--] COVERAGE: N check(s) could NOT bind and therefore
+  checked nothing`, one row each. Read it before reporting a clean gate: a check that could not
+  bind checked nothing, and on this runtime the usual cause is a field the interview did not ask
+  for. It is not an error and it is not coverage either.
 - **`check_template_profile.py` + `derive_template_contract.py`** — a registered template's look
   must be OBEYED. 🔴 Record the template you used as an `interview.picks` row
   (`{"axis": "template", "source": "stated", "value": "<registered name>"}`; the `--init` scaffold

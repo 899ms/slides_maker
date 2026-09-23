@@ -215,6 +215,12 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   `UNCITED` as a note. Reads full-width CJK markers too, and resolves the .bib path INSIDE the deck
   folder — a record written by a build is not a licence to read anywhere on the machine. Nothing
   recorded is NOT CHECKED. Both gate paths; waivable in writing.
+- `render_deck.py` also owns three hand-off behaviours worth knowing by name: the **COVERAGE
+  ledger** (`[gates] COVERAGE: N ran — X bound, Y NOT CHECKED`, printed on every gate run, pass or
+  fail, because the run that passes is the one nobody reads), the **PDF/UA export** (the plain
+  `--convert-to pdf` produced a tagged PDF with zero `/Alt` values, so every image description
+  stopped at the .pptx; the raster is byte-identical either way), and **`<deck>-notes.pdf`**, the
+  speaker handout `--deliverables` writes when the deck has notes.
 - `derive_template_contract.py` — writes a registered template's `## Machine-checkable contract`
   block FROM the template, never by retyping it. 🔴 Measured: 10 of the 11 registered templates had
   no contract, so `check_template_profile.py` could bind to none of them and a deck built from any
