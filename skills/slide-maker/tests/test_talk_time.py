@@ -93,6 +93,38 @@ ck(ctt.recorded_minutes({"content": {"talk_minutes": 8},
                          "interview": {"length": "a 20 min talk"}}) == 8,
    "an explicit content.talk_minutes wins over the prose answer — the field exists to correct it")
 
+print("\n— 🔴 scripts other than English and Chinese")
+for label, sample in (("Russian", "это русский текст доклада " * 20),
+                      ("Arabic", "هذا نص عربي للاختبار " * 20),
+                      ("Greek", "αυτό είναι ελληνικό κείμενο " * 20),
+                      ("Hindi", "यह हिंदी पाठ है " * 20)):
+    w, c = ctt.spoken_load(sample)
+    ck(w > 20 and c == 0,
+       "%s counts as WORDS — `[A-Za-z0-9]` scored it ZERO, and a slide with no scored load reads "
+       "as a slide with no notes, so a fully-noted deck was refused with 'only 0 of N slides carry "
+       "speaker notes'" % label, (w, c))
+ck(ctt.unsegmented_script("นี่คือข้อความภาษาไทยสำหรับการทดสอบ" * 4) == "Thai"
+   and ctt.unsegmented_script("the quick brown fox " * 10) is None,
+   "🔴 Thai/Lao/Khmer are NAMED and refused: they have no word spaces and are not CJK, this module "
+   "has a sourced rate for neither, and the token count would come from where the combining marks "
+   "fall — an estimate that looks like one and is not")
+_thai = deck("thai.pptx", ["นี่คือข้อความภาษาไทยสำหรับการทดสอบ" * 4] * 6)
+try:
+    ctt.check(_thai, 10)
+    ck(False, "a Thai deck is NOT CHECKED rather than given a number", "it returned a verdict")
+except RuntimeError as exc:
+    ck("Thai" in str(exc), "a Thai deck is NOT CHECKED, and the refusal names the script", exc)
+
+print("\n— a PER-SLIDE budget is not the talk's budget")
+for text in ("12 slides, 10 minutes each", "10 minutes per slide", "每页 2 分钟", "每张幻灯片 3 分钟"):
+    ck(ctt.parse_minutes(text) is None,
+       "🔴 %r reads as NOTHING, not as the talk length — taken as the budget it makes a correctly "
+       "sized deck look twelve times too long, and refusing is the one reading that cannot "
+       "mislead" % text, ctt.parse_minutes(text))
+ck(ctt.parse_minutes("20 分钟") == 20 and ctt.parse_minutes("第 20 分钟开始") == 20,
+   "...while an ordinary Chinese duration still parses — the guard is the per-unit marker, not the "
+   "character")
+
 print("\n— what the estimate is built from: the SPOKEN thread, never the slide")
 wall = deck("wall.pptx", [words(40)] * 8, on_slide=words(120))
 bare = deck("bare.pptx", [words(40)] * 8)          # same notes, no wall of on-slide words

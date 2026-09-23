@@ -100,7 +100,9 @@ def check(pptx, qa, *, waive=None):
             findings.append(("block", "NO QUESTION", "entry %d records a slide but not the question "
                                                      "it answers — the question is the part that "
                                                      "gets rehearsed" % i))
-        if not isinstance(slide, int) or not 1 <= slide <= n:
+        # `isinstance(True, int)` is True in Python, so a JSON `true` would silently become slide 1
+        # — a real slide number, checked against a real deck, and wrong.
+        if isinstance(slide, bool) or not isinstance(slide, int) or not 1 <= slide <= n:
             findings.append(("block", "NO SLIDE",
                              "%r points at slide %r, which this %d-slide deck does not have"
                              % (q[:60] or ("entry %d" % i), slide, n)))

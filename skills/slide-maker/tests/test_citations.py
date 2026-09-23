@@ -156,6 +156,56 @@ ck(cit.doi_url(DB["lustig2007"]) == "https://doi.org/10.1002/mrm.21391"
    and cit.doi_url(DB["solo"]) is None,
    "a DOI becomes a URL, a bare url field is used as-is, and an entry with neither links nowhere")
 
+print("\n— 🔴 the shapes a REAL bibliography has, that a tidy fixture does not")
+ODD = cit.parse_bibtex(r"""
+@article{smith2020a, author={Smith, Jane}, title={First}, journal={J}, year={2020}}
+@article{smith2020b, author={Smith, Jane}, title={Second}, journal={J}, year={2020}}
+@article{jones2020,  author={Jones, K},    title={Other}, journal={J}, year={2020}}
+@online{who, author = {{World Health Organization}}, title = {Guidance}, year = {2021},
+  url = {https://who.int/x}}
+@article{inst, author = {{Institute for Science and Technology}}, title = {Report},
+  publisher = {IST}, year = {2019}}
+@article{jr, author = {King, Jr., Martin Luther}, title = {T}, journal = {J}, year = {1963}}
+@article{jr2, author = {Martin Luther King Jr.}, title = {T}, journal = {J}, year = {1963}}
+@article{oth, author = {Real, Author and others}, title = {T}, journal = {J}, year = {2020}}
+@article{twice, author={One, A}, title={First definition}, journal={J}, year={2001}}
+@article{twice, author={Two, B}, title={Second definition}, journal={J}, year={2002}}
+""")
+_sib = [ODD["smith2020a"], ODD["smith2020b"], ODD["jones2020"]]
+_sfx = cit.suffixes(_sib)
+ck(_sfx == ["a", "b", ""],
+   "🔴 two papers by the same first author in the same year get a/b — before this BOTH were "
+   "'(Smith, 2020)': ambiguous on the slide, and one entry could read as cited because the other "
+   "was", _sfx)
+ck(cit.in_text(_sib[1], "author-year", suffix=_sfx[1]) == "(Smith, 2020b)"
+   and "(2020b)" in cit.format_reference(_sib[1], "author-year", suffix=_sfx[1]),
+   "...and the letter lands on the MARKER and on the LINE — on one only, the reader still cannot "
+   "tell which is which")
+ck(cit.surname(cit.authors(ODD["who"])[0]) == "World Health Organization",
+   "🔴 a doubly-braced corporate author is ONE atomic name — the braces are BibTeX saying so, and "
+   "stripping them first cites the WHO as 'W. H. Organization'",
+   cit.surname(cit.authors(ODD["who"])[0]))
+ck(len(cit.authors(ODD["inst"])) == 1,
+   "...and the ` and ` INSIDE that braced name does not split it into two authors",
+   cit.authors(ODD["inst"]))
+ck(cit.initials(cit.authors(ODD["who"])[0]) == "",
+   "an atomic name has no initials to invent")
+for key in ("jr", "jr2"):
+    ck(cit.surname(cit.authors(ODD[key])[0]) == "King"
+       and cit.initials(cit.authors(ODD[key])[0]) == "M. L.",
+       "a Jr. suffix is not a name: %s reads as M. L. King in BibTeX's 3-part form and in plain "
+       "prose alike" % key,
+       (cit.surname(cit.authors(ODD[key])[0]), cit.initials(cit.authors(ODD[key])[0])))
+ck(cit.authors(ODD["oth"]) == ["Real, Author"] and cit.more_authors(ODD["oth"]),
+   "🔴 `and others` is BibTeX's own et al., not a person — left in, the reference list credits an "
+   "author literally named 'others'", cit.authors(ODD["oth"]))
+ck("et al." in cit.format_reference(ODD["oth"], "numeric", 1),
+   "...and it comes out as et al. on the line", cit.format_reference(ODD["oth"], "numeric", 1))
+ck(cit.duplicate_keys(open(pathlib.Path(TMP / "refs.bib"), encoding="utf-8").read() if False else
+                      "@article{twice,a={1}}\n@article{twice,a={2}}\n@article{once,a={3}}") == ["twice"],
+   "a key defined twice is REPORTED — BibTeX keeps the first, so a silent second definition "
+   "resolves a citation to a paper the author did not mean")
+
 print("\n— the marker scanner, on text that is not a fixture")
 ck(cc.numeric_markers("as in [3], [5, 7] and [10-12]") == {3, 5, 7, 10, 11, 12},
    "single, list and RANGE markers", cc.numeric_markers("as in [3], [5, 7] and [10-12]"))
@@ -232,6 +282,37 @@ finds, _f = cc.check(build("ay2.pptx", "As (Lustig et al., 2007) and (Nobody et 
 ck(any(s == "block" and c == "DANGLING MARKER" and "nobody" in m.lower() for s, c, m in finds),
    "...and an author-year marker in no entry blocks too — the check is not numeric-only", finds)
 
+print("\n— the gate on the same real-bibliography shapes")
+(TMP / "odd.bib").write_text(r"""
+@article{smith2020a, author={Smith, Jane}, title={First paper here}, journal={J}, year={2020}}
+@article{smith2020b, author={Smith, Jane}, title={Second paper here}, journal={J}, year={2020}}
+@article{twice, author={One, A}, title={Defined twice}, journal={J}, year={2001}}
+@article{twice, author={Two, B}, title={Second definition}, journal={J}, year={2002}}
+""", encoding="utf-8")
+_odd = cit.parse_bibtex((TMP / "odd.bib").read_text(encoding="utf-8"))
+_pair = [_odd["smith2020a"], _odd["smith2020b"]]
+good_ay = build("ok_ay.pptx", "Both hold: (Smith, 2020a) and (Smith, 2020b).",
+                entries=_pair, style="author-year")
+finds, _f = cc.check(good_ay, {"bib": "odd.bib", "style": "author-year",
+                               "keys": ["smith2020a", "smith2020b"]}, root=str(TMP))
+ck(finds == [], "two same-author same-year papers check clean when the a/b letters are used", finds)
+finds, _f = cc.check(build("amb.pptx", "As (Smith, 2020) showed.", entries=_pair, style="author-year"),
+                     {"bib": "odd.bib", "style": "author-year",
+                      "keys": ["smith2020a", "smith2020b"]}, root=str(TMP))
+ck(any(s == "block" and c == "AMBIGUOUS MARKER" for s, c, m in finds),
+   "🔴 a bare (Smith, 2020) over two 2020 Smith papers is AMBIGUOUS, not dangling — told "
+   "'dangling', an author goes looking for a missing paper instead of adding the letter", finds)
+finds, _f = cc.check(good_ay, {"bib": "odd.bib", "style": "numeric",
+                               "keys": ["smith2020a", "twice"]}, root=str(TMP))
+ck(any(s == "block" and c == "DUPLICATE KEY" for s, c, m in finds),
+   "a cited key defined twice in the .bib blocks — the citation may resolve to the wrong paper "
+   "and nothing downstream can see it", finds)
+(TMP / "not.bib").write_text("<html><body>this is not a bibliography</body></html>", encoding="utf-8")
+finds, _f = cc.check(clean, {"bib": "not.bib", "style": "numeric", "keys": KEYS}, root=str(TMP))
+ck([c for _s, c, _m in finds] == ["NOT A BIBLIOGRAPHY"],
+   "a file that parses to ZERO entries is named as the problem ONCE — 'no such entry' once per "
+   "key would send the author looking for the keys instead of at the file", finds)
+
 print("\n— what it refuses to answer, the waiver, and the path rule")
 for plan, why in ((None, "no citation plan recorded"),
                   ({"bib": "refs.bib", "keys": []}, "a plan with no keys")):
@@ -252,6 +333,26 @@ _fw, _fa = cc.check(clean, dict(PLAN, keys=KEYS + ["ghost2099"]), root=str(TMP),
                     waive="ghost2099 is cited from the appendix deck, which ships separately")
 ck(_fa.get("waived") and [f for f in _fw if f[0] == "block"],
    "a written waiver does not delete the finding — it is recorded beside it")
+
+print("\n— 🔴 the reference PAGE, in both styles, measured rather than trusted")
+_page_ents = [ODD["smith2020a"], ODD["smith2020b"], ODD["who"], ODD["jr"], ODD["oth"]]
+for style in ("numeric", "author-year"):
+    _p = dk.blank_deck()
+    _s = _p.slides.add_slide(_p.slide_layouts[6])
+    cit.reference_page(_s, _page_ents, style=style)
+    faults = [f for f in (dk.lint_layout(_p, strict=True) or []) if f[1] == "CRITICAL"]
+    ck(faults == [], "%s: the built page carries no CRITICAL geometry fault" % style, faults)
+    _boxes = [(sh.left / 914400.0, sh.top / 914400.0, sh.width / 914400.0, sh.height / 914400.0)
+              for sh in _s.shapes if sh.has_text_frame and sh.text_frame.text.strip()]
+    ck(len(_boxes) >= len(_page_ents), "%s: every entry got a text block" % style, len(_boxes))
+_src = (SKILL / "scripts" / "citations.py").read_text(encoding="utf-8")
+ck('gut = 0.55 if style == "numeric" else 0.0' in _src
+   and "would stack through the rows below" in _src,
+   "🔴 only the NUMERIC style gets a marker gutter, and the code says why: on a render, a marker "
+   "in a gutter sized for '[1]' piled '(Smith & van der Berg, 2020a)' through the three rows "
+   "below it — while both lints passed and the citation gate reported clean. The width check "
+   "beside it is a GUARD against that edit returning; no public call can reach it, so nothing "
+   "here exercises it and this line says so rather than implying coverage")
 
 print("\n— the rendered page: one typography, whatever the .bib happened to carry")
 prs = Presentation(clean)

@@ -538,8 +538,11 @@ budget and I will confirm the slide count"). Record it as `content.talk_minutes`
 scaffolds now show the field — and `scripts/check_talk_time.py` compares the BUILT deck against it
 on both gate paths. It reads the SPEAKER NOTES only, because that is what gets said out loud (the
 on-slide words are not spoken by anyone following PRE-FLIGHT 1, and counting both would punish the
-decks that follow it), and it reports a BAND, never one number: 130-150 words per minute for Latin,
-180-220 characters per minute for CJK. `OVER THE SLOT` blocks — with how many slides' worth of
+decks that follow it), and it reports a BAND, never one number: 130-150 words per minute for a
+word-delimited script, 180-220 characters per minute for CJK. **A script it has no sourced rate
+for and cannot segment — Thai, Lao, Khmer — is NOT CHECKED by name rather than given a number**,
+and a per-slide budget (`10 minutes each` / `每页 2 分钟`) is read as no budget at all, because
+taken as the talk's length it makes a correctly sized deck look twelve times too long. `OVER THE SLOT` blocks — with how many slides' worth of
 speech to cut — while `TIGHT`, `UNDER THE SLOT` and `ONE SLIDE EATS THE TALK` (a page carrying more
 than a quarter of the slot) are notes. **No budget recorded, or notes on fewer than half the slides,
 is NOT CHECKED and says which** — a deck that will be READ is never late, and an estimate built from

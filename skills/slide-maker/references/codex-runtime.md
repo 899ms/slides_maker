@@ -257,8 +257,9 @@ interview answer at all — each reads the built file itself):
   `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
 - **`check_talk_time.py`** — a talk must fit its SLOT. Record the budget as
   `"content": {"talk_minutes": <minutes>}` (the `--init` scaffold shows it); the gate estimates the
-  spoken length from the SPEAKER NOTES as a band (130-150 wpm Latin · 180-220 CJK characters per
-  minute) and errors with `OVER THE SLOT` when the deck is long even at the fast end, naming how
+  spoken length from the SPEAKER NOTES as a band (130-150 wpm for any word-delimited script ·
+  180-220 CJK characters per minute; Thai/Lao/Khmer are NOT CHECKED by name, and a per-slide
+  budget such as `10 minutes each` is read as no budget) and errors with `OVER THE SLOT` when the deck is long even at the fast end, naming how
   many slides' worth to cut. `TIGHT` / `UNDER THE SLOT` / `ONE SLIDE EATS THE TALK` are reported,
   not errors. No budget, or notes on fewer than half the slides, is NOT CHECKED — never clean.
   Waive with `{"talk_time": {"waived": "<why the slot is not what it says>"}}`.

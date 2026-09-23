@@ -44,9 +44,12 @@ import citations as cit                                                   # noqa
 # that only knows ASCII parentheses reports every one of them as uncited.
 _WIDE = {"（": "(", "）": ")", "，": ", ", "［": "[", "］": "]", "、": ", ", "；": "; "}
 _NUMERIC = re.compile(r"\[(\d+(?:\s*[,;–—-]\s*\d+)*)\]")
+# The trailing letter is CAPTURED, not skipped: `(Smith, 2020a)` and `(Smith, 2020b)` are two
+# different papers, and a scanner that drops the letter cannot tell them apart — which is the
+# ambiguity `citations.suffixes()` exists to remove.
 _AUTHOR_YEAR = re.compile(
-    r"\(\s*([^()\d,;]{2,60}?)\s*,\s*(\d{4})[a-z]?\s*\)"        # (Lustig et al., 2007)
-    r"|([A-Z一-鿿][^()\d,;]{1,40}?)\s*\(\s*(\d{4})[a-z]?\s*\)")   # Lustig et al. (2007)
+    r"\(\s*([^()\d,;]{2,60}?)\s*,\s*(\d{4}[a-z]?)\s*\)"        # (Lustig et al., 2007)
+    r"|([A-Z一-鿿][^()\d,;]{1,40}?)\s*\(\s*(\d{4}[a-z]?)\s*\)")   # Lustig et al. (2007)
 
 
 def recorded_citations(gates):
@@ -160,7 +163,8 @@ def check(pptx, plan, *, root=".", waive=None):
         raise RuntimeError("the bibliography path %r resolves outside the deck folder — a record is "
                            "not a licence to read anywhere on the machine" % bib_rel)
     try:
-        db = cit.parse_bibtex(open(bib, encoding="utf-8").read())
+        raw = open(bib, encoding="utf-8").read()
+        db = cit.parse_bibtex(raw)
     except Exception as exc:
         raise RuntimeError("could not read the bibliography %s: %s" % (bib_rel, exc))
     try:
@@ -173,6 +177,20 @@ def check(pptx, plan, *, root=".", waive=None):
     findings = []
     facts = {"slides": len(pages), "style": style, "entries": len(db), "cited": len(keys),
              "bib": bib_rel, "list_slides": [], "uncited": [], "dangling": []}
+
+    if not db:
+        # A file with no entries is almost never an empty bibliography — it is the wrong file, or
+        # a format this parser does not read. Saying "no such entry" once per key would send the
+        # author looking for the keys instead of at the file.
+        return [("block", "NOT A BIBLIOGRAPHY",
+                 "%s holds no BibTeX entries at all (%d bytes read). Either it is not the file you "
+                 "meant, or it is an export format this reads nothing of — check it opens as "
+                 "BibTeX before chasing the keys." % (bib_rel, len(raw)))], facts
+    for k in sorted(set(cit.duplicate_keys(raw)) & set(keys)):
+        findings.append(("block", "DUPLICATE KEY",
+                         "%r is defined more than once in %s. BibTeX keeps the first and so does "
+                         "this, so the citation may resolve to a paper you did not mean — and "
+                         "nothing downstream can see that it happened." % (k, bib_rel)))
 
     entries, ok_keys = [], []
     for k in keys:
@@ -194,6 +212,7 @@ def check(pptx, plan, *, root=".", waive=None):
         entries.append(e)
         ok_keys.append(k)
 
+    sfx = cit.suffixes(entries) if style == "author-year" else [""] * len(entries)
     list_slides = set()
     for i, e in enumerate(entries, 1):
         on = _rendered_on(pages, e)
@@ -215,14 +234,14 @@ def check(pptx, plan, *, root=".", waive=None):
             hit = i in numeric_markers(body_elsewhere) or i in numeric_markers(notes_all)
         else:
             names = cit.authors(e)
-            want = (_norm(cit.surname(names[0])), cit.year(e))
+            want = (_norm(cit.surname(names[0])) if names else "", cit.year(e) + sfx[i - 1])
             hit = want in author_year_markers(body_elsewhere) or want in author_year_markers(notes_all)
         if not hit:
             facts["uncited"].append(k)
             findings.append(("note", "UNCITED",
                              "%r is in the reference list and %s appears on no slide — an entry "
                              "nothing points to is padding, and in a defense it reads as padding."
-                             % (k, cit.in_text(e, style, i))))
+                             % (k, cit.in_text(e, style, i, suffix=sfx[i - 1]))))
 
     body_elsewhere = " \n".join(b for j, (b, _n) in enumerate(pages, 1) if j not in list_slides)
     if style == "numeric":
@@ -238,14 +257,32 @@ def check(pptx, plan, *, root=".", waive=None):
                                  "this is, waive it in writing.)"
                                  % (n, len(entries), "y" if len(entries) == 1 else "ies")))
     else:
-        known = {(_norm(cit.surname(cit.authors(e)[0])), cit.year(e)) for e in entries
-                 if cit.authors(e)}
+        known, bare = set(), {}
+        for e, x in zip(entries, sfx):
+            names = cit.authors(e)
+            if not names:
+                continue
+            sn, y = _norm(cit.surname(names[0])), cit.year(e)
+            known.add((sn, y + x))
+            bare.setdefault((sn, y), []).append(y + x)
         for who, yr in sorted(author_year_markers(body_elsewhere)):
-            if (who, yr) not in known:
-                facts["dangling"].append("%s %s" % (who, yr))
-                findings.append(("block", "DANGLING MARKER",
-                                 "(%s, %s) is cited on a slide and is in no reference list entry — "
-                                 "a marker an audience member cannot resolve" % (who, yr)))
+            if (who, yr) in known:
+                continue
+            alts = bare.get((who, yr))
+            if alts and len(alts) > 1:
+                # The marker is not wrong, it is UNRESOLVABLE — and an author told "dangling" here
+                # would go looking for a missing paper instead of adding the letter.
+                findings.append(("block", "AMBIGUOUS MARKER",
+                                 "(%s, %s) matches %d entries in the reference list (%s). Two "
+                                 "papers by the same first author in the same year need the a/b "
+                                 "letter on the marker AND on the line — citations.suffixes() "
+                                 "assigns it, and reference_page already uses it."
+                                 % (who, yr, len(alts), ", ".join(alts))))
+                continue
+            facts["dangling"].append("%s %s" % (who, yr))
+            findings.append(("block", "DANGLING MARKER",
+                             "(%s, %s) is cited on a slide and is in no reference list entry — "
+                             "a marker an audience member cannot resolve" % (who, yr)))
     if waive and findings:
         facts["waived"] = waive
     return findings, facts

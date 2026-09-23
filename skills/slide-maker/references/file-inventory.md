@@ -184,7 +184,9 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   measured by grep before this file, nothing ever compared the built deck against the answer: no
   words per minute, no per-slide budget, nothing. Estimates the spoken length from the SPEAKER NOTES
   only (on-slide text is not spoken by a presenter following this skill's own rule) as a BAND —
-  130-150 wpm Latin, 180-220 CJK characters per minute — and reports OVER THE SLOT (a block, with
+  130-150 wpm for any word-delimited script (Cyrillic/Greek/Arabic/Devanagari included), 180-220
+  CJK characters per minute, and Thai/Lao/Khmer NOT CHECKED by name because no sourced rate exists
+  here and their token counts come from where the combining marks fall — and reports OVER THE SLOT (a block, with
   how many slides' worth to cut), TIGHT, UNDER THE SLOT and ONE SLIDE EATS THE TALK. No recorded
   budget, or notes on fewer than half the slides, is NOT CHECKED and says which: an estimate of a
   third of a talk dressed as a whole one is worse than none. Both gate paths; waivable in writing.

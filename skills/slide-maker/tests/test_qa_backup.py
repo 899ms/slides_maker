@@ -165,6 +165,12 @@ finds, _f = cqb.check(path, [{"question": "", "slide": 5}])
 ck(any(c == "NO QUESTION" for _s, c, _m in finds),
    "a slide recorded without its question is a finding — the QUESTION is the part that gets "
    "rehearsed, and a bare slide number records nothing about the room", finds)
+for val in (True, False):
+    finds, _f = cqb.check(path, [{"question": "q", "slide": val}])
+    ck(any(c == "NO SLIDE" for _s, c, _m in finds),
+       "🔴 a JSON %s is not slide 1 — `isinstance(True, int)` is True in Python, so a boolean "
+       "would silently become a real slide number, checked against a real deck, and wrong"
+       % str(val).lower(), finds)
 finds, _f = cqb.check(path, ["slide 5"])
 ck(any(c == "MALFORMED" for _s, c, _m in finds),
    "a malformed entry is reported, not crashed on — a gate that dies on a typo is a gate the "

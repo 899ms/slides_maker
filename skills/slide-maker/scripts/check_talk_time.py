@@ -54,7 +54,36 @@ MIN_NOTED_SHARE = 0.5           # below this, the estimate is reported as untrus
 OVERRUN_TOLERANCE = 1.05        # 5% over the budget is a rounding argument, not an overrun
 THIN_SHARE = 0.6                # a talk using less than this much of its slot under-fills it
 
-_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9'’\-]*")
+# ANY script's word, not just the Latin alphabet. `[A-Za-z0-9]` scored a Russian, Greek, Arabic or
+# Hebrew deck at ZERO words — and since a slide with no scored load reads as a slide with no notes,
+# a fully-noted Cyrillic deck was refused with "only 0 of 12 slides carry speaker notes", which
+# sends the author to write notes they had already written. `[^\W_]` is Unicode-aware, and CJK is
+# removed before the count so a character is never charged twice.
+_WORD = re.compile(r"[^\W_]+(?:['’\-][^\W_]+)*", re.UNICODE)
+
+# Below this ratio of scored tokens to written characters, the notes are in a script this cannot
+# segment (Thai, Lao, Khmer have no word spaces and are not CJK). Refusing is the only honest
+# answer: a words-per-minute rate applied to two tokens is not an estimate.
+MIN_SCORED_RATIO = 0.05
+
+# Scripts written WITHOUT word spaces that are not CJK. This module has no sourced speaking rate
+# for them and will not print an unsourced one: `[^\W_]+` splits Thai at its combining marks, which
+# yields a token count that looks like words and is not, so the estimate would be wrong in a way
+# nobody could see. Named and refused instead.
+_UNSEGMENTED = ((0x0E00, 0x0E7F, "Thai"), (0x0E80, 0x0EFF, "Lao"), (0x0F00, 0x0FFF, "Tibetan"),
+                (0x1000, 0x109F, "Burmese"), (0x1780, 0x17FF, "Khmer"))
+_UNSEGMENTED_SHARE = 0.2
+
+
+def unsegmented_script(text):
+    """The name of an unsegmentable script this text is mostly written in, or None."""
+    t = "".join((text or "").split())
+    if len(t) < 40:
+        return None
+    for lo, hi, name in _UNSEGMENTED:
+        if sum(1 for ch in t if lo <= ord(ch) <= hi) >= len(t) * _UNSEGMENTED_SHARE:
+            return name
+    return None
 
 
 def _cjk_ranges():
@@ -66,11 +95,17 @@ def _cjk_ranges():
 
 
 def spoken_load(text, ea_ord=None):
-    """(latin_words, cjk_chars) in one piece of spoken text."""
+    """(words, cjk_chars) in one piece of spoken text — words in ANY word-delimited script.
+
+    The word-per-minute band is calibrated on English prepared speech; applied to Russian, Greek,
+    Arabic or Hebrew it is an approximation rather than a measurement, and that is still the right
+    answer, because the alternative was scoring those decks at zero.
+    """
     ea_ord = ea_ord or _cjk_ranges()
-    cjk = sum(1 for ch in (text or "") if any(a <= ord(ch) <= b for a, b in ea_ord))
-    latin = len(_WORD.findall(text or ""))
-    return latin, cjk
+    t = text or ""
+    cjk = sum(1 for ch in t if any(a <= ord(ch) <= b for a, b in ea_ord))
+    rest = "".join(" " if any(a <= ord(ch) <= b for a, b in ea_ord) else ch for ch in t)
+    return len(_WORD.findall(rest)), cjk
 
 
 def minutes_band(latin_words, cjk_chars):
@@ -103,6 +138,13 @@ def parse_minutes(text):
     for pat, mult in _MIN_PATTERNS:
         m = pat.search(head)
         if m:
+            # 🔴 "10 minutes each" is a PER-SLIDE budget. Read as the talk's length it makes a
+            # correctly sized deck look twelve times too long, so it is refused (NOT CHECKED)
+            # rather than guessed at — the one reading that cannot mislead.
+            if re.match(r"\s*(?:each|apiece|per\b|/\s*(?:slide|page)|每)",
+                        head[m.end():m.end() + 14], re.I) or \
+               re.search(r"(?:\b(?:per|each)\s*$|每[^0-9]{0,6}$)", head[:m.start()], re.I):
+                return None
             try:
                 val = float(m.group(1)) * mult
             except ValueError:
@@ -175,10 +217,24 @@ def check(pptx, minutes, *, waive=None):
     for n, text in slides:
         latin, cjk = spoken_load(text, ea)
         lo, hi = minutes_band(latin, cjk)
-        per.append({"slide": n, "words": latin, "cjk": cjk, "lo": lo, "hi": hi})
+        per.append({"slide": n, "words": latin, "cjk": cjk, "lo": lo, "hi": hi,
+                    "chars": len("".join((text or "").split()))})
     noted = [p for p in per if p["words"] or p["cjk"]]
     facts = {"minutes": minutes, "slides": len(per), "noted": len(noted),
              "per_slide": per, "rates": {"latin_wpm": list(LATIN_WPM), "cjk_cpm": list(CJK_CPM)}}
+    written = sum(p["chars"] for p in per)
+    script = unsegmented_script(" ".join(t or "" for _n, t in slides))
+    if script:
+        raise RuntimeError(
+            "the speaker notes are written in %s, which has no word spaces and is not CJK. This "
+            "module has a sourced speaking rate for neither, and it will not print an unsourced "
+            "one: the word count would come from where the combining marks fall, which looks like "
+            "an estimate and is not. Judge the length by rehearsing it." % script)
+    if written >= 200 and sum(p["words"] + p["cjk"] for p in per) < written * MIN_SCORED_RATIO:
+        raise RuntimeError(
+            "the speaker notes are %d characters long and almost none of them can be scored — the "
+            "script they are written in is one this cannot segment. A words-per-minute rate "
+            "applied to a handful of tokens is not an estimate" % written)
     if len(noted) < max(1, int(round(MIN_NOTED_SHARE * len(per)))):
         raise RuntimeError(
             "only %d of %d slides carry speaker notes, so a duration built from them would be an "

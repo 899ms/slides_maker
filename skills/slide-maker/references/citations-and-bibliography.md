@@ -39,7 +39,22 @@ reference lines — enough for a reader to identify the work and find it — not
 copy-edited style. A deck is not a manuscript.
 
 Non-English decks: `in_text(..., etal="等", amp="与")`. A hardcoded "et al." puts English into an
-otherwise Chinese sentence, and the gate reads full-width `（张三等，2020）` markers too.
+otherwise Chinese sentence, and the gate reads full-width `（张三等，2020）` markers too. The particle
+is joined without a space when it is CJK, because Chinese does not space one.
+
+🔴 **Two papers by the same first author in the same year need the a/b letter**, on the marker AND
+on the reference line — without it both are `(Smith, 2020)`, which is ambiguous to the reader and
+indistinguishable to the gate, so an uncited second paper reads as cited. `cit.suffixes(entries)`
+assigns them in cited order and `reference_page` already applies them; pass `suffix=` to `in_text`
+and `format_reference` when you write a marker yourself. A bare `(Smith, 2020)` over two such
+entries is reported as `AMBIGUOUS MARKER`, not as a dangling one.
+
+**Names the parser gets right, and why they are hard.** A doubly-braced author
+(`author = {{World Health Organization}}`) is ONE atomic name — that is what the braces mean — so
+it is not cited as "W. H. Organization", and a ` and ` inside such a name does not split it.
+`and others` is BibTeX's own *et al.*, not a person. A `Jr.`/`Sr.`/`III` suffix is never mistaken
+for a given name, in either the three-part `King, Jr., Martin Luther` form or plain
+`Martin Luther King Jr.`.
 
 ## 2. 🔴 It refuses rather than filling in
 
@@ -67,6 +82,9 @@ Record the plan, and `scripts/check_citations.py` checks the BUILT file on **bot
 | `NOT IN THE LIST` | block | a cited key that appears in no reference list on any slide: the marker points at a page that is not in the deck |
 | `NO SUCH ENTRY` | block | a cited key the bibliography does not contain |
 | `INCOMPLETE ENTRY` | block | no author / title / year — the line cannot be built without inventing a field |
+| `AMBIGUOUS MARKER` | block | the marker matches two entries — same first author, same year, no a/b letter |
+| `DUPLICATE KEY` | block | a cited key is defined twice in the .bib; BibTeX keeps the first, so the citation may resolve to the wrong paper |
+| `NOT A BIBLIOGRAPHY` | block | the file parses to zero entries — the wrong file, or a format this reads nothing of |
 | `UNCITED` | note | an entry in the list that no slide points to: padding, and in a defense it reads as padding |
 
 The bibliography path is resolved **inside the deck folder** and refused if it escapes — a record
@@ -78,6 +96,12 @@ marker legitimately resolves somewhere else (a handout, a linked preprint):
 `{"citations": {"waived": "<why>"}}`.
 
 ## 4. Link the DOIs — and give the deck its own link colour
+
+**The reference page's layout differs by style, and it is not cosmetic:** the numeric style hangs
+`[n]` in a gutter, author-year has no gutter at all because its marker IS the opening of the line.
+Measured on a render: setting an author-year marker in the gutter sized for `[1]` piled
+`(Smith & van der Berg, 2020a)` through the three rows below it — while both lints passed and this
+gate reported clean. The page is worth looking at, not just gating.
 
 `reference_page` links every DOI it has, so a reference is one click from the paper. It also calls
 **`dk.set_link_color(slide, ink)`** by default, and that is not decoration:

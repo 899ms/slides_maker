@@ -65,6 +65,39 @@ hyperlink colour through the new `deckkit.set_link_color`: a renderer paints a l
 THEME's hlink colour whatever fill the run itself carries, so one references page came out half navy
 and half Word-blue, decided by which entries happened to have a DOI.
 
+### The audit of the three, on inputs they were not built around
+
+Nine defects, each found by a probe rather than by a test that already passed.
+
+**Citations.** Two papers by the same first author in the same year were BOTH `(Smith, 2020)` —
+ambiguous to the reader and indistinguishable to the gate, so an uncited second paper read as
+cited; `citations.suffixes()` now assigns the a/b letter in cited order, `reference_page` applies
+it to marker and line alike, and a bare marker over two such entries is reported as
+`AMBIGUOUS MARKER` rather than as a dangling one. A doubly-braced corporate author cited as
+"W. H. Organization" — the braces are BibTeX saying the name is atomic, and they were stripped
+before anything read them. `and others` credited an author literally named "others". A `Jr.`
+suffix was taken for a given name. A key defined twice was silently resolved to one of the two,
+now `DUPLICATE KEY`. A file that parses to zero entries said "no such entry" once per key, sending
+the author after the keys instead of at the file; now `NOT A BIBLIOGRAPHY`, once.
+
+**Talk time.** `[A-Za-z0-9]` scored Russian, Greek, Arabic and Devanagari at ZERO words — and a
+slide with no scored load reads as a slide with no notes, so a fully-noted Cyrillic deck was
+refused with "only 0 of 12 slides carry speaker notes". Any word-delimited script now counts.
+Thai, Lao and Khmer are named and NOT CHECKED instead: they have no word spaces, are not CJK, and
+no sourced rate for them exists here — the token count would come from where the combining marks
+fall, which looks like an estimate and is not. A per-slide budget ("10 minutes each", and its
+Chinese equivalent) read as the talk's length made a correctly sized deck look twelve times too
+long; it is now read as no budget at all.
+
+**Q&A backup.** `isinstance(True, int)` is True in Python, so a JSON `true` became slide 1 — a
+real slide number, checked against a real deck, and wrong.
+
+**And one no gate could see.** The author-year reference page set its marker in the gutter sized
+for `[1]`, so `(Smith & van der Berg, 2020a)` wrapped inside half an inch and piled through the
+three rows below it. Both lints passed, the citation gate reported clean, and every test was
+green; only the rendered picture showed it. Author-year now has no gutter — its marker IS the
+opening of the line — and the width check beside it raises rather than stacking.
+
 ### Also
 
 - `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from
