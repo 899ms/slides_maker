@@ -29,7 +29,8 @@ from pptx.dml.color import RGBColor                                       # noqa
 from pptx.util import Inches, Pt                                          # noqa: E402
 
 import check_fonts_resolve as CF                                          # noqa: E402
-import check_template_profile as CT                                       # noqa: E402
+import check_template_profile as CT                                        # noqa: E402
+import derive_template_contract as DTC                                       # noqa: E402
 
 OK, BAD = [], []
 
@@ -138,6 +139,123 @@ with tempfile.TemporaryDirectory() as tmp:
     finds, _ = _with_registry([entry], lambda: CT.check(deck))
     ck(any(c == "UNCOVERED TEMPLATE FURNITURE" for c, _ in finds),
        "an EMPTY TEXT BOX over the rect does not count as covering it")
+
+print("\n— 🔴 a DESIGNED template has no layouts to fingerprint, and 10 of 11 registered ones are that")
+
+
+def _painted_deck(path, colours, face="Helvetica Neue"):
+    """A deck that paints exactly these colours — all a designed template leaves in the file."""
+    from pptx.enum.shapes import MSO_SHAPE
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(10), Inches(5.625)
+    sl = prs.slides.add_slide(prs.slide_layouts[6])
+    for i, c in enumerate(colours):
+        sh = sl.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.3 + i * 0.4), Inches(0.3),
+                                 Inches(0.35), Inches(0.35))
+        sh.fill.solid()
+        sh.fill.fore_color.rgb = RGBColor.from_string(c)
+    tb = sl.shapes.add_textbox(Inches(0.6), Inches(2.0), Inches(6), Inches(1))
+    r = tb.text_frame.paragraphs[0].add_run()
+    r.text = "Body copy long enough to be the dominant face on this page."
+    r.font.size = Pt(14)
+    r.font.name = face
+    prs.save(path)
+
+
+DESIGNED = {"match": {"palette_any": ["14181F", "ECEFF4"]},
+            "palette": {"core": ["14181F", "ECEFF4"],
+                        "accents": ["34D1A6", "F2B04E"],
+                        "expect": ["14181F", "1E242E", "ECEFF4", "34D1A6", "F2B04E"]},
+            "fonts": {"FONT": "Helvetica Neue"}}
+
+with tempfile.TemporaryDirectory() as tmp:
+    deck = os.path.join(tmp, "d.pptx")
+    _painted_deck(deck, ["14181F", "ECEFF4", "34D1A6"])
+    finds, facts = _with_registry([_profile(tmp, DESIGNED)], lambda: CT.check(deck))
+    ck(facts["template"] == "fake-template" and finds == [],
+       "a deck painting the template's ground + ink BINDS on colour alone and passes — a designed "
+       "template ships style.py and NO .pptx, so it has neither layout names nor a canvas size, "
+       "and the layout fingerprint cannot describe it at all")
+    ck(facts["palette"]["coverage"] == "3/5",
+       "...and the REST of the palette is reported as coverage, never as a finding: measured, a "
+       "4-slide deck built with modern-dark's own api painted 7 of its 11 declared colours, so a "
+       "'60% of the palette' floor would have fired on a correct deck one slide shorter")
+
+with tempfile.TemporaryDirectory() as tmp:
+    deck = os.path.join(tmp, "d.pptx")
+    _painted_deck(deck, ["14181F", "ECEFF4"])                  # ground + ink, not one accent
+    finds, _f = _with_registry([_profile(tmp, DESIGNED)], lambda: CT.check(deck))
+    ck(any(c == "PALETTE OFF PROFILE" for c, _m in finds),
+       "a deck in the template's ground and ink with NONE of its accents is a finding — the "
+       "accents are what make it this template rather than a grey box in its ground colour")
+
+print("\n— 🔴 the RECORD binds where the fingerprint cannot: 'declared it, did not build it'")
+_REC = {"interview": {"picks": [{"axis": "template", "source": "stated", "value": "fake-template"}]}}
+with tempfile.TemporaryDirectory() as tmp:
+    deck = os.path.join(tmp, "d.pptx")
+    _painted_deck(deck, ["003C66", "FFFFFF"], face="Calibri")  # a stock deck, none of the palette
+    ent = [_profile(tmp, DESIGNED)]
+    try:
+        _with_registry(ent, lambda: CT.check(deck))
+        ck(False, "a stock deck binds to NOTHING by fingerprint")
+    except RuntimeError as exc:
+        ck("matches no registered template" in str(exc),
+           "a stock deck binds to NOTHING by fingerprint — it has none of the template's colours, "
+           "which is precisely the deck the gate most needs to catch")
+    finds, facts = _with_registry(ent, lambda: CT.check(deck, gates=_REC))
+    codes = sorted(c for c, _m in finds)
+    ck(codes == ["FONT OFF PROFILE", "PALETTE OFF PROFILE"],
+       "...and bound BY THE RECORDED NAME the same deck is caught twice: it declared the template "
+       "and built in stock colours and the stock face. Only the record reaches this failure, which "
+       "is why the gate reads it before falling back to the fingerprint")
+    _pal_msg = next((m for c, m in finds if c == "PALETTE OFF PROFILE"), "")
+    ck("#14181F" in _pal_msg and "ground and the text colour" in _pal_msg,
+       "...and the palette finding is the CORE one, naming the ground and ink it paints neither "
+       "of — the two branches share a code, so a test that reads only the code cannot tell the "
+       "core check from the accent check and a mutant that deletes the core check survives")
+    ck(facts["palette"]["core_missing"] == ["14181F", "ECEFF4"],
+       "...with both missing core colours in the facts, where a report can quote them")
+
+with tempfile.TemporaryDirectory() as tmp:
+    deck = os.path.join(tmp, "d.pptx")
+    _painted_deck(deck, ["14181F", "ECEFF4", "34D1A6"])
+    bad_rec = {"interview": {"picks": [{"axis": "template", "source": "stated",
+                                        "value": "a client deck.pptx"}]}}
+    finds, facts = _with_registry([_profile(tmp, DESIGNED)],
+                                  lambda: CT.check(deck, gates=bad_rec))
+    ck(facts["template"] == "fake-template" and finds == [],
+       "a recorded name that matches NO registered template falls back to the fingerprint rather "
+       "than failing the deck — a user's own .pptx is a legitimate answer on that axis")
+    ck(CT.recorded_template({"interview": {"picks": [{"axis": "template", "value": "<which one>"}]}})
+       is None,
+       "...and an unfilled scaffold placeholder is not read as a template name")
+
+print("\n— the contract GENERATOR derives, and refuses to invent")
+ck(DTC.from_style('BG = RGBColor(0x14, 0x18, 0x1F)\nFONT = "Helvetica Neue"\n')[0] == {"BG": "14181F"},
+   "colours come out of the style module's own constants — a hand-copied hex is a number somebody "
+   "remembered, which is what the never-invent floor is about")
+_cols = {"BG": "14181F", "PANEL": "1E242E", "TEAL": "34D1A6"}
+ck(DTC.identifying(_cols) == ["14181F", "34D1A6"],
+   "the identifying pair is ground + LOUDEST colour by chroma, not by constant name — modern-dark "
+   "calls its accent TEAL, nightdata calls its ORANGE, and a name-matching reader fingerprints "
+   "both on two near-blacks")
+ck(DTC._ink_for("14181F", ["14181F", "1E242E", "ECEFF4"]) == "ECEFF4",
+   "the ink is the colour furthest from the ground in luminance — a text colour that does not "
+   "contrast its ground is not a text colour")
+with tempfile.TemporaryDirectory() as tmp:
+    d = Path(tmp) / "t"
+    d.mkdir()
+    (d / "profile.md").write_text("# t\n\nprose\n\n## Machine-checkable contract\n```json\n{}\n```\n")
+    ck(DTC.insert(d / "profile.md", DESIGNED) == "kept",
+       "🔴 the generator REFUSES to overwrite a contract that is already there. lkeb-lumc's "
+       "hand-written one carries layout names, a title colour and a must_cover rectangle that no "
+       "palette scan can reproduce — and running --force over it once did exactly that")
+    ck(DTC.insert(d / "profile.md", DESIGNED, force=True) == "wrote",
+       "...and --force is the one way past it, so replacing a contract is always a decision")
+_stock = DTC._deckkit_palette()
+ck("003C66" in _stock and len(_stock) > 3,
+   "deckkit's own palette is readable, which is what lets the generator refuse to build a "
+   "fingerprint out of it")
 
 print("\n— template profile: NO CONTRACT must be NOT CHECKED, never clean")
 with tempfile.TemporaryDirectory() as tmp:

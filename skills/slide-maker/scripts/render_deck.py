@@ -1947,8 +1947,10 @@ def _template_profile_gate(pptx, gates):
     ignore every line of it silently. `check_direction_applied.py` exists for the same reason one
     level down: a look that was CHOSEN must be verified against the deck that SHIPS.
 
-    Binds by FINGERPRINT (the deck's own layout names + canvas size), so a runtime that never
-    records which template it used is still checked. No contract block -> NOT CHECKED, never clean.
+    Binds by the RECORDED template first and by FINGERPRINT otherwise — a runtime that never
+    records which template it used is still checked, and a deck that DECLARED one and then ignored
+    it is caught, which the fingerprint alone cannot do (a deck with none of the template's colours
+    binds to nothing). No contract block -> NOT CHECKED, never clean.
     """
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
@@ -1957,7 +1959,7 @@ def _template_profile_gate(pptx, gates):
         print(f"  [--] TEMPLATE PROFILE: NOT CHECKED — {exc.__class__.__name__}: {exc}")
         return
     try:
-        finds, facts = ctp.check(pptx)
+        finds, facts = ctp.check(pptx, gates=gates)
     except Exception as exc:
         print(f"  [--] template profile: NOT CHECKED — {exc}")
         return

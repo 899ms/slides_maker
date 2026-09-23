@@ -98,6 +98,47 @@ three rows below it. Both lints passed, the citation gate reported clean, and ev
 green; only the rendered picture showed it. Author-year now has no gutter — its marker IS the
 opening of the line — and the width check beside it raises rather than stacking.
 
+### The registry gate that could bind to one template in eleven
+
+`check_template_profile.py` exists because a template's `profile.md` was read by two producers and
+by no check. Measured now: **10 of the 11 registered templates carry no contract block at all**, and
+they are the reason — they ship a `style.py` and NO .pptx, so they have neither layout names nor a
+canvas size, and the `match` fingerprint could not describe them. They are not built-in presets
+either, so `check_style_applied` does not know them. A deck built from any of the ten was checked
+against its template's look by nothing.
+
+Designed templates now fingerprint on COLOUR. `scripts/derive_template_contract.py` writes each
+contract FROM the template — the palette out of the style module's own constants (three dialects,
+because the registry uses three), the faces out of its own assignments, the profile's backticked
+hex tokens when there is no style module — and leaves out whatever it cannot derive. It refuses a
+palette that is merely deckkit's defaults, which would match every stock deck ever built, and it
+refuses to overwrite a contract that is already there.
+
+🔴 **The check is structural, and the round number was wrong.** A first version asked for 60% of the
+declared palette; a 4-slide deck built with modern-dark's own API paints 7 of its 11 colours, so
+that floor would have fired on a correct deck one slide shorter. What a deck from a template cannot
+avoid is its ground, its ink and at least one accent — so those are the finding and the rest is
+reported as coverage.
+
+🔴 **And the fingerprint alone cannot catch the failure that matters.** A deck that declared a
+template and then built in stock colours has none of that template's colours, so it binds to
+nothing and the gate says NOT CHECKED. The gate now reads the RECORDED template first
+(`interview.picks` axis `template`) and falls back to the fingerprint: the same stock deck, bound
+by name, is caught twice — `PALETTE OFF PROFILE` and `FONT OFF PROFILE`. An unrecognised name (a
+user's own .pptx) falls back rather than failing the deck.
+
+### Two questions the interview never asked
+
+The Q&A-backup and citation gates read `content.qa` and `content.citations`, and Step 0 asked for
+neither — `interview-protocol.md` contained the word "backup" zero times and "bibliography" zero
+times. That file's own opening states the rule it was breaking: *an axis with no artifact demanding
+it is an axis that goes unasked*. Both are now conditional asks — a deck the room can interrupt, a
+deck that cites published work — and the content checkpoint echoes what was captured on a
+`prepared:` line so the user can veto it before a slide exists. Both stay optional: the gates
+report NOT CHECKED when nothing is recorded, which is right for a deck that has neither. The
+failure being fixed is the other one, where nobody asks, nothing is recorded, and the gates are
+silent forever while looking green.
+
 ### Also
 
 - `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from

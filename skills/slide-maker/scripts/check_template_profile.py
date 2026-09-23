@@ -39,6 +39,22 @@ deck's own layout names and canvas size. That matters for the runtimes this skil
 control — a Codex or Kimi run that never records which template it used still gets checked,
 because the deck itself says.
 
+🔴 A DESIGNED TEMPLATE HAS NO LAYOUT NAMES TO FINGERPRINT. Measured: 10 of the 11 registered
+templates ship a `style.py` + `profile.md` and NO .pptx, so they have neither layout names nor a
+canvas size — the `match` block above cannot describe them, and `declared_preset` does not know
+them either (they are not among the 18 built-in presets). A deck built from one of them was checked
+against its template's look by nothing at all. What those templates DO have that reaches the
+pixels is a palette and a type decision, so they fingerprint on colour:
+
+    "match":   {"palette_any": ["14181F", "34D1A6"]},
+    "palette": {"expect": ["14181F", "1E242E", "ECEFF4", "C2C9D4", "7A8495", "34D1A6", "F2B04E"],
+                "min_share": 0.6},
+    "fonts":   {"FONT": "Helvetica Neue", "MONO": "Menlo"}
+
+Binding takes TWO identifying colours; the check wants most of the palette. That gap is the whole
+point — a deck that painted the background right and set everything else in deckkit's stock navy
+binds and then fails, which is exactly the "declared it, did not build it" shape.
+
 🔴 NO CONTRACT, NO CLAIM. A registered template with no `## Machine-checkable contract` block
 reports NOT CHECKED and exits 2. "There was nothing to check" and "everything checked out" are
 different sentences and this never prints the second one for the first reason.
@@ -131,12 +147,59 @@ def load_profiles():
 
 def _deck_facts(prs):
     names, sizes = [], (prs.slide_width / EMU, prs.slide_height / EMU)
+    # `colours` is filled lazily by bind(): walking every slide's XML is wasted on the templates
+    # that fingerprint on layout names, which is most of the supplied-.pptx ones.
     for lay in prs.slide_layouts:
         try:
             names.append(lay.name)
         except Exception:
             pass
-    return {"layout_names": names, "slide_size_in": [round(sizes[0], 3), round(sizes[1], 3)]}
+    return {"layout_names": names, "slide_size_in": [round(sizes[0], 3), round(sizes[1], 3)],
+            "colours": None}
+
+
+def recorded_template(gates):
+    """The template the record NAMES, or None — from either runtime's shape.
+
+    🔴 WHY THIS MATTERS MORE THAN THE FINGERPRINT for a designed template. A fingerprint answers
+    "which template is this deck?", which a deck that IGNORED its template cannot be asked: it has
+    none of that template's colours, so it binds to nothing and the gate says NOT CHECKED. Measured:
+    a stock deckkit deck claiming `modern-dark` bound to nothing by fingerprint and, bound BY NAME,
+    was caught twice over (PALETTE OFF PROFILE + FONT OFF PROFILE). "Declared it and did not build
+    it" is the failure this gate is for, and only the recorded name reaches it.
+    """
+    if not isinstance(gates, dict):
+        return None
+    picks = ((gates.get("interview") or {}).get("picks")
+             if isinstance(gates.get("interview"), dict) else None)
+    for row in (picks or []):
+        if isinstance(row, dict) and str(row.get("axis") or "").strip().lower() == "template":
+            val = str(row.get("value") or "").strip()
+            if val and not val.startswith("<"):
+                return val
+    for holder in ("design_plan", "design", "content"):
+        blk = gates.get(holder)
+        if isinstance(blk, dict):
+            val = str(blk.get("template") or "").strip()
+            if val and not val.startswith("<"):
+                return val
+    return None
+
+
+def resolve_wanted(name, profiles):
+    """The registered template a recorded name refers to, or None. Tolerant on purpose: a record
+    says "modern-dark" or "modern dark (registry)" or a path, and none of those should be an error
+    — an unrecognised name falls back to the fingerprint rather than failing the deck."""
+    if not name:
+        return None
+    key = re.sub(r"[^a-z0-9]+", "", str(name).lower())
+    for n, _d, _c, _pf in profiles:
+        if re.sub(r"[^a-z0-9]+", "", n.lower()) == key:
+            return n
+    for n, _d, _c, _pf in profiles:                   # "modern-dark (registry template)"
+        if re.sub(r"[^a-z0-9]+", "", n.lower()) in key:
+            return n
+    return None
 
 
 def bind(prs, profiles, want=None):
@@ -159,9 +222,16 @@ def bind(prs, profiles, want=None):
         if size and any(abs(float(a) - float(b)) > 0.05
                         for a, b in zip(size, facts["slide_size_in"])):
             continue
-        if not want_names and not size:
+        want_pal = [c.upper().lstrip("#") for c in (match.get("palette_any") or []) if c]
+        if want_pal:
+            if facts["colours"] is None:
+                facts["colours"] = deck_colours(prs)
+            hits = [c for c in want_pal if c in facts["colours"]]
+            if len(hits) < len(want_pal):
+                continue                              # the ground AND the ink, or it is not this one
+        if not want_names and not size and not want_pal:
             continue                                  # a match-less contract binds to nothing
-        score = len(want_names) + (1 if size else 0)
+        score = len(want_names) + (1 if size else 0) + (2 if want_pal else 0)
         if best is None or score > best[0]:
             best = (score, (name, d, c, pf))
     return best[1] if best else None
@@ -186,6 +256,22 @@ def _run_colours(shape):
     return out
 
 
+def deck_colours(prs):
+    """Every explicit RGB the deck paints — fills, lines and text alike, as upper-case hex.
+
+    Read from `srgbClr` elements rather than from python-pptx accessors: a designed template sets
+    its palette through deckkit, which writes explicit RGB, and walking the XML catches the colour
+    wherever it landed (a box fill, a rule, a run) without a per-shape-type reader for each.
+    """
+    seen = {}
+    for slide in prs.slides:
+        for el in slide._element.iter(_A + "srgbClr"):
+            v = (el.get("val") or "").upper()
+            if len(v) == 6:
+                seen[v] = seen.get(v, 0) + 1
+    return seen
+
+
 def _dominant_face(prs):
     counts = {}
     for slide in prs.slides:
@@ -202,13 +288,19 @@ def _dominant_face(prs):
     return max(counts, key=counts.get) if counts else None
 
 
-def check(pptx, want=None):
-    """(findings, facts). findings = [(code, message), ...]. Raises when it cannot run."""
+def check(pptx, want=None, gates=None):
+    """(findings, facts). findings = [(code, message), ...]. Raises when it cannot run.
+
+    `want` forces a template by name; `gates` lets the RECORD name it, which is the only path that
+    catches a deck that declared a template and then ignored it.
+    """
     from pptx import Presentation
     prs = Presentation(pptx)
     profiles = load_profiles()
     if not profiles:
         raise RuntimeError("no template profiles are registered (scripts/registry.py --list)")
+    if want is None and gates is not None:
+        want = resolve_wanted(recorded_template(gates), profiles)
     bound = bind(prs, profiles, want=want)
     if bound is None:
         # A profile with no contract block has no `match` fingerprint either — the fingerprint
@@ -255,6 +347,38 @@ def check(pptx, want=None):
                               "is an untested surface."
                               % (", ".join(str(n) for v in stray.values() for n in sorted(v)),
                                  ", ".join(sorted(stray)))))
+
+    # 1b ─ the PALETTE a designed template is, since it has no layouts to be off
+    want_pal = contract.get("palette") or {}
+    core = [c.upper().lstrip("#") for c in (want_pal.get("core") or []) if c]
+    accents = [c.upper().lstrip("#") for c in (want_pal.get("accents") or []) if c]
+    expect = [c.upper().lstrip("#") for c in (want_pal.get("expect") or []) if c]
+    if core or accents:
+        facts["checked"].append("palette")
+        painted = deck_colours(prs)
+        core_missing = [c for c in core if c not in painted]
+        accent_hits = [c for c in accents if c in painted]
+        facts["palette"] = {"core": core, "core_missing": core_missing,
+                            "accents_present": accent_hits,
+                            "coverage": "%d/%d" % (len([c for c in expect if c in painted]),
+                                                   len(expect)) if expect else None}
+        # 🔴 STRUCTURAL, not a share. MEASURED: a 4-slide deck built with modern-dark's own api
+        # painted 7 of its 11 declared colours — a "60% of the palette" floor would fire on a
+        # correct deck one slide shorter, because a short deck has no reason to reach the third
+        # accent or the raised panel. The ground and the ink it cannot avoid.
+        if core_missing:
+            finds.append(("PALETTE OFF PROFILE",
+                          "this deck paints none of %s — the ground and the text colour are the "
+                          "two a deck built from this template cannot avoid. A deck that declared "
+                          "the template and then built in stock colours is the 'declared it, did "
+                          "not build it' shape this gate exists for."
+                          % ", ".join("#" + c for c in core_missing)))
+        elif accents and not accent_hits:
+            finds.append(("PALETTE OFF PROFILE",
+                          "the ground and ink match but NOT ONE of this template's %d accent "
+                          "colours (%s) appears. The accents are what make it this template rather "
+                          "than a grey rectangle in its ground colour."
+                          % (len(accents), ", ".join("#" + c for c in accents[:5]))))
 
     # 2 ─ the font the profile decided on
     want_fonts = contract.get("fonts") or {}

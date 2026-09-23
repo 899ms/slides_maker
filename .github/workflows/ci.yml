@@ -761,6 +761,7 @@ jobs:
             echo "::error::template-profile/fonts suite exited 0 without asserting"; exit 1; }
           python scripts/check_fonts_resolve.py --selftest
           python scripts/check_template_profile.py --selftest
+          python scripts/derive_template_contract.py --selftest
 
       # The Codex delivery gate is the strictest thing in the skill -- it is what stops a Codex
       # run from calling a deck delivered without two schema-valid critic reviews. It shipped

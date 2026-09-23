@@ -1493,7 +1493,7 @@ def check_template_profile(evidence: dict[str, Any], deck_path: Path | None,
               f"(not the same as clean)")
         return
     try:
-        finds, facts = checker.check(str(deck_path))
+        finds, facts = checker.check(str(deck_path), gates=evidence)
     except Exception as exc:
         print(f"  [--] template profile NOT CHECKED — {exc} (not the same as clean)")
         return

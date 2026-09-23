@@ -376,6 +376,27 @@ four template choices:
        **spoken** deck → the **time budget** sets the working count (~1 slide/min), but still **confirm the
        resulting slide count** with the user at the Step-1 content checkpoint before building. Don't ship a
        length the user never saw (e.g. quietly building 14 slides because the content "felt like 14").
+     - 🔴 **Two conditional asks, because a gate whose field nobody records is a gate that never
+       binds.** This file's own opening says it: *an axis with no artifact demanding it is an axis
+       that goes unasked*. Both of these have an artifact now, and neither is asked anywhere else.
+       - **A deck the room can interrupt** (defense · guidance or thesis committee · grant panel ·
+         board readout · conference talk with Q&A) → *"Which questions are you expecting, and which
+         of them do you want a slide ready for?"* Record them as `content.qa`
+         (`[{"question": …, "slide": <the backup that answers it>}]`); `scripts/check_qa_backup.py`
+         then verifies each of those slides can be jumped to and left. Ask ONLY on those decks —
+         a webinar or a teaching deck usually has no prepared answers, and asking everyone would
+         turn the field into paperwork. *(Do not ask self-read decks at all.)*
+       - **A deck that cites published work** (defense · journal club · lab meeting · grant ·
+         literature review) → *"Do you have a .bib / reference list, and do you want numeric `[1]`
+         or author-year `(Smith, 2020)` markers?"* Record it as `content.citations`
+         (`{"bib": …, "style": …, "keys": [...]}` in cited order) and build the page with
+         `citations.reference_page`, which derives every line from the .bib so a year cannot drift.
+         If they have no .bib, say so and cite from what they gave you — do NOT retype references
+         from memory, and do not offer to.
+       - Both are OPTIONAL by design: the gates report NOT CHECKED when nothing is recorded, which
+         is the right answer for a deck that has neither. The failure this bullet prevents is the
+         other one — nobody asks, so nothing is recorded, so the gates are silent forever while
+         looking green.
      - **Appear-builds (in-slide staged reveals) — the USER decides WHETHER; you decide WHERE.**
        A *presented* deck can reveal a slide's content one beat at a time on click so the room follows
        the speaker instead of reading ahead. **Whether to use builds at all is the user's call, offered

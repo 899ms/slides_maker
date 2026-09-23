@@ -215,6 +215,16 @@ waiver once carried a whole deck through `all hand-off gates pass` with no indep
   `UNCITED` as a note. Reads full-width CJK markers too, and resolves the .bib path INSIDE the deck
   folder — a record written by a build is not a licence to read anywhere on the machine. Nothing
   recorded is NOT CHECKED. Both gate paths; waivable in writing.
+- `derive_template_contract.py` — writes a registered template's `## Machine-checkable contract`
+  block FROM the template, never by retyping it. 🔴 Measured: 10 of the 11 registered templates had
+  no contract, so `check_template_profile.py` could bind to none of them and a deck built from any
+  was checked against its template's look by NOTHING — and those 10 ship a `style.py` and no .pptx,
+  so they have neither layout names nor a canvas size for the existing fingerprint to use. It reads
+  the palette out of the style module's own constants (three dialects — `RGBColor(0x..)`,
+  `C("hex")`, bare `"hex"` — and semicolon-chained `dk.FONT = …; dk.MONO = …`, because real
+  registered templates use all of them), falls back to the profile's backticked hex tokens, and
+  LEAVES OUT what it cannot derive. It refuses a palette that is just deckkit's defaults (it would
+  match every stock deck) and refuses to overwrite an existing contract without `--force`.
 - `purposes.py` + `check_purpose.py` — a deck's GENRE declares content it is not finished without,
   checked against the built file on both gate paths. `references/design-by-purpose.md` carried nine
   purpose recipes and, measured by grep, NOTHING consumed it — so every per-purpose rule there was
