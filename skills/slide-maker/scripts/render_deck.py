@@ -2020,6 +2020,133 @@ def _purpose_gate(pptx, gates):
           'record {"purpose": {"waived": "<why this deck genuinely has none>"}}')
 
 
+def _talk_time_gate(pptx, gates):
+    """Does the deck fit the slot the user gave it?
+
+    The interview asks for the time budget in both languages ("for a talk, give me the time budget
+    and I will confirm the slide count") and, measured by grep before this gate existed, nothing
+    ever compared the built deck against the answer. Ending on time is the one thing an audience
+    reliably notices, and it is computable from the speaker notes — so it is computed, as a BAND
+    (130-150 wpm Latin, 180-220 CJK characters per minute), never a single false-precise number.
+
+    Bounded on purpose: no recorded budget -> NOT CHECKED (a deck that will be read is never late),
+    and notes on fewer than half the slides -> NOT CHECKED, because an estimate of a third of the
+    talk dressed as a whole one is worse than none.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_talk_time as ctt
+    except Exception as exc:
+        print(f"  [--] TALK TIME: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    sec = _section(gates, "talk_time") or {}
+    try:
+        findings, facts = ctt.check(pptx, ctt.recorded_minutes(gates), waive=sec.get("waived"))
+    except Exception as exc:
+        print(f"  [--] talk time: NOT CHECKED — {exc}")
+        return
+    print("[gates] talk time: {:.0f}-{:.0f} min of speech for a {:.0f}-minute slot "
+          "({} of {} slides carry notes)".format(facts["estimate"][0], facts["estimate"][1],
+                                                 facts["minutes"], facts["noted"], facts["slides"]))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] talk time: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if facts.get("waived"):
+        print("[gates] talk time WAIVED — {}".format(facts["waived"]))
+        return
+    die("this deck does not fit the time it was given:\n    - "
+        + "\n    - ".join("{}: {}".format(c, m) for _s, c, m in blocks)
+        + '\n    Cut slides or shorten the notes, correct the budget (content.talk_minutes), or '
+          'record {"talk_time": {"waived": "<why the slot is not what it says>"}}')
+
+
+def _citations_gate(pptx, gates):
+    """The markers on the slides, the reference list, and the .bib — the same three things.
+
+    An academic deck's citations were, until `scripts/citations.py`, strings somebody typed onto a
+    slide: nothing read a bibliography and nothing could tell a correct year from a remembered one.
+    Retyping is where a year drifts and an author is dropped, and on a slide a misattributed result
+    is a claim about a real person's work.
+
+    Bounded like its siblings: no recorded citation plan -> NOT CHECKED. Most decks cite nothing.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_citations as cc
+    except Exception as exc:
+        print(f"  [--] CITATIONS: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    sec = _section(gates, 'citations') or {}
+    try:
+        findings, facts = cc.check(pptx, cc.recorded_citations(gates),
+                                   root=str(Path(pptx).resolve().parent), waive=sec.get("waived"))
+    except Exception as exc:
+        print(f"  [--] citations: NOT CHECKED — {exc}")
+        return
+    print("[gates] citations: {} cited key(s), {} style, reference list on slide(s) {}".format(
+        facts["cited"], facts["style"], facts["list_slides"] or "—"))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] citations: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if facts.get("waived"):
+        print("[gates] citations WAIVED — {}".format(facts["waived"]))
+        return
+    die("this deck's citations do not resolve:\n    - "
+        + "\n    - ".join("{}: {}".format(c, m) for _s, c, m in blocks)
+        + '\n    Fix the .bib or the cited keys (content.citations), render the list with '
+          'citations.reference_page, or record '
+          '{"citations": {"waived": "<why a marker legitimately resolves elsewhere>"}}')
+
+
+def _qa_backup_gate(pptx, gates):
+    """The questions the author expected, against the deck they actually built.
+
+    Parking prepared answers after the close is ordinary practice in every room this skill builds
+    for — a defense, a committee, a conference talk, a board readout. What makes it work is being
+    able to JUMP to one while the room watches, and to get back. Until `deckkit.link` existed this
+    library could not make a deck jump at all, so a prepared answer could only be reached by
+    arrowing past everything in between, which is how prepared answers go unused.
+
+    Bounded the same way as the talk-time gate: no recorded questions -> NOT CHECKED. Anticipating
+    questions is a practice, not a law, and a gate that demanded it of every deck would only teach
+    authors to record an empty list.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import check_qa_backup as cqb
+    except Exception as exc:
+        print(f"  [--] Q&A BACKUP: NOT CHECKED — {exc.__class__.__name__}: {exc}")
+        return
+    sec = _section(gates, 'qa_backup') or {}
+    try:
+        findings, facts = cqb.check(pptx, cqb.recorded_qa(gates), waive=sec.get("waived"))
+    except Exception as exc:
+        print(f"  [--] Q&A backup: NOT CHECKED — {exc}")
+        return
+    print("[gates] Q&A backup: {} anticipated question(s) against {} slide(s)".format(
+        facts["questions"], facts["slides"]))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] Q&A backup: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if facts.get("waived"):
+        print("[gates] Q&A backup WAIVED — {}".format(facts["waived"]))
+        return
+    die("the questions this deck prepared for cannot be answered from it:\n    - "
+        + "\n    - ".join("{}: {}".format(c, m) for _s, c, m in blocks)
+        + '\n    Link the backup slide (dk.link / agenda(targets=) / dk.back_link), correct the '
+          'slide number in content.qa, or record '
+          '{"qa_backup": {"waived": "<why the answer lives somewhere else>"}}')
+
+
 def _surface_gate(pptx, gates):
     """A canvas format's contract, checked against the built deck instead of trusted.
 
@@ -3448,6 +3575,18 @@ def _handoff_gate_checks(pptx, mode="presented", gate_check=False):
     with _gate_section('purpose'):
         with _gate_step():
             _purpose_gate(pptx, gates)
+
+    with _gate_section('talk_time'):
+        with _gate_step():
+            _talk_time_gate(pptx, gates)
+
+    with _gate_section('qa_backup'):
+        with _gate_step():
+            _qa_backup_gate(pptx, gates)
+
+    with _gate_section('citations'):
+        with _gate_step():
+            _citations_gate(pptx, gates)
 
     with _gate_section('fonts'):
         with _gate_step():

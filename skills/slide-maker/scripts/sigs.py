@@ -33,7 +33,7 @@ sys.path.insert(0, HERE)
 # finds out what already exists, and SKILL.md tells it that a name matching NO helper means "you
 # supply the geometry". Leaving the surface kits out of it therefore did worse than hide them — it
 # told anyone asking for `halftone` or `starburst` to hand-roll the thing that had just been built.
-MODULES = ("deckkit", "designed_charts", "register_surface")
+MODULES = ("deckkit", "designed_charts", "register_surface", "citations")
 
 # The three call-shape errors that actually cost round-trips on a real build. They are properties of
 # the API that no single signature line states, so they are printed with every lookup rather than
@@ -162,6 +162,29 @@ EXAMPLES = {
                     '     [("Lost to follow-up", 9), ("Withdrew consent", 5)]),\n'
                     '    ("Analysed", 184, []),\n'
                     '])',
+    # NAVIGATION. A long deck is answered from its appendix, and a backup slide you cannot reach
+    # live is one you did not prepare. `targets=` wires the contents page to the slides it names.
+    "agenda": 'a1, a2, a3 = (dk.add_slide(prs) for _ in range(3))\n'
+              'dk.agenda(s, 0.7, 1.6, 6.6,\n'
+              '          ["Where we were", "What changed", "What is left"],\n'
+              '          active=1, targets=[a1, a2, a3])   # active= is also the progress page',
+    "back_link": 'home = dk.add_slide(prs)\n'
+                 'dk.back_link(s, home, label="Back to agenda")   # width is measured from the label',
+    "link": 'q = dk.box(s, 0.7, 3.4, 3.2, 0.5, fill=None, line=dk.DEEP)\n'
+            'backup = dk.add_slide(prs)\n'
+            'dk.link(q, backup)                       # a shape JUMPS to a slide\n'
+            'run = dk.text(s, 0.7, 4.1, 5, 0.4,\n'
+            '              [[("Preprint", 12, dk.DEEP, False, False, dk.FONT)]]\n'
+            '              ).text_frame.paragraphs[0].runs[0]\n'
+            'dk.link(run, "https://doi.org/10.1000/xyz")   # a RUN opens a URL',
+    # CITATIONS. The reference line is DERIVED from the .bib entry, never retyped beside it.
+    "reference_page": 'import citations as cit\n'
+                      'db = cit.parse_bibtex(open("refs.bib", encoding="utf-8").read())\n'
+                      'keys = ["lustig2007", "schlemper2018"]        # in CITED order\n'
+                      'cit.reference_page(s, [db[k] for k in keys], style="numeric")\n'
+                      '# the marker that goes on the slide, for key i (1-based):\n'
+                      '# cit.in_text(db[keys[0]], "numeric", 1)  ->  "[1]"',
+    "set_link_color": 'dk.set_link_color(prs, dk.DEEP)   # links in the deck ink, not Word-blue',
     "stat_row": 'dk.stat_row(s, 0.7, 2.0, 8.6, [("8", "x", "faster"), ("99", "%", "coverage")])',
     "step_list": 'dk.step_list(s, 0.8, 1.0, 8.0, [("Collect", "gather the inputs"),\n'
                  '                                ("Train", "fit the model")])',
@@ -323,6 +346,20 @@ _EXTRA_GUARANTEES = {
                     "is refused",
     "roc_curve": "a square canvas with the chance diagonal and the AUC computed from raw labels and "
                  "scores; a single-class or non-binary outcome is refused",
+    "agenda": "one row per section with the active one accented, and — with `targets=` — every row "
+              "wired as a real PowerPoint slide jump, so the contents page works while presenting; "
+              "a targets list that does not match the items is refused rather than half-wired",
+    "back_link": "a chip whose width is MEASURED from its label (and widened when the label's face "
+                 "does not resolve here, where the measurement is a stand-in's), so the label never "
+                 "wraps through the chip's own edge",
+    "reference_page": "every line and every marker derived from the SAME .bib entry, so a retyped "
+                      "year cannot drift; an entry with no author/title/year is REFUSED rather "
+                      "than printed with `n.d.`; each DOI is clickable in the deck's own ink",
+    "set_link_color": "the DECK's hyperlink colour, because a renderer paints a linked run in the "
+                      "theme's hlink colour whatever fill the run itself carries",
+    "link": "a slide jump or a URL, with the scheme checked — a link target can come from the "
+            "material the deck was built from, and javascript:/file:/data: in a delivered deck is "
+            "somebody else's machine",
 }
 
 

@@ -9,6 +9,73 @@ section is a distilled summary — the full notes live on the
 
 ## [Unreleased]
 
+**Three things a deck is asked to do in a real room, that this skill could not do or could not
+check.** Each is a gate on both runtimes, each is NOT CHECKED until the author records the field,
+and each says so out loud rather than passing quietly.
+
+### The deck against the clock
+
+The interview has always asked for the time budget — "for a talk, give me the time budget and I
+will confirm the slide count" — and, measured by grep, nothing ever compared the built deck against
+the answer: no words per minute, no per-slide budget, no duration of any kind anywhere in the repo.
+`scripts/check_talk_time.py` estimates the spoken length from the SPEAKER NOTES only, because that
+is what gets said out loud, and reports a BAND rather than a number: 130–150 words per minute for
+Latin, 180–220 characters per minute for CJK. `OVER THE SLOT` blocks, with how many slides' worth of
+speech to cut; `TIGHT`, `UNDER THE SLOT` and `ONE SLIDE EATS THE TALK` are notes. No recorded
+budget, or notes on fewer than half the slides, is NOT CHECKED and says which — an estimate built
+from a third of a talk is worse than none, because it reads like a whole one.
+
+### A deck you can present FROM
+
+`grep hlinkClick scripts/` found the string in one constant listing XML element order
+(`_EA_FOLLOWERS`), and `click_action` in no file at all: this library could not make a deck jump. Every "backup slide" it
+had ever built was reachable only by arrowing past everything in between, which is exactly why
+prepared answers go unused. Now `deckkit.link` (shape → slide, shape/run → URL, with a scheme
+allowlist — a link target usually comes from the untrusted material the deck was built from),
+`deckkit.agenda(..., targets=[...])` (a contents page you can present from, and the
+section-progress page a long deck repeats) and `deckkit.back_link` (the way back, refused rather
+than half-wired). `scripts/check_qa_backup.py` reads the questions you recorded in `content.qa` and
+checks the BUILT file's real slide actions: a backup slide nothing links to blocks, a slide number
+the deck does not have blocks, and a backup you can reach but not leave is a note.
+
+Two defects found by rendering the chip rather than by reading the code: a fixed 1.25in pill wrapped
+"Back to agenda" through its own bottom edge, and the replacement priced a
+four-character Chinese label exactly as wide as "Back", because a CJK glyph is full-width and the
+chrome face is Latin. The width is now measured
+per script, and a label too long for its canvas is refused rather than clamped over an unwrapped
+caption.
+
+### Citing from the .bib instead of from memory
+
+`sources_page` rendered a list of strings and `source_note` a provenance line of strings; nothing in
+this skill had ever read a bibliography, so every citation in every deck it built was typed by hand.
+`scripts/citations.py` parses BibTeX (brace-matched, so a `{MRI}`-braced title is not truncated;
+LaTeX accents resolved, including `{\'\i}`, with an unknown accent degrading to its base letter)
+and derives BOTH the in-text marker and the reference line from the SAME entry — `numeric` or
+`author-year`, with `etal=`/`amp=` so a Chinese deck writes its own particles for
+"et al." and "&", unspaced, rather than putting English inside a Chinese sentence. 🔴 An entry with no
+author, title or year is REFUSED, not printed with `n.d.`: under the never-invent floor a
+plausible-looking citation is worse than a missing one, because nobody downstream can tell it from a
+real one. `scripts/check_citations.py` then checks the built deck against the .bib —
+`DANGLING MARKER`, `NOT IN THE LIST`, `NO SUCH ENTRY`, `INCOMPLETE ENTRY`, and `UNCITED` as a note —
+reading full-width CJK markers too, and refusing a .bib path that resolves outside the deck folder.
+
+`citations.reference_page` renders the list with every DOI clickable, and sets the deck's own
+hyperlink colour through the new `deckkit.set_link_color`: a renderer paints a linked run in the
+THEME's hlink colour whatever fill the run itself carries, so one references page came out half navy
+and half Word-blue, decided by which entries happened to have a DOI.
+
+### Also
+
+- `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from
+  the *Where things live* table and from the Step-1 content plan, where the audience brief's
+  decision list is what tells you which questions need a backup slide.
+- The Codex runbook's gate command block now says which command writes `lint-final.json`; it passed
+  the file to the gate and never named its producer, and `--json` takes a PATH rather than printing
+  to stdout.
+- `sigs.py` covers the `citations` module, so `--example reference_page` hands back a runnable call
+  and the smoke suite executes it.
+
 ## [5.5.0] — 2026-09-19
 
 **The release about coverage that looked complete and was not.** A gate that runs is not a gate that

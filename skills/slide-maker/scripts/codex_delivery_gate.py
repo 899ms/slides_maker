@@ -131,6 +131,17 @@ TEMPLATE = {
         ],
     },
     "content": {
+        # A talk's slot, in minutes — check_talk_time compares the built deck's speaker notes
+        # against it. null for a deck that will be read rather than presented.
+        "talk_minutes": None,
+        # The questions you expect from this room, and the backup slide that answers each.
+        # check_qa_backup verifies every one of those slides can be JUMPED to (dk.link) and left
+        # (dk.back_link). Leave the list empty when you prepared no backup slides.
+        "qa": [],
+        # The bibliography this deck cites and the keys it uses, IN CITED ORDER.
+        # check_citations derives every marker and every reference line from these entries, so a
+        # retyped year cannot drift. null for a deck that cites nothing.
+        "citations": None,
         "source_mode": "provided",
         "sources": [
             {
@@ -1540,6 +1551,153 @@ def check_purpose(evidence: dict[str, Any], deck_path: Path | None,
             f'{{"purpose": {{"waived": "<why this deck genuinely has none>"}}}} in the evidence file.')
 
 
+def check_talk_time(evidence: dict[str, Any], deck_path: Path | None,
+                    errors: list[str]) -> None:
+    """The deck must fit the slot the interview asked for.
+
+    Same module as `render_deck.py --gate-check`. The budget is read from the record the way each
+    runtime writes it — `content.talk_minutes`, the `design` twin, or the `interview` answer that
+    asks for it — and the estimate is a BAND from the speaker notes, never one number. No budget,
+    or notes on fewer than half the slides, is NOT CHECKED and says so.
+    """
+    if deck_path is None:
+        return
+    try:
+        import importlib.util
+        path = Path(__file__).with_name("check_talk_time.py")
+        spec = importlib.util.spec_from_file_location("slide_maker_check_talk_time", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load check_talk_time.py")
+        ctt = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ctt)
+    except Exception as exc:
+        print(f"  [--] TALK TIME NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        return
+    waived = (evidence.get("talk_time") or {}).get("waived") if isinstance(
+        evidence.get("talk_time"), dict) else None
+    try:
+        findings, facts = ctt.check(str(deck_path), ctt.recorded_minutes(evidence), waive=waived)
+    except Exception as exc:
+        print(f"  [--] talk time NOT CHECKED — {exc} (not clean)")
+        return
+    print("  [ok] talk time: {:.0f}-{:.0f} min of speech for a {:.0f}-minute slot "
+          "({} of {} slides carry notes)".format(facts["estimate"][0], facts["estimate"][1],
+                                                 facts["minutes"], facts["noted"], facts["slides"]))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] talk time: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if waived:
+        print(f"  [--] talk time WAIVED — {waived}")
+        return
+    for _sev, code, why in blocks:
+        errors.append(
+            f"talk time {code}: {why} Cut slides or shorten the notes, correct the budget "
+            f'("content": {{"talk_minutes": <minutes>}}), or record '
+            f'{{"talk_time": {{"waived": "<why the slot is not what it says>"}}}} in the evidence file.')
+
+
+def check_qa_backup(evidence: dict[str, Any], deck_path: Path | None,
+                    errors: list[str]) -> None:
+    """Every anticipated question must have a backup slide the speaker can REACH and LEAVE.
+
+    Same module as `render_deck.py --gate-check`. The questions come from `content.qa` (or the
+    `design` twin); each entry names the slide that answers it, and the built file is checked for a
+    real PowerPoint slide action pointing at it. Nothing recorded is NOT CHECKED, out loud:
+    preparing for questions is a practice, not a law.
+    """
+    if deck_path is None:
+        return
+    try:
+        import importlib.util
+        path = Path(__file__).with_name("check_qa_backup.py")
+        spec = importlib.util.spec_from_file_location("slide_maker_check_qa_backup", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load check_qa_backup.py")
+        cqb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cqb)
+    except Exception as exc:
+        print(f"  [--] Q&A BACKUP NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        return
+    waived = (evidence.get("qa_backup") or {}).get("waived") if isinstance(
+        evidence.get("qa_backup"), dict) else None
+    try:
+        findings, facts = cqb.check(str(deck_path), cqb.recorded_qa(evidence), waive=waived)
+    except Exception as exc:
+        print(f"  [--] Q&A backup NOT CHECKED — {exc} (not clean)")
+        return
+    print("  [ok] Q&A backup: {} anticipated question(s) against {} slide(s)".format(
+        facts["questions"], facts["slides"]))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] Q&A backup: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if waived:
+        print(f"  [--] Q&A backup WAIVED — {waived}")
+        return
+    for _sev, code, why in blocks:
+        errors.append(
+            f"Q&A backup {code}: {why} Link the backup slide (dk.link / agenda(targets=) / "
+            f'dk.back_link), correct the slide number in "content": {{"qa": [...]}}, or record '
+            f'{{"qa_backup": {{"waived": "<why the answer lives somewhere else>"}}}} in the '
+            f"evidence file.")
+
+
+def check_citations(evidence: dict[str, Any], deck_path: Path | None,
+                    errors: list[str]) -> None:
+    """Every marker resolves, every entry is cited, and every line comes from the .bib.
+
+    Same module as `render_deck.py --gate-check`. The plan is
+    `"content": {"citations": {"bib": …, "style": "numeric"|"author-year", "keys": [...]}}`, the
+    bibliography is read from beside the deck, and `citations.py` derives the marker and the
+    reference line from the SAME entry — so this never compares a slide against a second retyped
+    copy, which is the failure it exists for. Nothing recorded is NOT CHECKED.
+    """
+    if deck_path is None:
+        return
+    try:
+        import importlib.util
+        path = Path(__file__).with_name("check_citations.py")
+        spec = importlib.util.spec_from_file_location("slide_maker_check_citations", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("could not load check_citations.py")
+        cc = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cc)
+    except Exception as exc:
+        print(f"  [--] CITATIONS NOT CHECKED — {exc.__class__.__name__}: {exc} (not the same as clean)")
+        return
+    waived = (evidence.get("citations") or {}).get("waived") if isinstance(
+        evidence.get("citations"), dict) else None
+    try:
+        findings, facts = cc.check(str(deck_path), cc.recorded_citations(evidence),
+                                   root=str(deck_path.resolve().parent), waive=waived)
+    except Exception as exc:
+        print(f"  [--] citations NOT CHECKED — {exc} (not clean)")
+        return
+    print("  [ok] citations: {} cited key(s), {} style, reference list on slide(s) {}".format(
+        facts["cited"], facts["style"], facts["list_slides"] or "—"))
+    for sev, code, why in findings:
+        if sev != "block":
+            print(f"  [--] citations: {code}: {why}")
+    blocks = [f for f in findings if f[0] == "block"]
+    if not blocks:
+        return
+    if waived:
+        print(f"  [--] citations WAIVED — {waived}")
+        return
+    for _sev, code, why in blocks:
+        errors.append(
+            f"citations {code}: {why} Fix the .bib or the cited keys "
+            f'("content": {{"citations": {{"bib": …, "keys": [...]}}}}), render the list with '
+            f"citations.reference_page, or record "
+            f'{{"citations": {{"waived": "<why a marker legitimately resolves elsewhere>"}}}} in '
+            f"the evidence file.")
+
+
 def check_fonts_resolve(evidence: dict[str, Any], deck_path: Path | None,
                         errors: list[str]) -> None:
     """The faces this deck NAMES must resolve on the machine that MEASURED it.
@@ -2534,6 +2692,9 @@ def evaluate(
         check_template_profile(evidence, deck_path, errors)
         check_purpose(evidence, deck_path, errors)
         check_fonts_resolve(evidence, deck_path, errors)
+        check_talk_time(evidence, deck_path, errors)
+        check_qa_backup(evidence, deck_path, errors)
+        check_citations(evidence, deck_path, errors)
         check_register_pixels(evidence, deck_path, errors)
         # DECLARED -> OBEYED. The two lines above read the source and the colour;
         # this reads whether the register's own prohibitions were respected.

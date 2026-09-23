@@ -2023,6 +2023,199 @@ def page_marker(slide, page, total=None, *, font=None, color=MUTE, size=9):
          align=PP_ALIGN.RIGHT, space_after=0)
 
 
+# ---- navigation: a long deck has to be NAVIGABLE live, not just readable in order ------------
+# A defense, a committee meeting or a board readout is answered from its APPENDIX, and until these
+# existed this library could not make a deck jump: `grep hlinkClick` found the string only in an
+# XML-ordering comment. So a prepared backup slide could only be reached by arrowing past every
+# slide between here and there, in front of the room — which is why people stop preparing them.
+_LINK_SCHEMES = ("http://", "https://", "mailto:", "doi:")
+
+
+def _serialize_part(root):
+    """An edited theme element back to the bytes python-pptx will write into the .pptx."""
+    from lxml import etree
+    return etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def set_link_color(obj, color):
+    """Give the DECK its own hyperlink colour, instead of the renderer's default blue-and-underline.
+
+    🔴 MEASURED, on a rendered reference list. A linked run carries an explicit `<a:solidFill>` —
+    and LibreOffice (and PowerPoint) still paint it in the THEME's `<a:hlink>` colour, so a
+    references page came out with two visual treatments: the entries that happened to have a DOI in
+    bright blue, the ones that did not in the deck's ink. The run's own fill cannot win that fight;
+    the theme is where a link's colour lives, so that is what this sets.
+
+    Deck-wide by design and by necessity (there is one theme): call it once, beside `set_palette`.
+    `obj` is a Presentation or any slide from it.
+
+        dk.set_link_color(prs, dk.DEEP)     # links in the deck's ink, not in Word-blue
+    """
+    rgb = _as_rgb(color)
+    pkg = getattr(getattr(obj, "part", None), "package", None) or getattr(obj, "part", None)
+    if pkg is None:
+        raise ValueError("set_link_color(): pass the Presentation or one of its slides")
+    n = 0
+    for part in pkg.iter_parts():
+        if "theme" not in str(getattr(part, "partname", "")):
+            continue
+        # python-pptx keeps a theme as an opaque `Part` (bytes), not a parsed element — so this
+        # parses, edits and writes the blob back rather than mutating a live tree.
+        try:
+            root = parse_xml(part.blob)
+        except Exception:
+            continue
+        hit = 0
+        for tag in ("a:hlink", "a:folHlink"):
+            for el in root.findall(".//" + qn("a:clrScheme") + "/" + qn(tag)):
+                for child in list(el):
+                    el.remove(child)
+                el.append(parse_xml('<a:srgbClr %s val="%02X%02X%02X"/>'
+                                    % (nsdecls("a"), rgb[0], rgb[1], rgb[2])))
+                hit += 1
+        if hit:
+            part._blob = _serialize_part(root)
+            n += hit
+    if not n:
+        raise ValueError("set_link_color(): this deck has no theme colour scheme to set — it was "
+                         "not built from a template that carries one")
+    return n
+
+
+def link(obj, target):
+    """Make a SHAPE jump to another slide, or a shape/run open a URL. Returns `obj`.
+
+    `target` is a slide object (an in-deck jump, written as a real PowerPoint slide action) or a
+    string URL. A run can carry a URL but not a slide jump — PowerPoint has no run-level jump — and
+    asking for one says so rather than silently doing nothing.
+
+    🔴 The URL is checked against a scheme allowlist. A link target can arrive from the material the
+    deck was built from, which is untrusted input, and `javascript:` / `file:` / `data:` in a
+    delivered deck is someone else's machine, not a citation.
+    """
+    if isinstance(target, str):
+        url = target.strip()
+        if not any(url.lower().startswith(s) for s in _LINK_SCHEMES):
+            raise ValueError("link(): %r is not an allowed link target — use %s. A deck's links "
+                             "come from its material, and that material is untrusted."
+                             % (url[:40], ", ".join(_LINK_SCHEMES)))
+        if hasattr(obj, "hyperlink") and not hasattr(obj, "click_action"):
+            obj.hyperlink.address = url                 # a text run
+        else:
+            obj.click_action.hyperlink.address = url
+        return obj
+    try:
+        obj.click_action.target_slide = target
+    except AttributeError:
+        raise ValueError("link(): a slide JUMP has to hang off a shape, not a text run — pass the "
+                         "shape (a chip, a row, a box), or link the run to a URL instead")
+    return obj
+
+
+def agenda(slide, x, y, w, items, *, active=None, targets=None, numeral_style="pad2", accent=None,
+           ink=None, muted=None, row_h=0.52, gap=0.1, rule=True, font=None, chrome=None):
+    """The deck's MAP: a numbered contents page, optionally a live jump table.
+
+    `items` = ["Where we were", "What changed", …]. `active` accents one row, so the same helper is
+    the section-progress page a long deck repeats between parts. `targets` = the slides each row
+    jumps to (`link`), which is what makes an agenda usable while presenting rather than decorative.
+
+    Returns the bottom y, like every other stacked form here.
+    """
+    accent = _as_rgb(accent) if accent is not None else MAGENTA
+    ink = _as_rgb(ink) if ink is not None else DEEP
+    page = GROUND if GROUND is not None else WHITE      # GROUND is None until set_ground()
+    muted = _as_rgb(muted) if muted is not None else _blend(ink, page, 0.45)
+    face = font or FONT
+    chrome_face = chrome or MONO
+    if targets is not None and len(targets) != len(items):
+        raise ValueError("agenda(): %d items but %d targets — one target per row, or none at all; "
+                         "a half-wired contents page is the one that fails live"
+                         % (len(items), len(targets)))
+    cur = y
+    for i, item in enumerate(items):
+        on = (active is not None and i == active)
+        num = ("%02d" % (i + 1)) if numeral_style == "pad2" else (
+            cjk_numeral(i + 1) if numeral_style == "cjk" else str(i + 1))
+        row = box(slide, x, cur, w, row_h, fill=None, line=None)
+        text(slide, x, cur + 0.04, 0.6, row_h - 0.08,
+             [[(num, 11, accent if on else muted, True, False, chrome_face)]], space_after=0)
+        text(slide, x + 0.72, cur + 0.02, w - 0.82, row_h - 0.04,
+             [[(str(item), 16 if on else 15, ink if on else muted, on, False, face)]], space_after=0)
+        if on and rule:
+            hrule(slide, x, cur + row_h - 0.02, min(w, 1.2), color=accent, weight=0.022)
+        if targets is not None:
+            link(row, targets[i])
+        cur += row_h + gap
+    return cur - gap
+
+
+def _chip_caption_width(caption, size_pt, face):
+    """One unwrapped line's width, with CJK glyphs credited to their OWN metrics.
+
+    `_natural_width_in` measures the whole string in one face. A chip's caption is chrome, so that
+    face is MONO — a Latin face — and 返回目录 measured 0.50in there, the same as "Back": four
+    full-width glyphs priced as four narrow ones. The rule that fixes it needs no installed font,
+    because it is typographic rather than empirical: a CJK glyph is full-width, i.e. exactly 1em.
+    This is the same failure `_measuring_face` documents for body text (Chinese measured with Latin
+    metrics reads ~54% of its true width), at the one place a fixed-size chip cannot absorb it.
+    """
+    cjk = sum(1 for ch in caption if _has_cjk(ch))
+    rest = "".join(ch for ch in caption if not _has_cjk(ch))
+    return _natural_width_in([(rest, False)], size_pt, face) + cjk * size_pt / 72.0
+
+
+def back_link(slide, target, *, label="Back", x=None, y=None, w=None, h=0.34, size=10, accent=None,
+              ink=None, font=None):
+    """A small linked chip that returns to `target` — the other half of a jump.
+
+    A backup slide you can reach and cannot leave is worse than one you never jumped to: the room
+    watches you arrow backwards. Defaults to the bottom-left corner, inside the margin.
+
+    🔴 The width is MEASURED from the label, never assumed. Built with a fixed 1.25in pill, "Back to
+    agenda" wrapped to a second line that hung straight through the chip's own bottom edge — the
+    library's own rule (measure or anchor, never hand-pick a size) applied to itself. The
+    measurement is SCRIPT-AWARE (`_chip_caption_width`): a CJK glyph is full-width, so 返回目录
+    measured exactly like "Back" until it was credited at 1em per character.
+
+    A label too long for its chip — or for the canvas — RAISES rather than being clamped: the
+    caption is set unwrapped, so a clamped chip runs its text off the slide instead of saying so.
+    """
+    accent = _as_rgb(accent) if accent is not None else MAGENTA
+    ink = _as_rgb(ink) if ink is not None else DEEP
+    _sw, _sh = _slide_size(slide)
+    face = font or MONO
+    caption = "\u2190 " + str(label)
+    pad = max(0.18, h * 0.5)                          # the rounded ends eat the corners
+    natural = _chip_caption_width(caption, size, face)
+    if _font_substituted(face):
+        # 🔴 Measured in a STAND-IN, so the number is not the renderer's. On this machine, with the
+        # shipped MONO ('Consolas', absent from macOS): deckkit measured 3.10in and LibreOffice
+        # rendered 3.58in — 15% wider — and the label wrapped through the chip's own bottom edge.
+        # The same caption in a face that DOES resolve measured 2.53 against 2.50 rendered, i.e. 1%.
+        # So the slack is the substitution's, not the formula's, and check_fonts_resolve reports the
+        # underlying condition at the gate.
+        natural *= 1.20
+    room = _sw - 2 * GUTTER
+    if w is None:
+        w = min(room, natural + 2 * pad)
+    if natural + 2 * pad > w + 1e-6:
+        raise ValueError("back_link(): %r needs %.2fin at %gpt and the chip is %.2fin — the caption "
+                         "is set unwrapped, so it would run out through the chip and off the slide. "
+                         "Shorten the label (a back link is a chip, not a sentence)%s."
+                         % (label, natural + 2 * pad, size, w,
+                            "" if w < room - 1e-6 else " — %.2fin is the whole canvas" % room))
+    x = GUTTER if x is None else x
+    y = (_sh - GUTTER - h) if y is None else y
+    page = GROUND if GROUND is not None else WHITE
+    chip_shape = box(slide, x, y, w, h, fill=None, line=_blend(ink, page, 0.6), line_w=0.8,
+                     round=True, r=h / 2)
+    text(slide, x, y + 0.04, w, h - 0.08,
+         [[(caption, size, accent, False, False, face)]],
+         align=PP_ALIGN.CENTER, space_after=0, wrap=False)
+    return link(chip_shape, target)
+
+
 def cover(slide, title, *, issue_label=None, subtitle=None, mode_caption=None, x=0.7, y=None,
           accent=MAGENTA, ink=DEEP, bg=None, display=None, chrome=None, caption_c=None, rule=True):
     """A publication-style COVER (issue label + big display title + accent rule + subtitle + a

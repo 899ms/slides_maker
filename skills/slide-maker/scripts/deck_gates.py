@@ -106,6 +106,19 @@ def template(slides=None, delivery="presented"):
                        for i in range(n)] or
                       [{"slide": 1, "role": "<role>", "takeaway": "<takeaway>",
                         "evidence": ["<locator>"], "units": 3}],
+            # the interview asks for it on a talk ("give me the time budget and I will confirm the
+            # slide count"); check_talk_time compares the built deck against it. Leave it null for a
+            # deck that will be READ — a deck nobody presents is never late.
+            "talk_minutes": None,
+            # the questions you expect from THIS room, each with the backup slide that answers
+            # it; check_qa_backup verifies that slide can be jumped to (dk.link) and left
+            # (dk.back_link). Empty when you prepared no backup slides.
+            "qa": [],
+            # the bibliography this deck cites + the keys IN CITED ORDER; check_citations
+            # derives every marker and reference line from those entries, so a retyped year
+            # cannot drift. null for a deck that cites nothing.
+            # {"bib": "refs.bib", "style": "numeric", "keys": ["lustig2007", ...]}
+            "citations": None,
             "checkpoint": {"mode": "<approved|auto>", "record": "<how it was delivered>"},
             # WHAT THE AUDIENCE HAS TO DECIDE, in the order they face it — written BEFORE the
             # information is gathered, because the frame is what aims the gathering. On a

@@ -255,6 +255,29 @@ interview answer at all — each reads the built file itself):
   `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
   `UNCOVERED TEMPLATE FURNITURE`. Deviating is legitimate design; record it as
   `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
+- **`check_talk_time.py`** — a talk must fit its SLOT. Record the budget as
+  `"content": {"talk_minutes": <minutes>}` (the `--init` scaffold shows it); the gate estimates the
+  spoken length from the SPEAKER NOTES as a band (130-150 wpm Latin · 180-220 CJK characters per
+  minute) and errors with `OVER THE SLOT` when the deck is long even at the fast end, naming how
+  many slides' worth to cut. `TIGHT` / `UNDER THE SLOT` / `ONE SLIDE EATS THE TALK` are reported,
+  not errors. No budget, or notes on fewer than half the slides, is NOT CHECKED — never clean.
+  Waive with `{"talk_time": {"waived": "<why the slot is not what it says>"}}`.
+- **`check_qa_backup.py`** — the questions you prepared for must be ANSWERABLE from the deck.
+  Record them as `"content": {"qa": [{"question": "…", "slide": <n>}]}` (the `--init` scaffold shows
+  it); the gate reads the BUILT file's real slide actions and errors on `PREPARED BUT UNREACHABLE`
+  (a backup slide nothing links to — during questions it can only be reached by arrowing),
+  `NO SLIDE`, `NO QUESTION` and `MALFORMED`. `NO WAY BACK` is reported, not an error. Nothing
+  recorded is NOT CHECKED — never clean. Build the links with `dk.link` / `dk.agenda(targets=)` /
+  `dk.back_link` (`references/navigation-and-qa.md`); waive with
+  `{"qa_backup": {"waived": "<why the answer lives somewhere else>"}}`.
+- **`check_citations.py`** — the markers, the reference list and the .bib must agree. Record
+  `"content": {"citations": {"bib": "refs.bib", "style": "numeric", "keys": [...]}}` (keys in CITED
+  order; the `--init` scaffold shows it) and build the page with `citations.reference_page`, which
+  derives every line from the entry rather than from a second retyped copy. Errors:
+  `DANGLING MARKER` · `NOT IN THE LIST` · `NO SUCH ENTRY` · `INCOMPLETE ENTRY` (no author/title/year
+  — it refuses to print `n.d.`). `UNCITED` is reported, not an error. Nothing recorded is NOT
+  CHECKED. Waive with `{"citations": {"waived": "<why a marker resolves elsewhere>"}}`; the craft is
+  in `references/citations-and-bibliography.md`.
 - **`check_fonts_resolve.py`** — the faces the deck NAMES must resolve on the machine that MEASURED
   it. Not portability (unknowable) but measurement: every wrap/fit guard sits on
   `deckkit._measure_lines`, so a named-but-absent face makes the build and the lint agree with each
@@ -528,6 +551,9 @@ with `.deck-gates.json`; it is a workflow artifact, not a user-facing deck docum
 After the final render and lint, produce the component JSON and run the gate:
 
 ```bash
+# `--json` takes a PATH (it does not print to stdout — redirecting it writes the human report
+# instead, and the gate then refuses the file with "cannot read gate input").
+python3 scripts/lint_deck.py <deck>.pptx --renders render --json lint-final.json
 python3 scripts/component_audit.py build_<deck>.py <deck>.pptx --json > components-final.json
 python3 scripts/codex_visual_contract.py <deck>.pptx \
   --manifest visual-contract.json \

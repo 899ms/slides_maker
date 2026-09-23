@@ -701,6 +701,40 @@ jobs:
             echo "::error::purpose sections suite did not run to completion"; exit 1; }
           python scripts/check_purpose.py --selftest
 
+      # Does the deck fit the slot? The interview ASKS for the time budget in both languages and,
+      # measured by grep before check_talk_time.py, nothing compared the built deck against the
+      # answer — no words per minute, no per-slide budget, nothing. Ending on time is the one thing
+      # an audience always notices, and it is computable from the speaker notes.
+      - name: Talk time (the deck against the slot the interview asked for)
+        run: |
+          set -o pipefail
+          python tests/test_talk_time.py | tee /tmp/talk.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/talk.log || {
+            echo "::error::talk-time suite did not run to completion"; exit 1; }
+          python scripts/check_talk_time.py --selftest
+
+      # A presented deck is NAVIGATED. Measured before deckkit.link existed: `hlinkClick` appeared
+      # in one comment about XML ordering and `click_action` in no file at all, so every "backup
+      # slide" this skill built could only be reached by arrowing past everything in between.
+      - name: Q&A backup (the questions prepared for, against the deck built)
+        run: |
+          set -o pipefail
+          python tests/test_qa_backup.py | tee /tmp/qa.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/qa.log || {
+            echo "::error::Q&A backup suite did not run to completion"; exit 1; }
+          python scripts/check_qa_backup.py --selftest
+
+      # An academic deck's citations were strings somebody typed onto a slide: nothing in this
+      # skill read a bibliography, so nothing could tell a correct year from a remembered one.
+      - name: Citations (markers, reference list and .bib must agree)
+        run: |
+          set -o pipefail
+          python tests/test_citations.py | tee /tmp/cit.log
+          grep -qE "^[0-9]+ passed, 0 failed" /tmp/cit.log || {
+            echo "::error::citation suite did not run to completion"; exit 1; }
+          python scripts/citations.py --selftest
+          python scripts/check_citations.py --selftest
+
       # The clinical / evidence-synthesis forms. Each owns a rule that is wrong BY DEFAULT when
       # hand-rolled (a linear axis for ratios, a line instead of a step, a correlation instead of
       # limits of agreement) — and a wrong chart is a well-formed set of shapes, so no geometry

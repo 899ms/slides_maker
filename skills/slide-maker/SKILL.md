@@ -300,6 +300,8 @@ every **🔴 CHECKPOINT** is a hard stop.
 | Large / sectioned decks · collaborative gates | `references/large-deck-orchestration.md` · `references/collaborative-mode.md` |
 | East-Asian / ink looks | `references/east-asian-aesthetic.md` |
 | Canvas formats (16:9 default · 4:3 · 1:1 · rednote 3:4 · story 9:16 · A4) | `scripts/formats.py` (registry) · `references/canvas-formats.md` (per-surface layout DNA) |
+| A deck you PRESENT FROM — contents page that jumps, backup slides for the questions, the way back | `references/navigation-and-qa.md` (`deckkit.link`/`agenda(targets=)`/`back_link` · the `content.qa` gate) |
+| Citing published work — BibTeX in, markers + reference page out, consistency checked | `references/citations-and-bibliography.md` (`scripts/citations.py` · `scripts/check_citations.py`) |
 | The build helpers (source of truth) | `scripts/deckkit.py` (docstrings) |
 | Geometry lint — build-time · render-time | `deckkit.lint_layout(prs, strict=True)` (Step 4, pre-render) · `scripts/lint_deck.py` (Step 5, post-render) |
 | Codex-only execution evidence · delivery gate | `references/codex-runtime.md` · `scripts/codex_delivery_gate.py` |
@@ -531,6 +533,48 @@ writing). It binds ONLY when the recorded purpose matches a registry entry — a
 CHECKED, never a guessed genre. **This is the `formats.py`/`check_surface.py` mechanism generalised
 from SURFACES to GENRES**, and for the same measured reason: the shape of a genre is exactly what an
 author under time pressure drops.
+🔴 **A TALK ALSO HAS A SLOT, and the interview already asks for it** ("for a talk, give me the time
+budget and I will confirm the slide count"). Record it as `content.talk_minutes` — both `--init`
+scaffolds now show the field — and `scripts/check_talk_time.py` compares the BUILT deck against it
+on both gate paths. It reads the SPEAKER NOTES only, because that is what gets said out loud (the
+on-slide words are not spoken by anyone following PRE-FLIGHT 1, and counting both would punish the
+decks that follow it), and it reports a BAND, never one number: 130-150 words per minute for Latin,
+180-220 characters per minute for CJK. `OVER THE SLOT` blocks — with how many slides' worth of
+speech to cut — while `TIGHT`, `UNDER THE SLOT` and `ONE SLIDE EATS THE TALK` (a page carrying more
+than a quarter of the slot) are notes. **No budget recorded, or notes on fewer than half the slides,
+is NOT CHECKED and says which** — a deck that will be READ is never late, and an estimate built from
+a third of the talk is worse than none because it reads like a whole one. Waive in writing
+(`{"talk_time": {"waived": "…"}}`) when the slot really did change.
+🔴 **A PRESENTED DECK IS NAVIGATED, NOT JUST READ — and until now this library could not make one
+jump.** Measured: `hlinkClick` appeared only in `_EA_FOLLOWERS`, a constant listing XML element order,
+and `click_action` in no file at all, so every "backup slide" this skill ever built was reachable only by arrowing past
+everything in between — which is exactly why prepared answers go unused. `dk.link` (shape → slide,
+shape/run → URL, **scheme-guarded**: a link target usually comes from the untrusted material the
+deck was built from), `dk.agenda(..., targets=[...])` (a contents page you can present FROM, and
+the section-progress page a long deck repeats) and `dk.back_link` (the other half of a jump) close
+it. **Read `references/navigation-and-qa.md` whenever the deck will be presented live and the room
+can interrupt** — a defense, a committee, a conference talk, a board readout, anything with an
+appendix. Record the questions you expect as `content.qa`
+(`[{"question": …, "slide": <the backup that answers it>}]`, in both `--init` scaffolds) and
+`scripts/check_qa_backup.py` checks the BUILT file on both gate paths: a backup slide nothing links
+to BLOCKS (`PREPARED BUT UNREACHABLE`), as does a slide number the deck does not have, while
+`NO WAY BACK` is a note. **Nothing recorded is NOT CHECKED** — anticipating questions is a practice,
+not a law, and a gate demanding it of every deck would only teach authors to record an empty list.
+🔴 **AN ACADEMIC DECK CITES FROM ITS .bib, NEVER FROM MEMORY.** Measured: nothing in this skill
+ever read a bibliography — `sources_page` and `source_note` take STRINGS — so every citation it had
+ever built was typed by hand, which is where a year drifts by one and a middle author disappears.
+`scripts/citations.py` parses the BibTeX and derives **both** the in-text marker and the reference
+line from the SAME entry (`cit.in_text` / `cit.reference_page`, `numeric` or `author-year`, with
+`etal=`/`amp=` so a Chinese deck writes 等 and 与), and **it REFUSES an entry with no
+author/title/year instead of printing `n.d.`** — under the never-invent floor a plausible-looking
+citation is worse than a missing one, because nobody downstream can tell it from a real one. Record
+`content.citations` (`bib` · `style` · `keys` in cited order) and `scripts/check_citations.py`
+checks the BUILT file on both gate paths: a `DANGLING MARKER` and a cited key that is `NOT IN THE
+LIST` block, an `UNCITED` entry is a note. **Read `references/citations-and-bibliography.md`
+whenever the deck cites published work** — it also carries the measured reason
+`reference_page` sets the deck's link colour (a renderer paints a linked run in the THEME's hlink
+colour whatever fill the run carries, so one references page came out half navy and half Word-blue,
+decided by which entries happened to have a DOI).
 🔴 **Every section list was DERIVED FROM `design-by-purpose.md`'s OWN PROSE, never invented** —
 teaching's objectives/example/recap were already in its Layout and Signature lines, the lab
 meeting's "what changed" and "open questions" are its Signature line verbatim. Where a genre's prose

@@ -158,6 +158,67 @@ ck(ab.faults(good) == [] and ab.faults({"who": "", "decisions": []}) != [],
    "content.audience_brief passes when filled and fails when empty, from the ONE shared contract "
    "module both paths import")
 
+print("\n— TALK TIME: the budget the interview asks for must be readable from both records")
+import check_talk_time as ctt                                             # noqa: E402
+
+# each runtime writes it where its own schema puts things: the shared path keeps the interview's
+# own answers, the Codex path records them under `design`/`content`. The question is asked as prose
+# ("for a talk, give me the time budget"), so the number arrives inside a sentence.
+sh_t = json.loads(json.dumps(SH))
+sh_t["interview"]["length"] = "about 12 slides — it is a 10 min talk plus 2 min of questions"
+cx_t = json.loads(json.dumps(CX))
+cx_t["content"]["talk_minutes"] = 10
+for rec, label in ((sh_t, "shared .deck-gates.json"), (cx_t, "Codex evidence")):
+    ck(ctt.recorded_minutes(rec) == 10,
+       "%s -> the time budget reads as 10 minutes (got %r)" % (label, ctt.recorded_minutes(rec)))
+ck(ctt.recorded_minutes(SH) is None and ctt.recorded_minutes(CX) is None,
+   "an unfilled scaffold carries NO budget on either runtime — the gate says NOT CHECKED rather "
+   "than inventing a slot")
+ck(ctt.recorded_minutes({"interview": {"length": "9-15 slides"}}) is None,
+   "...and a slide count is never read as a duration")
+
+print("\n— QA BACKUP: the anticipated questions must be readable from both records")
+import check_qa_backup as cqb                                             # noqa: E402
+
+# Both runtimes hold it in their own content block; the Codex file also has a `design` twin, which
+# is where that schema keeps plan-side fields. Shape, not prose, this time — the entries name the
+# slide that answers each question, and the gate resolves them against the BUILT file.
+_qa = [{"question": "Why not compressed sensing as the baseline?", "slide": 14}]
+sh_q = json.loads(json.dumps(SH)); sh_q["content"]["qa"] = _qa
+cx_q = json.loads(json.dumps(CX)); cx_q["content"]["qa"] = _qa
+cx_d = json.loads(json.dumps(CX)); cx_d.setdefault("design", {})["qa"] = _qa
+for rec, label in ((sh_q, "shared .deck-gates.json"), (cx_q, "Codex evidence"),
+                   (cx_d, "Codex evidence, design twin")):
+    got = cqb.recorded_qa(rec)
+    ck(got == _qa, "%s -> the anticipated questions read back (got %r)" % (label, got))
+ck(cqb.recorded_qa(SH) is None and cqb.recorded_qa(CX) is None,
+   "an unfilled scaffold carries NO questions on either runtime — the gate says NOT CHECKED "
+   "rather than passing a deck nobody prepared for")
+_empty = json.loads(json.dumps(SH)); _empty["content"]["qa"] = []
+ck(cqb.recorded_qa(_empty) is None,
+   "...and an explicitly EMPTY list reads the same way, so the scaffold's own `\"qa\": []` never "
+   "reports as a checked-and-clean deck")
+
+print("\n— CITATIONS: the citation plan must be readable from both records")
+import check_citations as cc                                              # noqa: E402
+
+_plan = {"bib": "refs.bib", "style": "numeric", "keys": ["lustig2007", "schlemper2018"]}
+sh_c = json.loads(json.dumps(SH)); sh_c["content"]["citations"] = _plan
+cx_c = json.loads(json.dumps(CX)); cx_c["content"]["citations"] = _plan
+cx_dc = json.loads(json.dumps(CX)); cx_dc.setdefault("design", {})["citations"] = _plan
+for rec, label in ((sh_c, "shared .deck-gates.json"), (cx_c, "Codex evidence"),
+                   (cx_dc, "Codex evidence, design twin")):
+    got = cc.recorded_citations(rec)
+    ck(got == _plan, "%s -> the citation plan reads back (got %r)" % (label, got))
+ck(cc.recorded_citations(SH) is None and cc.recorded_citations(CX) is None,
+   "an unfilled scaffold carries NO citation plan on either runtime — the gate says NOT CHECKED "
+   "rather than reporting a deck that cites nothing as checked")
+_half = json.loads(json.dumps(SH))
+_half["content"]["citations"] = {"bib": "refs.bib", "style": "numeric", "keys": []}
+ck(cc.recorded_citations(_half) is None,
+   "...and a plan with a bibliography but NO keys reads as nothing recorded — half a plan cannot "
+   "be checked against the deck, and reporting it as clean is the failure this suite exists for")
+
 print("\n— the loop is closed: every record-FED gate section is covered here")
 import re                                                                 # noqa: E402
 import check_gate_parity as gp                                            # noqa: E402

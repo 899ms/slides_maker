@@ -30,6 +30,27 @@ years verified, daily cost and distances never asked for.
 it reads as true statements ABOUT the subject rather than as answers to what this room must decide,
 the frame is wrong. Patching the missing topic onto it fixes the symptom and keeps the frame.
 
+### …and the questions those decisions will be asked as
+
+A room that has to decide something asks about it. So the audience brief is also where the
+anticipated questions come from: for each decision, what will they push on that the deck does not
+already answer on a slide? Those are the **backup slides** — built, parked after the close, and
+LINKED, because a prepared answer you can only reach by arrowing past everything in between is one
+that goes unused. Record them beside the plan and the built deck is checked against them:
+
+    "qa": [{"question": "Why not compressed sensing as the baseline?", "slide": 14}, …]
+
+`references/navigation-and-qa.md` owns the components (`dk.link` · `dk.agenda(targets=)` ·
+`dk.back_link`) and the gate. Optional by design — a deck nobody interrupts needs none — but on a
+defense, a committee, a grant panel or a board readout, the decision list has already told you what
+the questions are.
+
+**If the deck cites published work**, the same step records the bibliography rather than retyping
+from it: `"citations": {"bib": "refs.bib", "style": "numeric", "keys": [...]}` in cited order, with
+`references/citations-and-bibliography.md` for the craft. The marker on the slide and the line on
+the references page are then derived from the same .bib entry, which is the only way a year cannot
+drift between them.
+
 ## Comprehension brief — the required fields and the claim-ledger columns
 
 - The **one-sentence message** + the verbatim source sentence it derives from (+ where).

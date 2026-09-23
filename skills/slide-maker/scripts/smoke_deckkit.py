@@ -571,12 +571,24 @@ def _every_scaffold_runs():
         _q.save(os.path.join(TMP, "qr.png"))
     except Exception:
         pass
+    # The citation scaffold reads a real bibliography, so the smoke run writes one — a scaffold
+    # that needs a file it never gets would be "documented and unrunnable", which is what this
+    # suite exists to catch.
+    with open(os.path.join(TMP, "refs.bib"), "w", encoding="utf-8") as _b:
+        _b.write('@article{lustig2007, author={Lustig, M. and Donoho, D.}, '
+                 'title={Sparse MRI}, journal={MRM}, year={2007}, doi={10.1002/mrm.21391}}\n'
+                 '@inproceedings{schlemper2018, author={Schlemper, J. and Rueckert, D.}, '
+                 'title={A deep cascade}, booktitle={IPMI}, year={2018}}\n')
     for name, code in sorted(_sigs.EXAMPLES.items()):
         p = dk.blank_deck(10, 5.625)
         sl = p.slides.add_slide(p.slide_layouts[6])
         try:
             os.chdir(TMP)
-            exec(compile(code, f"<scaffold:{name}>", "exec"), {"dk": dk, "s": sl, "dc": dc})
+            # `prs` too: a real build script always has the presentation in scope, and a scaffold
+            # that has to work around its absence stops looking like the code it is teaching (the
+            # navigation forms create the slides they jump to).
+            exec(compile(code, f"<scaffold:{name}>", "exec"),
+                 {"dk": dk, "s": sl, "dc": dc, "prs": p})
         except Exception as e:
             bad.append(f"{name}: {type(e).__name__}: {e}")
         finally:
