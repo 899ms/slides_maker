@@ -49,6 +49,17 @@ _RGB = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*RGBColor\(\s*0x([0-9A-Fa-f]{2})\
 _HEXCALL = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*(?:[A-Za-z_][\w.]*)?\(\s*"
                       r"['\"]#?([0-9A-Fa-f]{6})['\"]\s*\)", re.M)
 _HEXSTR = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*['\"]#?([0-9A-Fa-f]{6})['\"]\s*(?:#|$)", re.M)
+# `BG = RGBColor(20, 24, 31)` — the DECIMAL form of the same constructor, and `BG = (0x14,0x18,0x1F)`
+_DEC = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*(?:RGBColor)?\(\s*(\d{1,3}|0x[0-9A-Fa-f]{2})\s*,"
+                  r"\s*(\d{1,3}|0x[0-9A-Fa-f]{2})\s*,\s*(\d{1,3}|0x[0-9A-Fa-f]{2})\s*\)", re.M)
+# `ACCENTS_HEX = ["34D1A6", "F2B04E"]` — modern-dark ships exactly this, and a template whose
+# accents live ONLY in such a list would otherwise contribute none of them.
+_HEXLIST = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=\s*\[([^\]]*)\]", re.M)
+_HEXITEM = re.compile(r"['\"]#?([0-9A-Fa-f]{6})['\"]")
+# `dk.set_palette(font="Helvetica Neue", mono="Menlo")` — deckkit's own documented re-theming call,
+# which is how SKILL.md tells a build to set faces in the first place.
+_SETPAL = re.compile(r"set_palette\s*\(([^)]*)\)", re.S)
+_SETPAL_KW = re.compile(r"\b(font|mono|display|eafont|eadisplay)\s*=\s*['\"]([^'\"]{2,40})['\"]")
 # `FONT = "Helvetica Neue"` · `dk.FONT = "Helvetica Neue"` · `dk.FONT = BODY` (one indirection).
 # Anchored on `^` OR `;` because blueprint-tech really does write all three faces on one
 # semicolon-separated line, and a `^`-only reader takes the first and loses the rest — the
@@ -74,6 +85,16 @@ def from_style(py_text):
     for rx in (_HEXCALL, _HEXSTR):
         for m in rx.finditer(py_text):
             cols.setdefault(m.group(1), m.group(2).upper())
+    for m in _DEC.finditer(py_text):
+        try:
+            vals = [int(g, 16) if g.lower().startswith("0x") else int(g) for g in m.groups()[1:]]
+        except ValueError:
+            continue
+        if all(0 <= v <= 255 for v in vals):
+            cols.setdefault(m.group(1), "%02X%02X%02X" % tuple(vals))
+    for m in _HEXLIST.finditer(py_text):
+        for i, item in enumerate(_HEXITEM.findall(m.group(2))):
+            cols.setdefault("%s_%d" % (m.group(1), i), item.upper())
     faces = {}
     for m in _FACE.finditer(py_text):
         faces.setdefault(m.group(1), m.group(2))
@@ -82,6 +103,9 @@ def from_style(py_text):
         val = named.get(m.group(2))
         if val and not re.fullmatch(r"#?[0-9A-Fa-f]{6}", val):
             faces.setdefault(m.group(1), val)
+    for m in _SETPAL.finditer(py_text):
+        for kw, val in _SETPAL_KW.findall(m.group(1)):
+            faces.setdefault(kw.upper(), val)
     return cols, faces
 
 
@@ -173,7 +197,16 @@ def derive(template_dir):
     palette = list(dict.fromkeys(cols.values()))
     if not palette and prof.exists():
         palette = from_prose(prof.read_text(encoding="utf-8", errors="replace"))
-        how = "profile.md (prose)"
+        if style is not None:
+            # 🔴 SAY IT. Falling back quietly is the failure mode: a template that HAS a style
+            # module but declares its palette in a shape this cannot read (a dict, a comprehension,
+            # a helper call) would be derived from prose and reported only as "from profile.md",
+            # which reads like a template that simply has no style module.
+            gaps.append("%s exists but declares no colour this can read (it knows "
+                        "RGBColor(0x..)/RGBColor(1..255)/C(\"hex\")/\"hex\"/[\"hex\", …]); the "
+                        "palette below came from the PROSE instead — check it is the real one"
+                        % style.name)
+        how = "%s -> profile.md (prose)" % style.name if style is not None else "profile.md (prose)"
     if not palette:
         return None, how, ["no colour is declared anywhere this can read"]
     # 🔴 A palette that IS the library's default set identifies nothing. lkeb-lumc's profile says

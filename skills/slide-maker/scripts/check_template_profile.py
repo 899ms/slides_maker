@@ -256,6 +256,39 @@ def _run_colours(shape):
     return out
 
 
+def unmeasurable_ground(prs):
+    """Why the painted colours cannot answer 'is this the template's ground?', or None.
+
+    🔴 TWO REAL DECKS BREAK THE ASSUMPTION, both measured. A deck whose slides are grounded in a
+    FULL-BLEED PICTURE paints no ground colour at all — blueprint-tech and nvidia-dark both ship
+    hero images, and a cover built that way contributed only its ink. A deck set entirely in THEME
+    colours paints no explicit RGB either. In both cases "the ground colour is absent" means the
+    reader cannot see it, not that the build ignored its template, and a gate that cannot tell
+    those apart accuses a correct deck.
+    """
+    slides = list(prs.slides)
+    if not slides:
+        return None
+    sw, sh = prs.slide_width / EMU, prs.slide_height / EMU
+    covered = 0
+    for slide in slides:
+        for sp in slide.shapes:
+            try:
+                if sp.shape_type is None or "PICTURE" not in str(sp.shape_type):
+                    continue
+                if (sp.width / EMU) >= 0.92 * sw and (sp.height / EMU) >= 0.92 * sh:
+                    covered += 1
+                    break
+            except Exception:
+                continue
+    if covered >= max(1, int(round(0.8 * len(slides)))):
+        return ("%d of %d slides are grounded in a full-bleed picture, so no fill declares the "
+                "ground colour" % (covered, len(slides)))
+    if not deck_colours(prs):
+        return "this deck declares no explicit RGB at all — its colours come from the theme"
+    return None
+
+
 def deck_colours(prs):
     """Every explicit RGB the deck paints — fills, lines and text alike, as upper-case hex.
 
@@ -354,7 +387,10 @@ def check(pptx, want=None, gates=None):
     accents = [c.upper().lstrip("#") for c in (want_pal.get("accents") or []) if c]
     expect = [c.upper().lstrip("#") for c in (want_pal.get("expect") or []) if c]
     if core or accents:
-        facts["checked"].append("palette")
+        blind = unmeasurable_ground(prs)
+        if blind:
+            facts["palette_not_checked"] = blind
+        facts["checked"].append("palette" if not blind else "palette (NOT measurable)")
         painted = deck_colours(prs)
         core_missing = [c for c in core if c not in painted]
         accent_hits = [c for c in accents if c in painted]
@@ -366,14 +402,16 @@ def check(pptx, want=None, gates=None):
         # painted 7 of its 11 declared colours — a "60% of the palette" floor would fire on a
         # correct deck one slide shorter, because a short deck has no reason to reach the third
         # accent or the raised panel. The ground and the ink it cannot avoid.
-        if core_missing:
+        if blind:
+            pass                                      # say nothing rather than accuse — see above
+        elif core_missing:
             finds.append(("PALETTE OFF PROFILE",
                           "this deck paints none of %s — the ground and the text colour are the "
                           "two a deck built from this template cannot avoid. A deck that declared "
                           "the template and then built in stock colours is the 'declared it, did "
                           "not build it' shape this gate exists for."
                           % ", ".join("#" + c for c in core_missing)))
-        elif accents and not accent_hits:
+        elif accents and not accent_hits and not blind:
             finds.append(("PALETTE OFF PROFILE",
                           "the ground and ink match but NOT ONE of this template's %d accent "
                           "colours (%s) appears. The accents are what make it this template rather "

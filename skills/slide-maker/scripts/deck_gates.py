@@ -97,6 +97,11 @@ def template(slides=None, delivery="presented"):
                     "value": "<who is in the room>",
                     "basis": "<what in the request or the material points at them>",
                     "alternative": "<who else it could have been for, and why not>"},
+                   # 🔴 the template row is what check_template_profile BINDS on: a designed
+                   # registry template ships no .pptx and so has no layout fingerprint, and a deck
+                   # that declared one and then built in stock colours binds to nothing without it
+                   {"axis": "template", "source": "stated",
+                    "value": "<registered name | none>"},
                    "<one row per axis: " + " · ".join(dpk.AXES) + ">"]),
         "delivery": delivery,
         "content": {

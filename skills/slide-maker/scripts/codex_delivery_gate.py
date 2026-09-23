@@ -128,6 +128,13 @@ TEMPLATE = {
             {"axis": "audience", "source": "delegated", "value": "<who>",
              "basis": "<what in the REQUEST or the MATERIAL points at this>",
              "alternative": "<what else was plausible, and the clause that lost it>"},
+            # 🔴 The template row is what `check_template_profile` binds on. A DESIGNED registry
+            # template has no .pptx and therefore no layout fingerprint, so a deck that declared
+            # one and then built in stock colours binds to nothing and reads as NOT CHECKED —
+            # this row is the only thing that catches it. Use the registered name.
+            {"axis": "template", "source": "stated", "value": "<registered name | none>",
+             "basis": "<what in the REQUEST or the MATERIAL points at this>",
+             "alternative": "<what else was plausible, and the clause that lost it>"},
         ],
     },
     "content": {
@@ -1497,6 +1504,9 @@ def check_template_profile(evidence: dict[str, Any], deck_path: Path | None,
     except Exception as exc:
         print(f"  [--] template profile NOT CHECKED — {exc} (not the same as clean)")
         return
+    if facts.get("palette_not_checked"):
+        print(f"  [--] template profile: the PALETTE could not be measured — "
+              f"{facts['palette_not_checked']}")
     if not finds:
         print(f"  [ok] template profile {facts['template']!r} honoured — "
               f"checked: {', '.join(facts['checked'])}")

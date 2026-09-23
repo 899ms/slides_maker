@@ -139,6 +139,40 @@ report NOT CHECKED when nothing is recorded, which is right for a deck that has 
 failure being fixed is the other one, where nobody asks, nothing is recorded, and the gates are
 silent forever while looking green.
 
+### The audit of those two, again on inputs they were not built around
+
+**The generator read one dialect family and fell back SILENTLY.** A style module declaring its
+palette as `RGBColor(20, 24, 31)`, as a bare tuple, or as a list of hex strings yielded nothing —
+and modern-dark ships `ACCENTS_HEX = [...]` today. `set_palette(font=…)`, which is how SKILL.md
+itself tells a build to set faces, yielded no faces. Worse than the gaps: a template that HAS a
+style module but declares colours in an unreadable shape was derived from its PROSE and reported
+only as "from profile.md", which reads exactly like a template with no style module at all. All
+four dialects are read now, and the fallback says both sources and flags the gap. (A 3-digit hex
+is still NOT read — guessing which expansion was meant is the invention this generator exists to
+avoid.) blueprint-tech's contract gained two real accent colours as a result.
+
+**Two ways for the palette check to accuse a correct deck.** A deck grounded in a full-bleed
+PICTURE paints no ground colour — blueprint-tech and nvidia-dark both ship hero images — and a deck
+set entirely in THEME colours paints no explicit RGB at all. In both the reader cannot see the
+ground; that is not the same as the build having ignored its template, and the first version could
+not tell them apart. The check now reports what it could not measure, on both gate paths, and
+still catches a deck that declares its colours and declares the wrong ones.
+
+**Non-Claude support, measured.** The Codex evidence scaffold showed `picks` rows for `angle` and
+`audience` only — no `template` row anywhere in the file — so a Codex run following its own
+scaffold never recorded the template, and the record-based binding that catches "declared it, did
+not build it" could never engage there. Both `--init` scaffolds now show the row. The Codex runbook
+also had no mention of `derive_template_contract.py`, so an agent registering a template on that
+runtime would leave it unverifiable forever; and the two conditional Step-0 asks had been added
+only to `interview-protocol.md`, which that runbook does not route to — a question that lives only
+in the file a runtime never reads is a question that runtime never asks. Both are in the runbook
+now.
+
+**Generality, checked across the whole registry rather than on the one template I tuned against.**
+No two fingerprints are identical; one pair shares a single colour and binding needs both, so
+neither steals the other's deck — verified by building one from each. Decks built from four
+templates I never tested against bind to themselves and pass.
+
 ### Also
 
 - `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from

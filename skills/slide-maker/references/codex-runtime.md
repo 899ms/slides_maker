@@ -67,6 +67,19 @@ be reconstructed post-hoc at the delivery gate.
    in the user's own language, then record the answers in `interview.record`. *(Review effort is
    NOT an interview axis: it is asked at the post-build review question, after the first clean
    render, with the rendered deck posted — see step 7.)*
+   - 🔴 **Two CONDITIONAL questions, asked only when the deck is that kind.** They are here as
+     well as in `references/interview-protocol.md` because this runbook is the Step 0 a bridged
+     runtime actually reads, and a question that lives only in the other file is a question this
+     runtime never asks — which leaves two gates reporting NOT CHECKED forever while looking green.
+     - **The room can interrupt** (defense · committee · grant panel · board readout · a talk with
+       Q&A): *"Which questions are you expecting, and which of them do you want a slide ready
+       for?"* → `"content": {"qa": [{"question": …, "slide": <the backup that answers it>}]}`.
+     - **The deck cites published work** (defense · journal club · lab meeting · grant · review):
+       *"Do you have a .bib, and do you want `[1]` or `(Smith, 2020)` markers?"* →
+       `"content": {"citations": {"bib": …, "style": …, "keys": [...]}}` in cited order, built with
+       `citations.reference_page`. No .bib → cite from what they gave you and say so; never retype
+       references from memory.
+     - Both stay OPTIONAL: nothing recorded is NOT CHECKED, which is right for a deck with neither.
    - 🔴 **Never fabricate a fake multiple-choice form**, and never present a menu the user cannot
      click. Numbered lines answered in free text are the correct shape here.
    - 🔴 **A missing answer is a QUESTION, not a default — and a deck is never silently ONE slide.**
@@ -255,6 +268,18 @@ interview answer at all — each reads the built file itself):
   `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
   `UNCOVERED TEMPLATE FURNITURE`. Deviating is legitimate design; record it as
   `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
+- **`check_template_profile.py` + `derive_template_contract.py`** — a registered template's look
+  must be OBEYED. 🔴 Record the template you used as an `interview.picks` row
+  (`{"axis": "template", "source": "stated", "value": "<registered name>"}`; the `--init` scaffold
+  shows it): the gate binds by that name FIRST and by the deck's own fingerprint only as a
+  fallback, and for a DESIGNED registry template — one that ships a `style.py` and no .pptx — the
+  recorded name is the ONLY thing that catches a deck which declared the template and then built
+  in stock colours, because such a deck has none of the template's colours and binds to nothing.
+  Errors: `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
+  `PALETTE OFF PROFILE` · `UNCOVERED TEMPLATE FURNITURE`. If you REGISTER a new template, run
+  `python3 scripts/derive_template_contract.py <name> --write` so it gains a contract — a template
+  without one reports NOT CHECKED forever, which is how 10 of 11 registered templates sat
+  unverifiable. Waive with `{"template_profile": {"waived": "<why this deck differs>"}}`.
 - **`check_talk_time.py`** — a talk must fit its SLOT. Record the budget as
   `"content": {"talk_minutes": <minutes>}` (the `--init` scaffold shows it); the gate estimates the
   spoken length from the SPEAKER NOTES as a band (130-150 wpm for any word-delimited script ·

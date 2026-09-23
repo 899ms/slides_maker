@@ -257,6 +257,87 @@ ck("003C66" in _stock and len(_stock) > 3,
    "deckkit's own palette is readable, which is what lets the generator refuse to build a "
    "fingerprint out of it")
 
+print("\n— 🔴 the dialects a REAL registry uses, and the silence when one is unreadable")
+for label, src, want_cols, want_faces in (
+        ("RGBColor(0x..)", 'BG = RGBColor(0x14, 0x18, 0x1F)\n', {"BG": "14181F"}, {}),
+        ("RGBColor(20,24,31) decimal", 'BG = RGBColor(20, 24, 31)\n', {"BG": "14181F"}, {}),
+        ("a bare tuple", 'BG = (0x14, 0x18, 0x1F)\n', {"BG": "14181F"}, {}),
+        ('C("hex")', 'BG = C("0A1B38")\n', {"BG": "0A1B38"}, {}),
+        ("a bare hex string", 'BG = "101A24"\n', {"BG": "101A24"}, {}),
+        ("set_palette(font=…)", 'dk.set_palette(font="Helvetica Neue", mono="Menlo")\n',
+         {}, {"FONT": "Helvetica Neue", "MONO": "Menlo"})):
+    cols, faces = DTC.from_style(src)
+    ck(cols == want_cols and (not want_faces or faces == want_faces),
+       "%s is read — modern-dark, nightdata and blueprint-tech between them use four of these, and "
+       "`set_palette` is how SKILL.md itself tells a build to set faces" % label)
+ck(DTC.from_style('ACCENTS_HEX = ["34D1A6", "F2B04E"]\n')[0] ==
+   {"ACCENTS_HEX_0": "34D1A6", "ACCENTS_HEX_1": "F2B04E"},
+   "a LIST of hexes contributes its colours — modern-dark ships exactly that line, and a template "
+   "whose accents live only in such a list would otherwise declare none of them")
+ck(DTC.from_style('BG = "#14F"\n')[0] == {},
+   "...while a 3-digit hex is NOT read as a colour: guessing which expansion was meant is the kind "
+   "of invention this generator exists to avoid")
+
+with tempfile.TemporaryDirectory() as tmp:
+    d = Path(tmp) / "opaque"
+    d.mkdir()
+    (d / "style.py").write_text('PALETTE = {"bg": "14181F", "accent": "34D1A6"}\n')
+    (d / "profile.md").write_text("# opaque\n\n- **Palette:** bg `14181F` . accent `34D1A6`.\n")
+    contract, how, gaps = DTC.derive(d)
+    ck(contract is not None and "style.py" in how and "prose" in how,
+       "🔴 a style module whose palette this CANNOT read falls back to the prose — and the source "
+       "line says both, because a silent fallback reads exactly like a template that has no style "
+       "module at all")
+    ck(any("declares no colour this can read" in g for g in gaps),
+       "...and it is reported as a GAP, so the operator is told to check the palette rather than "
+       "trusting a derivation that silently changed source")
+
+print("\n— 🔴 when the palette CANNOT be measured, the gate says so instead of accusing")
+with tempfile.TemporaryDirectory() as tmp:
+    ent = [_profile(tmp, DESIGNED)]
+    rec = {"interview": {"picks": [{"axis": "template", "value": "fake-template"}]}}
+
+    themed = os.path.join(tmp, "themed.pptx")
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(10), Inches(5.625)
+    sl = prs.slides.add_slide(prs.slide_layouts[5])
+    sl.shapes.title.text_frame.text = "a title in the theme's own colour"
+    prs.save(themed)
+    finds, facts = _with_registry(ent, lambda: CT.check(themed, gates=rec))
+    ck(finds == [] and "theme" in (facts.get("palette_not_checked") or ""),
+       "a deck set entirely in THEME colours declares no explicit RGB, so the palette cannot be "
+       "read — that is the reader's blindness, not the build's fault, and a gate that cannot tell "
+       "those apart accuses a correct deck")
+
+    imaged = os.path.join(tmp, "imaged.pptx")
+    png = os.path.join(tmp, "g.png")
+    try:
+        from PIL import Image
+        Image.new("RGB", (400, 225), (0x14, 0x18, 0x1F)).save(png)
+        prs = Presentation()
+        prs.slide_width, prs.slide_height = Inches(10), Inches(5.625)
+        sl = prs.slides.add_slide(prs.slide_layouts[6])
+        sl.shapes.add_picture(png, 0, 0, Inches(10), Inches(5.625))
+        tb = sl.shapes.add_textbox(Inches(1), Inches(2), Inches(6), Inches(1))
+        r = tb.text_frame.paragraphs[0].add_run()
+        r.text = "over the image"
+        r.font.color.rgb = RGBColor.from_string("ECEFF4")
+        prs.save(imaged)
+        finds, facts = _with_registry(ent, lambda: CT.check(imaged, gates=rec))
+        ck(finds == [] and "full-bleed picture" in (facts.get("palette_not_checked") or ""),
+           "🔴 a deck grounded in a FULL-BLEED PICTURE paints no ground colour — blueprint-tech and "
+           "nvidia-dark both ship hero images, so this is a correct deck the first version would "
+           "have reported as having ignored its template")
+    except ImportError:
+        ck(True, "(PIL absent — the full-bleed-picture case is skipped on this host)")
+
+    stockish = os.path.join(tmp, "stock.pptx")
+    _painted_deck(stockish, ["003C66", "FFFFFF"], face="Calibri")
+    finds, _f = _with_registry(ent, lambda: CT.check(stockish, gates=rec))
+    ck(any(c == "PALETTE OFF PROFILE" for c, _m in finds),
+       "...while a deck that DOES declare its colours and declares the wrong ones is still caught: "
+       "the exemption is for what cannot be seen, never for what can")
+
 print("\n— template profile: NO CONTRACT must be NOT CHECKED, never clean")
 with tempfile.TemporaryDirectory() as tmp:
     deck = os.path.join(tmp, "x.pptx")

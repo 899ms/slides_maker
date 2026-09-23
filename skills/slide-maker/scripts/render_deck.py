@@ -1963,6 +1963,10 @@ def _template_profile_gate(pptx, gates):
     except Exception as exc:
         print(f"  [--] template profile: NOT CHECKED — {exc}")
         return
+    if facts.get("palette_not_checked"):
+        # A skipped check that prints nothing is the thing this repo refuses everywhere else.
+        print("  [--] template profile: the PALETTE could not be measured — {}".format(
+            facts["palette_not_checked"]))
     if not finds:
         print("[gates] template profile {!r} honoured — checked: {}".format(
             facts["template"], ", ".join(facts["checked"])))
