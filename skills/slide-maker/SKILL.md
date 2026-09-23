@@ -559,7 +559,9 @@ tally.
 🔴 **THE DELIVERED PDF NOW KEEPS ITS ALT TEXT, AND THERE IS A SPEAKER HANDOUT.** `--deliverables`
 exports through LibreOffice's PDF/UA filter: measured, the plain export produced a tagged PDF with
 ZERO `/Alt` values, so every image description the a11y gate demanded stopped at the .pptx — in
-the one artifact that gets emailed. The raster is byte-identical, so nothing downstream changes.
+the one artifact that gets emailed. It is a SEPARATE export from the render's: putting the filter
+on the rasterization path changed a pixel check's verdict on another LibreOffice, so the render's
+PDF stays plain and the accessible copy is made at hand-off.
 It also writes **`<deck>-notes.pdf`**, one page per slide with the slide above its notes: this
 skill requires speaker notes and reads them to estimate the talk's length, and then handed over
 two artifacts in which they are invisible. A deck with no notes gets no handout and says so.

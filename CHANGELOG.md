@@ -186,11 +186,17 @@ each was found by a person reading a transcript rather than by the tool.
 **The delivered PDF was dropping every alt text.** Measured: `--convert-to pdf` exports a *tagged*
 PDF — `/StructTreeRoot`, `/Marked true`, `/Lang` — carrying NOT ONE `/Alt` value, so every image
 description the a11y gate demands stopped at the .pptx, in the one artifact that gets emailed.
-The export now goes through LibreOffice's PDF/UA filter: `pdfuaid` is declared and the
-descriptions are present. The raster is byte-identical (same hash over the page pixmap) and the
-file is about a hundred bytes larger, so every PNG and every pixel gate downstream is unaffected;
-a LibreOffice that rejects the filter falls back to the plain export and says the PDF will carry
-no alt text. WCAG 2.1 AA became the ADA Title II standard in April 2026, which is what makes this
+The DELIVERED copy is now exported through LibreOffice's PDF/UA filter: `pdfuaid` is declared and
+the descriptions are present.
+
+🔴 It is a SEPARATE export, and the first version got that wrong. The filter went on the one export
+that also feeds rasterization, on the evidence that the page pixmap hashed identically either way —
+on one machine. CI disagreed: `CAPTION NOT ALIGNED`, a PIXEL check reading those PNGs, stopped
+firing on a deck built to trip it, on a LibreOffice of a different version. "Byte-identical" was
+true of one host and asserted of all of them. The render's PDF is a rasterization intermediate and
+is exported exactly as before; the accessible copy is made at hand-off, where the artifact that
+leaves is the one that matters. A LibreOffice that rejects the filter leaves the plain deliverable
+in place and says the PDF will carry no alt text. WCAG 2.1 AA became the ADA Title II standard in April 2026, which is what makes this
 a floor rather than a nicety for the decks this skill is used for.
 
 **A speaker handout, which did not exist.** This skill requires speaker notes and reads them to

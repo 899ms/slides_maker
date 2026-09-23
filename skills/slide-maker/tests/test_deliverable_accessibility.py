@@ -86,9 +86,19 @@ if not SOFFICE:
 else:
     deck = _deck("a11y.pptx")
     out = tempfile.mkdtemp(dir=str(TMP))
-    pdf, result, _cmd = rd._render_pdf(SOFFICE, deck, out)
-    raw = pathlib.Path(pdf).read_bytes() if result.returncode == 0 else b""
-    ck(result.returncode == 0 and raw, "the render produced a PDF", result.returncode)
+    # 🔴 The RENDER's export is the rasterization intermediate and must stay a plain one. The first
+    # version put the PDF/UA filter here because the page pixmap hashed identically on this host —
+    # and CI, on another LibreOffice, stopped raising `CAPTION NOT ALIGNED`, a PIXEL check reading
+    # those PNGs, on a deck built to trip it. "Byte-identical" was true of one host and asserted of
+    # all of them.
+    _plain_pdf, _plain_res, _plain_cmd = rd._render_pdf(SOFFICE, deck, out)
+    ck("PDFUACompliance" not in " ".join(_plain_cmd),
+       "🔴 the RENDER exports plainly — the accessibility filter is off the path that feeds the "
+       "PNGs, so no pixel gate can ever change because of it", _plain_cmd)
+    dest_pdf = str(TMP / "a11y-deliverable.pdf")
+    pdf = rd.render_accessible_pdf(SOFFICE, deck, dest_pdf)
+    raw = pathlib.Path(pdf).read_bytes() if pdf else b""
+    ck(bool(pdf) and raw, "the DELIVERABLE export produced a PDF", pdf)
     ck(b"/StructTreeRoot" in raw and b"/Marked true" in raw,
        "it is TAGGED — a structure tree, which a `Print to PDF` never has")
     ck(b"pdfuaid" in raw,
@@ -102,6 +112,10 @@ else:
     ck("PDFUACompliance" in rd.PDF_UA_FILTER and "UseTaggedPDF" in rd.PDF_UA_FILTER,
        "the filter names both options, so a LibreOffice that honours one and not the other still "
        "tags the file")
+    ck("render_accessible_pdf(soffice, pptx, pdf_dest)" in
+       (SKILL / "scripts" / "render_deck.py").read_text(encoding="utf-8"),
+       "...and the hand-off run INVOKES it on the delivered copy — an export nothing calls is an "
+       "export nobody receives")
 
 print("\n— the speaker handout")
 if not SOFFICE:

@@ -1086,6 +1086,14 @@ def _acquire_profile():
 #
 # WCAG 2.1 AA is the ADA Title II standard from April 2026, which is what makes this a floor
 # rather than a nicety for the academic and public-sector decks this skill is used for.
+#
+# 🔴 IT IS A SEPARATE EXPORT, NOT THE RENDER'S. The first version put the filter on the ONE export
+# that also feeds rasterization, because on this machine the page pixmap hashed identically either
+# way. CI disagreed: `CAPTION NOT ALIGNED`, a PIXEL check reading those PNGs, stopped firing on a
+# deck built to trip it — five commits green, mine red, on a LibreOffice of a different version.
+# "Byte-identical" was true of one host and asserted of all of them. The accessibility concern
+# belongs to the artifact that LEAVES, so the deliverable is exported on its own and the render
+# path is exactly what it was.
 PDF_UA_FILTER = ('pdf:impress_pdf_Export:{"PDFUACompliance":{"type":"boolean","value":"true"},'
                  '"UseTaggedPDF":{"type":"boolean","value":"true"}}')
 
@@ -1093,6 +1101,36 @@ PDF_UA_FILTER = ('pdf:impress_pdf_Export:{"PDFUACompliance":{"type":"boolean","v
 NOTES_FILTER = ('pdf:impress_pdf_Export:{"ExportOnlyNotesPages":{"type":"boolean","value":"true"},'
                 '"ExportNotesPages":{"type":"boolean","value":"true"},'
                 '"PDFUACompliance":{"type":"boolean","value":"true"}}')
+
+
+def render_accessible_pdf(soffice, src, dest):
+    """Export the DELIVERABLE pdf with PDF/UA, so the alt text reaches the reader. None on failure.
+
+    Separate from `_render_pdf` on purpose — see PDF_UA_FILTER. A LibreOffice that rejects the
+    filter leaves the plain deliverable in place and says the PDF carries no alt text, because a
+    silently inaccessible PDF is the exact failure this exists to fix.
+    """
+    out = tempfile.mkdtemp(prefix="lo_ua_")
+    profile = _acquire_profile()
+    try:
+        cmd = [soffice, "-env:UserInstallation=" + Path(profile.path).as_uri(),
+               "--headless", "--convert-to", PDF_UA_FILTER, "--outdir", out, src]
+        try:
+            r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            profile.release(discard=True)
+            return None
+        made = os.path.join(out, os.path.splitext(os.path.basename(src))[0] + ".pdf")
+        if r.returncode != 0 or not os.path.exists(made):
+            print("note: this LibreOffice rejected the PDF/UA export filter, so the delivered PDF "
+                  "carries NO alt text and no PDF/UA identification. Upgrade LibreOffice (7.x+) if "
+                  "the PDF has to be accessible.", file=sys.stderr)
+            return None
+        shutil.move(made, dest)
+        return dest
+    finally:
+        profile.release()
 
 
 def render_notes_pdf(soffice, src, dest):
@@ -1161,7 +1199,7 @@ def _render_pdf(soffice, src, outdir):
     """
     pdf = os.path.join(outdir, os.path.splitext(os.path.basename(src))[0] + ".pdf")
 
-    def _once(profile, filt=PDF_UA_FILTER):
+    def _once(profile, filt="pdf"):
         cmd = [soffice, "-env:UserInstallation=" + Path(profile.path).as_uri(),
                "--headless", "--convert-to", filt, "--outdir", outdir, src]
         try:
@@ -1175,18 +1213,6 @@ def _render_pdf(soffice, src, outdir):
 
     profile = _acquire_profile()
     result, cmd = _once(profile)
-    if result.returncode != 0 or not os.path.exists(pdf):
-        # An older LibreOffice does not know `PDFUACompliance` and refuses the whole filter string.
-        # Losing the render over an accessibility option would be the wrong trade, so fall back to
-        # the plain export and SAY the deliverable will carry no alt text — silently producing an
-        # inaccessible PDF is the failure this filter exists to fix.
-        plain, cmd_plain = _once(profile, filt="pdf")
-        if plain.returncode == 0 and os.path.exists(pdf):
-            print("note: this LibreOffice rejected the PDF/UA export filter, so the PDF is tagged "
-                  "but carries NO alt text and no PDF/UA identification. Upgrade LibreOffice (7.x+) "
-                  "if the PDF has to be accessible.", file=sys.stderr)
-            profile.release()
-            return (pdf, plain, cmd_plain)
     if result.returncode != 0 and profile.pooled:
         profile.release(discard=True)
         print("note: render failed on a pooled LibreOffice profile — discarding it and retrying "
@@ -4705,6 +4731,14 @@ def main(argv):
                 shutil.move(pdf, pdf_dest)   # move, not replace: the source is a temp dir that may
         except OSError:                      # sit on a different filesystem
             pdf_dest = pdf                   # couldn't move (odd mount/permissions)
+        # …re-exported for accessibility. The render's PDF is a rasterization intermediate and
+        # stays a plain export; this is the copy a reader receives.
+        try:
+            if render_accessible_pdf(soffice, pptx, pdf_dest):
+                pass
+        except Exception as exc:
+            print("note: the accessible PDF export failed (%s); the plain PDF is in place"
+                  % exc, file=sys.stderr)
         # …and the SPEAKER HANDOUT beside it: the artifact a presenter rehearses from, which this
         # skill demanded the notes for and then never delivered.
         notes_dest = os.path.join(os.path.dirname(os.path.abspath(pptx)) or ".",

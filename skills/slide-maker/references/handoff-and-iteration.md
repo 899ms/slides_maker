@@ -74,9 +74,11 @@ silent widening — it exits 1 and tells you to render the whole deck.
 🔴 **`<deck>-notes.pdf` — the speaker handout** — is written by `--deliverables` whenever the deck
 has notes on any slide: one page per slide, the slide above its own notes. It is what a presenter
 rehearses from and what gets handed out afterwards, and it did not exist while this skill required
-speaker notes and read them to estimate the talk's length. The deck PDF beside it is exported
+speaker notes and read them to estimate the talk's length. The deck PDF beside it is re-exported at hand-off
 through LibreOffice's **PDF/UA** filter, so the alt text the a11y gate demanded is actually in the
-file a reader receives — the plain export carried none.
+file a reader receives — the plain export carried none. (Re-exported, not exported once: the
+render's own PDF feeds the PNG rasterization, and putting the filter on that path changed a pixel
+check's verdict on a different LibreOffice.)
 
 The deck + `render/` PNGs, the build script (source of truth), the speaker-notes source,
 `assets/` (incl. `sourced/credits.txt` when sourced photos exist),
