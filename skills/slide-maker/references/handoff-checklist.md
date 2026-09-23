@@ -66,6 +66,17 @@ and I'll drop it"* (visibility + easy veto is what keeps a memory trustworthy). 
 **not** narrate the deck slide-by-slide, restate what they can see in the render, or self-praise the
 result — a tight hand-off respects their time and reads as senior.
 
+🔴 **Name every file you parked, including the two nobody expects.** `--deliverables` writes
+`<deck>.pdf` **re-exported for accessibility** (PDF/UA, so the alt text the a11y gate demanded is
+in the file a reader receives — the plain export carried none) and, when the deck has notes,
+`<deck>-notes.pdf`, the **speaker handout**: one page per slide, the slide above its own notes, to
+rehearse from and to hand out. A deliverable the user is not told about is one they never open.
+
+🔴 **Report the COVERAGE line, not just the pass.** The gate run ends with
+`COVERAGE: N section(s) ran — X bound, Y NOT CHECKED`. If anything was not checked, say which and
+why in one clause — "the talk-time gate was silent because no time budget was recorded" is a
+sentence the user can act on, and "all gates pass" on its own hides it.
+
 ## Speaker notes, editability, and iterating after delivery
 
 **If the deck has speaker notes, tell them how to use the notes.** They render nowhere on

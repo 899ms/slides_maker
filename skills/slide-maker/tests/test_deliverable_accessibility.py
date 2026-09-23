@@ -194,6 +194,52 @@ ck(_cdg._NOT_CHECKED and _cdg._NOT_CHECKED[0][0] == "talk time"
    "🔴 the Codex ledger RECORDS, behaviourally — asserting only that the function exists in the "
    "source passes with its body emptied, which a mutant proved")
 
+print("\n— the audit: state, failure paths, and the runtimes that read a different file")
+rd._NOT_CHECKED.clear(); rd._SECTIONS_RUN.clear()
+rd._NOT_CHECKED["stale"] = "left over from an earlier pass"
+rd._SECTIONS_RUN.extend(["stale", "older"])
+_src_rd = (SKILL / "scripts" / "render_deck.py").read_text(encoding="utf-8")
+ck("_NOT_CHECKED.clear()" in _src_rd and "_SECTIONS_RUN.clear()" in _src_rd,
+   "🔴 a gate pass RESETS the ledger. It is module state, and a second pass in the same process — "
+   "a test harness, an agent importing this module — inherited the first pass's rows and counted "
+   "its sections again, so one tally described two runs")
+rd._NOT_CHECKED.clear(); rd._SECTIONS_RUN.clear()
+rd._COLLECTED = []
+with rd._gate_section("failing"):
+    rd.die("this deck is wrong in a specific way")
+with rd._gate_section("passing"):
+    pass
+_checked, _rows = rd.coverage_ledger(rd._SECTIONS_RUN)
+rd._COLLECTED = None
+ck((_checked, _rows) == (2, []),
+   "a gate that FAILED counts as BOUND, not as unchecked — it checked something and did not like "
+   "it, which is the opposite of not having looked", (_checked, _rows))
+
+if SOFFICE:
+    surv = str(TMP / "survivor.pdf")
+    import shutil as _sh
+    _sh.copy(str(TMP / "a11y-deliverable.pdf"), surv)
+    _before = os.path.getsize(surv)
+    ck(rd.render_accessible_pdf("/nonexistent/soffice", _deck("x.pptx"), surv) is None
+       and os.path.exists(surv) and os.path.getsize(surv) == _before,
+       "🔴 a FAILED accessible export returns None and leaves the plain deliverable exactly where "
+       "it was — it raised FileNotFoundError out of a public function until an audit called it "
+       "with a soffice that does not exist")
+    ghost = str(TMP / "ghost-notes.pdf")
+    ck(rd.render_notes_pdf("/nonexistent/soffice", _deck("y.pptx"), ghost) is None
+       and not os.path.exists(ghost),
+       "...and a failed handout leaves no stray file behind")
+
+_cx_doc = (SKILL / "references" / "codex-runtime.md").read_text(encoding="utf-8")
+ck("-notes.pdf" in _cx_doc and "PDF/UA" in _cx_doc and "COVERAGE" in _cx_doc,
+   "🔴 the CODEX runbook names both new deliverables and the coverage line. Documenting them only "
+   "in the Claude-side files is how a runtime ships a deliverable nobody mentions — the same gap "
+   "an earlier audit found for the Step-0 questions")
+_ho = (SKILL / "references" / "handoff-checklist.md").read_text(encoding="utf-8")
+ck("-notes.pdf" in _ho and "COVERAGE" in _ho,
+   "...and the SHARED hand-off checklist requires naming them in the note, so the user hears about "
+   "a file that was parked for them")
+
 print()
 print("%d passed, %d failed" % (len(OK), len(BAD)))
 raise SystemExit(1 if BAD else 0)

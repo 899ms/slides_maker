@@ -268,6 +268,16 @@ interview answer at all — each reads the built file itself):
   `LAYOUT OFF PROFILE` · `FONT OFF PROFILE` · `TITLE COLOUR OFF PROFILE` ·
   `UNCOVERED TEMPLATE FURNITURE`. Deviating is legitimate design; record it as
   `{"template_profile": {"waived": "<why this deck differs>"}}` in the evidence file.
+- **What `--deliverables` now writes, and what to say about it at hand-off.** Beside the .pptx it
+  parks `<deck>.pdf` **re-exported through LibreOffice's PDF/UA filter** — the plain export
+  produced a tagged PDF carrying ZERO `/Alt` values, so every image description the a11y gate
+  demanded stopped at the .pptx, in the artifact that actually gets emailed — and
+  **`<deck>-notes.pdf`**, the speaker handout: one page per slide, the slide above its own notes.
+  A deck with notes on no slide gets no handout and says so; a LibreOffice that rejects either
+  filter leaves the plain file in place and says what is missing. Name both in the hand-off note:
+  a deliverable the user is not told about is one they do not use. (The accessible copy is a
+  SEPARATE export from the render's on purpose — putting the filter on the rasterization path
+  changed a pixel check's verdict on a different LibreOffice version.)
 - **The COVERAGE tally.** The gate prints `[--] COVERAGE: N check(s) could NOT bind and therefore
   checked nothing`, one row each. Read it before reporting a clean gate: a check that could not
   bind checked nothing, and on this runtime the usual cause is a field the interview did not ask

@@ -205,6 +205,31 @@ invisible — the artifact a presenter actually rehearses from was never produce
 now also writes `<deck>-notes.pdf`: one page per slide, the slide above its own notes. A deck with
 notes on no slide gets no handout rather than a run of empty pages, and says so.
 
+### The audit of those three
+
+**The ledger was module state and never reset.** A second gate pass in the same process — a test
+harness, an agent importing the module, any embedding — inherited the first pass's rows and counted
+its sections again, so one tally described two runs. It resets at the start of every pass. (What
+was already right, and is now pinned: a gate that FAILED counts as bound, not as unchecked. It
+looked and did not like what it saw, which is the opposite of not having looked.)
+
+**Both new exporters raised instead of degrading.** `render_accessible_pdf` and `render_notes_pdf`
+caught only a timeout, so a missing or unrunnable LibreOffice came back as a `FileNotFoundError`
+out of a public function rather than as "no accessible copy". They now report and return None, and
+the plain deliverable is left exactly where it was — verified by calling them with a soffice path
+that does not exist.
+
+**And the same non-Claude gap as last time, in a new place.** The Codex runbook named neither the
+accessible PDF nor the speaker handout, so a hand-off on that runtime would park two files and
+mention neither. Both are in the runbook now, and the SHARED hand-off checklist — which both
+runtimes read — requires naming them in the note, along with the COVERAGE line rather than a bare
+"all gates pass".
+
+**Generality, checked on decks the work was not built around.** The PDF/UA export and the handout
+both hold on a Chinese deck, a deck with no images at all, A4 portrait and 9:16 story surfaces —
+tagged, UA-declared, one handout page per slide in every case, and the 9:16 handout was rendered
+and looked at rather than counted.
+
 ### Also
 
 - `references/navigation-and-qa.md` and `references/citations-and-bibliography.md`, both routed from

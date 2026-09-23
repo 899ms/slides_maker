@@ -1118,8 +1118,12 @@ def render_accessible_pdf(soffice, src, dest):
         try:
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, timeout=300)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            # OSError too: a missing or unrunnable soffice must come back as "no accessible copy",
+            # not as a traceback out of a public function an agent may call directly.
             profile.release(discard=True)
+            print("note: the accessible PDF export could not run (%s); the plain deliverable is "
+                  "in place and carries no alt text" % exc, file=sys.stderr)
             return None
         made = os.path.join(out, os.path.splitext(os.path.basename(src))[0] + ".pdf")
         if r.returncode != 0 or not os.path.exists(made):
@@ -1167,10 +1171,10 @@ def render_notes_pdf(soffice, src, dest):
         try:
             r = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, timeout=300)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired, OSError) as exc:
             profile.release(discard=True)
-            print("note: the speaker handout timed out; the deck itself is unaffected",
-                  file=sys.stderr)
+            print("note: the speaker handout could not be rendered (%s); the deck itself is "
+                  "unaffected" % exc, file=sys.stderr)
             return None
         made = os.path.join(out, os.path.splitext(os.path.basename(src))[0] + ".pdf")
         if r.returncode != 0 or not os.path.exists(made):
@@ -1615,6 +1619,12 @@ def check_handoff_gates(pptx, mode="presented", gate_check=False):
     is still terminal: it is collected and reported alone, because every later gate reads what it
     could not produce. That case never had a ping-pong problem, since it is one message either way.
     """
+    # 🔴 RESET the ledger. It is module state, and a second gate pass in the SAME process —
+    # a test harness, an agent importing this module, any embedding — inherited the first
+    # pass's rows and counted its sections again, so the tally described two runs at once.
+    _NOT_CHECKED.clear()
+    _SECTIONS_RUN.clear()
+
     global _COLLECTED
     outer, _COLLECTED = _COLLECTED, []
     try:
