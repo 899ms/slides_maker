@@ -9,6 +9,18 @@ section is a distilled summary — the full notes live on the
 
 ## [Unreleased]
 
+## [5.6.0] — 2026-09-25
+
+**The release about what a deck is asked to do in a room, and about "passed" that was not
+"checked".** Three things a presenter relies on had no support or no check: fitting the time slot,
+jumping to a backup slide during Q&A, and citing from the bibliography rather than from memory.
+Each is now buildable and gated on both runtimes. The template-profile gate added in 5.5.0 turned
+out to bind to one registered template in eleven; designed templates now fingerprint on colour,
+and the recorded template is read first. Every run now ends with a coverage ledger that counts the
+sections that bound and the ones that were NOT CHECKED, the delivered PDF keeps its alt text
+(PDF/UA), and `--deliverables` also writes a speaker handout. Each piece was then audited on inputs
+it was not built around, and the defects those audits found are fixed below.
+
 **Three things a deck is asked to do in a real room, that this skill could not do or could not
 check.** Each is a gate on both runtimes, each is NOT CHECKED until the author records the field,
 and each says so out loud rather than passing quietly.
